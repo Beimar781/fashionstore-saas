@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Node / Angular
+node_modules/
+dist/
+.angular/
+# Flutter
+movil/.dart_tool/
+movil/build/
+# Secretos y entorno
+.env
+*.log
+.DS_Store

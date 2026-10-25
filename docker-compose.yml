@@ -1,0 +1,24 @@
+# Despliegue en la nube (Ubuntu + Docker Compose). Para desarrollo local no es necesario.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fashionstore_saas
+      POSTGRES_USER: fashionstore
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD en .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fashionstore -d fashionstore_saas"]
+      interval: 5s
+      retries: 10
+  backend:
+    build: ./backend
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql+psycopg://fashionstore:${DB_PASSWORD}@db:5432/fashionstore_saas
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY en .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+    ports: ["8000:8000"]
+volumes:
+  pgdata:
