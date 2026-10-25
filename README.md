@@ -1,52 +1,92 @@
-# FashionStore SaaS — Segundo parcial · Sistemas de Información 2 (Grupo 20)
+# FashionStore SaaS
 
-Plataforma de comercio electrónico **multitenant** para tiendas de ropa. Un solo repositorio:
+Plataforma de comercio electrónico **multitenant** para tiendas de ropa. Proyecto de Sistemas de Información 2 (Grupo 20).
 
 | Carpeta | Contenido | Tecnología |
 |---|---|---|
-| `backend/` | API REST, reglas de negocio, aislamiento por empresa, migraciones | Python · FastAPI · SQLAlchemy · Alembic · PostgreSQL |
-| `frontend/` | Paneles web (SuperAdmin, Administrador) y tienda — **PWA** instalable y offline | Angular · Service Worker · Web App Manifest · IndexedDB |
-| `movil/` | Aplicación móvil con persistencia local | Flutter · Dart · SQLite |
-| `docs/` | Trazabilidad CU → código → pruebas, pendientes por lote | — |
+| `backend/` | API REST, reglas de negocio y migraciones | Python · FastAPI · SQLAlchemy · Alembic · PostgreSQL |
+| `frontend/` | Paneles web (SuperAdmin y Administrador), PWA instalable | Angular · Service Worker · IndexedDB |
+| `movil/` | Aplicación móvil con almacenamiento local | Flutter · Dart · SQLite |
+| `docs/` | Trazabilidad de casos de uso y pendientes | — |
 
-## Estado: Presentación 1 (Lote 1)
-CU-02 Iniciar sesión · CU-13 Usuarios y roles · CU-14 Ciudades y sucursales · CU-33 Empresas (tenants) · CU-34 Planes · CU-35 Suscripciones.
-Detalle y lo que sigue: [`docs/TRAZABILIDAD.md`](docs/TRAZABILIDAD.md) y [`docs/PENDIENTES.md`](docs/PENDIENTES.md).
+## Requisitos
 
-## 1. Backend (Windows / PowerShell)
+- [Python 3.13](https://www.python.org/downloads/)
+- [Node.js 22 o superior](https://nodejs.org/) (incluye npm)
+- [PostgreSQL 16 o superior](https://www.postgresql.org/download/) en marcha (con o sin pgAdmin)
+- Para la app móvil: Flutter y Android Studio (ver [`movil/README.md`](movil/README.md))
+
+## Instalación
+
+Los comandos son para Windows (PowerShell). Se usan **dos terminales**: una para el backend y otra para la web.
+
+### 1. Clonar
+
+```powershell
+git clone https://github.com/Beimar781/fashionstore-saas.git
+cd fashionstore-saas
+```
+
+### 2. Backend (terminal 1)
+
 ```powershell
 cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env          # editar DATABASE_URL con TU usuario y contraseña de PostgreSQL (los de pgAdmin)
-python scripts/crear_bd.py      # crea la base fashionstore_saas
-alembic upgrade head            # crea las tablas (script 3.5.4 del documento)
-python -m app.seed              # roles, planes, SuperAdmin y 2 empresas de prueba
-uvicorn app.main:app --reload   # API en http://localhost:8000  ·  documentación: http://localhost:8000/docs
-```
-Pruebas automatizadas (usan una base aparte `fashionstore_test`, que se crea sola):
-```powershell
-$env:TEST_DATABASE_URL="postgresql+psycopg://postgres:SU_CLAVE@localhost:5432/fashionstore_test"
-python -m pytest -q
+copy .env.example .env
 ```
 
-## 2. Web
+Abre `backend/.env` y cambia **tu usuario y contraseña de PostgreSQL** en `DATABASE_URL`
+(por ejemplo `postgresql+psycopg://postgres:MI_CLAVE@localhost:5432/fashionstore_saas`).
+En `SECRET_KEY` escribe cualquier texto largo.
+
+Luego, con el entorno virtual activado:
+
+```powershell
+python scripts/crear_bd.py      # crea la base de datos
+alembic upgrade head            # crea las tablas
+python -m app.seed              # carga roles, planes, SuperAdmin y dos empresas de ejemplo
+uvicorn app.main:app --reload   # inicia la API
+```
+
+La API queda en <http://localhost:8000> y su documentación en <http://localhost:8000/docs>.
+
+### 3. Web (terminal 2)
+
 ```powershell
 cd frontend
 npm install
-npm start                        # http://localhost:4200
+npm start
 ```
 
-## 3. Móvil (Flutter)
-Ver [`movil/README.md`](movil/README.md).
+Abre <http://localhost:4200>.
 
-## Cuentas de prueba (seed)
+## Cuentas iniciales
+
+El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
+
 | Rol | Código de empresa | Correo | Contraseña |
 |---|---|---|---|
 | SuperAdministrador | *(vacío)* | superadmin@fashionstore.com | Super2026* |
-| Administrador | EMP-A (plan Básico) | admin@modaurbana.com | Demo2026* |
-| Administrador | EMP-B (plan Profesional) | admin@estiloandino.com | Demo2026* |
-| Encargado / Cajero / Cliente | EMP-A o EMP-B | encargado@tienda.com · cajero@tienda.com · cliente@emp-a.com | Demo2026* |
+| Administrador | EMP-A | admin@modaurbana.com | Demo2026* |
+| Administrador | EMP-B | admin@estiloandino.com | Demo2026* |
+| Encargado | EMP-A o EMP-B | encargado@tienda.com | Demo2026* |
+| Cajero | EMP-A o EMP-B | cajero@tienda.com | Demo2026* |
+| Cliente | EMP-A | cliente@emp-a.com | Demo2026* |
 
-El mismo correo (`cajero@tienda.com`) existe en las dos empresas: cada una solo ingresa con su código (RN09).
+## Recuperar contraseña
+
+En el inicio de sesión, **¿Olvidaste tu contraseña?** pide el correo y genera un enlace de un solo uso.
+Sin configurar un servicio de correo, el enlace aparece en la terminal del backend; copia esa dirección en el navegador.
+
+## Aplicación móvil
+
+Instrucciones en [`movil/README.md`](movil/README.md). Requiere el backend en ejecución.
+
+## Problemas frecuentes
+
+- **`password authentication failed`**: la contraseña de `DATABASE_URL` no es la de tu PostgreSQL.
+- **`.venv\Scripts\Activate.ps1` no se puede ejecutar**: abre PowerShell y ejecuta `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+- **La web carga pero no inicia sesión**: confirma que el backend sigue corriendo en el puerto 8000.
+- **Para empezar de cero**: elimina la base `fashionstore_saas` desde pgAdmin y repite los pasos `crear_bd`, `alembic` y `seed`.
