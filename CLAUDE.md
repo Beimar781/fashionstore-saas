@@ -25,5 +25,21 @@ Prohibido: Shopify/Magento/PrestaShop/WooCommerce. No usar Django/Celery/Redis (
 `cd backend && python -m pytest -q` — una prueba por paso de las tablas 5.2.1/5.3.1 del documento (`tests/test_cuNN_*.py`).
 Al agregar un caso de uso, agregar su archivo de pruebas con el mismo formato.
 
+## Estructura: SaaS y primer parcial
+Lo del SaaS multitenant va a simple vista (`backend/app/modules`, `frontend/.../features`, `movil/lib/features`, `backend/tests`).
+Los casos de uso conservados del primer parcial (Anexo B del documento) van en subcarpetas aparte: `backend/app/primer_parcial`,
+`frontend/.../features/primer-parcial`, `movil/lib/primer_parcial` y `backend/tests/primer_parcial`. En ambas zonas: un paquete por
+carpeta y un caso de uso por subcarpeta. Los paquetes se hablan solo por `publico.py`, sin dependencias circulares.
+El plan completo (casos de uso por fase, paquetes y prompts) está en `docs/PLAN_PRIMER_PARCIAL.md`; el enunciado del primer parcial,
+en `D:\proyectos\1er parcial si2\Examen1-Ecommerce-Si2-s2-26.pdf`.
+
+## Forma de trabajo (obligatoria)
+- **Idioma:** todo lo que le escribas al usuario va en **español**: resúmenes, dudas, errores y explicaciones. Si algo sale mal o tienes una duda, pregúntale en español antes de decidir.
+- **Al terminar cada tarea:** corre las pruebas (`cd backend && python -m pytest -q`, `cd frontend && npm run build`, y en el móvil `flutter analyze` y `flutter test`).
+  - Si todo pasa: haz `git add`, `git commit` y `git push` con la identidad de git del usuario (no cambies `user.name` ni `user.email`). Mensaje corto en español, por ejemplo «Agrega catálogo por empresa (CU-16 a CU-19)», sin líneas de coautoría.
+  - Si algo falla: **no hagas commit**; explica en español qué falló y propón la corrección.
+- **Estilo del código:** debe poder explicarlo un estudiante en una defensa. Sigue el estilo del lote 1: nombres en español, funciones cortas, un servicio por caso de uso, sin abstracciones innecesarias. Comentarios solo donde expliquen una regla de negocio (RN o paso de la ficha del CU); nada de comentarios largos ni docstrings extensos.
+- **Al final de cada fase**, muestra en la terminal un resumen en español: qué casos de uso quedaron, los archivos principales y, por cada CU, 3 líneas de cómo fluye (router → service → repository). Es para que el equipo lo estudie para la defensa.
+
 ## Dónde está cada cosa
-`docs/TRAZABILIDAD.md` (CU → código → pruebas) · `docs/PENDIENTES.md` (lotes 2 y 3 y portado de los CU conservados) · `README.md` (arranque).
+`docs/TRAZABILIDAD.md` (CU → código → pruebas) · `docs/PENDIENTES.md` (lotes 2 y 3 y portado de los CU conservados) · `docs/PLAN_PRIMER_PARCIAL.md` (plan por fases) · `README.md` (arranque).
