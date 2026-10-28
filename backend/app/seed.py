@@ -17,6 +17,7 @@ from app.modules.plataforma.models import Empresa, Plan, Suscripcion
 from app.modules.sucursales.models import Ciudad, Sucursal
 from app.seed_abastecimiento import cargar as cargar_abastecimiento
 from app.seed_catalogo import cargar as cargar_catalogo
+from app.seed_reservas import cargar as cargar_reservas
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
 CLAVE = "Demo2026*"
@@ -98,6 +99,8 @@ def ejecutar(db: Session) -> None:
         cargar_catalogo(db, empresa)
         db.flush()
         cargar_abastecimiento(db, empresa, roles[PROVEEDOR], hash_password(CLAVE))
+        db.flush()
+        cargar_reservas(db, empresa)
     db.commit()
 
 

@@ -15,6 +15,9 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | CU-03 Consultar catálogo de prendas | `catalogo/cu03_consultar_catalogo` | `GET /api/catalogo/productos`, `…/productos/{id}`, `…/productos/{id}/opciones?sucursal=`, `…/sucursales` | `catalogo/catalogo.page.ts`, `catalogo/prenda.page.ts` | — | `test_cu03_consultar_catalogo.py` (12 pruebas: orden de tallas, disponibilidad en una consulta, aislamiento) |
 | CU-04 Buscar y filtrar prendas | `catalogo/cu04_buscar_filtrar` | `GET /api/catalogo/buscar` (q, categoría, marca, género, temporada, colección, talla, color, precio, sucursal, orden, paginación) | `catalogo/catalogo.page.ts` | — | `test_cu04_buscar_filtrar.py` (10 pruebas: talla+color sobre la misma variante, sucursal con stock) |
 | CU-05 Tallas, colores y disponibilidad por sucursal | `inventario/cu05_disponibilidad` | `GET /api/inventario/productos/{id}/disponibilidad` | `catalogo/prenda.page.ts` (sección «Disponibilidad por sucursal») | — | `test_cu05_disponibilidad.py` (7 pruebas: una consulta agrupada, orden de tallas, aislamiento) |
+| CU-09 Realizar reserva de múltiples prendas | `reservas/cu09_reservar` (+ motor del ciclo de vida de la reserva: `cambiar_estado`, `liberar`, `expirar_vencidas`) | `POST /api/reservas` | `reservas/reservar.page.ts`, botón «Agregar a mi reserva» en `catalogo/prenda.page.ts` | — | `test_cu09_reservar.py` (15 pruebas: stock todo o nada, horario, aislamiento, gancho de CU-14) |
+| CU-10 Consultar y cancelar reservas | `reservas/cu10_consultar_cancelar` | `GET /api/reservas`, `GET …/{id}`, `POST …/{id}/cancelar` | `reservas/mis-reservas.page.ts` | — | `test_cu10_reservas_cliente.py` (11 pruebas: cancelar devuelve stock, expiración, reserva ajena) |
+| RF11 Notificar las reservas a la sucursal | `reservas/rf11_notificaciones` (`notificar()` la usan CU-09, 10, 24 y 25) | `GET /api/notificaciones`, `GET …/resumen`, `POST …/{id}/leer`, `POST …/leer-todas` | `core/ui/notificaciones.component.ts` (campana de la barra superior) | — | `test_rf11_notificaciones.py` (8 pruebas: quién ve qué, lectura, aislamiento) |
 | CU-13 Usuarios y roles | `acceso/cu13_usuarios` | `GET/POST /api/usuarios`, `PUT /api/usuarios/{id}`, `POST …/desactivar` | `administracion/usuarios.page.ts` | — | `test_cu13_usuarios.py` (7 pasos) |
 | CU-14 Ciudades y sucursales | `sucursales/cu14_sucursales` | `GET/POST /api/sucursales`, `PUT …/{id}`, `POST …/activar`, `…/desactivar`, `GET/POST /api/ciudades` | `administracion/sucursales.page.ts` | — | `test_cu14_sucursales.py` (7 pasos) |
 | CU-20 Consultar inventario global | `inventario/cu20_inventario_global` | `GET /api/inventario/global` (q, categoría, temporada, estado, sucursal, paginación) | `inventario/inventario.page.ts` (Administrador) | — | `test_cu20_inventario_global.py` (8 pruebas: disponibles, reservadas, vendidas, agotadas, próximas a ingresar) |
@@ -25,7 +28,7 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-CU-09, CU-10 (C) · CU-29 (E) · CU-41 (F) ·
+CU-29 (E) · CU-41 (F) ·
 CU-21, CU-22, CU-23, CU-42, CU-36 (G) · CU-37 a CU-40 (H).
 
 ## Primer parcial (Anexo B)
@@ -43,8 +46,8 @@ pruebas en `backend/tests/primer_parcial/`.
 | catalogo (P4) | CU-18 Productos con variantes | `catalogo/cu18_productos` | `GET/POST /api/productos`, `GET/PUT …/{id}`, `POST …/{id}/activar`, `…/desactivar`, `POST …/{id}/variantes`, `PUT …/{id}/variantes/{vid}`, `POST …/{id}/imagenes`, `…/imagenes/{iid}/principal`, `DELETE …/imagenes/{iid}` | `primer-parcial/catalogo/productos.page.ts`, `producto-detalle.page.ts` | — | `primer_parcial/test_cu18_productos.py` (5 pasos + 6: SKU corto, talla de otro grupo, imagen por contenido) |
 | catalogo (P4) | CU-19 Promociones | `catalogo/cu19_promociones` (+ `publico.py::descuentos_vigentes` para catálogo y POS) | `GET/POST /api/promociones`, `PUT/DELETE …/{id}` | `primer-parcial/catalogo/promociones.page.ts` | — | `primer_parcial/test_cu19_promociones.py` (6 pasos + 6) |
 | reservas (P6) | CU-08 Carrito | — | — | — | — | — |
-| reservas (P6) | CU-24 Reservas de la sucursal | — | — | — | — | — |
-| reservas (P6) | CU-25 Recepción y atención | — | — | — | — | — |
+| reservas (P6) | CU-24 Reservas de la sucursal | `reservas/cu24_gestionar_reservas_sucursal` | `GET /api/reservas-sucursal`, `GET …/{id}`, `POST …/{id}/preparar`, `POST …/{id}/items/{item}/no-encontrado` | `primer-parcial/reservas/reservas-sucursal.page.ts` | — | `primer_parcial/test_cu24_gestionar_reservas_sucursal.py` (5 pasos + 5) |
+| reservas (P6) | CU-25 Recepción y atención | `reservas/cu25_confirmar_atencion` | `POST /api/atencion-reservas/validar`, `POST …/{id}/atender`, `POST …/{id}/completar` | `primer-parcial/reservas/atencion.page.ts` | — | `primer_parcial/test_cu25_confirmar_atencion.py` (5 pasos + 4) |
 | ventas (P7) | CU-11 Compra digital | — | — | — | — | — |
 | ventas (P7) | CU-12 Historial de compras | — | — | — | — | — |
 | ventas (P7) | CU-28 Productos en caja | — | — | — | — | — |
@@ -74,6 +77,29 @@ sale de los lotes EN_TRANSITO (`proveedores/publico.py::en_transito_por_variante
 Flujo del abastecimiento: el Proveedor (o el Administrador) crea el aviso con SKUs reales → el lote queda *En tránsito* y aparece en el resumen
 de la administración → el Encargado de la sucursal destino cuenta lo que llegó y lo recibe → `aplicar_movimientos` suma las unidades
 (tipo ENTRADA_RECEPCION, referencia RECEPCION) y el lote pasa a *Recibido*. Las propuestas de producto las aprueba o rechaza el Administrador.
+
+## Esquema de la Fase C (migración 0005)
+
+`reservas`, `reserva_items` y `notificaciones`. La reserva tiene un código `RSV-XXXXXXXX` único por empresa (sin 0, O, 1, I para dictarlo sin
+errores), el horario aproximado de visita (`programada_para`) y su vigencia (`vence_en` = visita + 24 h, configurable).
+
+Ciclo de vida de la reserva (todo cambio de estado y de stock pasa por `ReservaService`):
+
+| Estado | Cómo se llega | Stock |
+|---|---|---|
+| PENDIENTE | CU-09 al reservar | pasa de *disponible* a *reservada* (movimiento RESERVA) |
+| PREPARADA | CU-24 «Prendas preparadas» (avisa al cliente) | sigue reservada |
+| EN_PROBADOR | CU-25 entrega las prendas y envía al probador | sigue reservada |
+| COMPLETADA | CU-25 cuando el cliente no lleva nada (o CU-29 tras cobrar) | vuelve a disponible (LIBERA_RESERVA) |
+| CANCELADA | CU-10 (cliente) o CU-24 si no queda ninguna prenda | vuelve a disponible |
+| EXPIRADA | pasó `vence_en` sin atenderse | vuelve a disponible |
+
+No hay tareas programadas: la expiración se aplica al consultar las reservas (cliente, sucursal, validar código) y al desactivar una sucursal,
+así que el stock nunca queda apartado de más. Interpretación de CU-25: la ficha termina en «completado», pero también dice que si el cliente
+lleva las prendas pasa a CU-29; por eso «completar» con *llevará prendas* deja la reserva en el probador con su stock apartado hasta el cobro.
+CU-24, excepción «No encontrado en físico»: se libera la reserva y se descuenta la prenda del inventario (AJUSTE_SALIDA), con aviso de ajuste
+de stock a la sucursal y disculpas al cliente. El gancho de CU-14 quedó activo: una sucursal con reservas activas no se desactiva
+(`sucursales/publico.py::registrar_verificador_de_pendientes`, sin dependencia circular).
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

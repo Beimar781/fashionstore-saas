@@ -81,6 +81,7 @@ El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
 El seed crea para EMP-A (Moda Urbana) y EMP-B (Estilo Andino) categorías, tallas, colores, una temporada, una colección, productos con
 variantes, existencias por sucursal y una promoción. El Administrador gestiona todo en **Productos**, **Categorías, tallas y colores**,
 **Temporadas y colecciones** y **Promociones**; el Cliente lo ve en **Catálogo**. Un cliente nuevo se registra en `/registro` con el código de la tienda.
+También deja dos reservas del cliente demo en la primera sucursal (una pendiente y una preparada): el Encargado las ve en **Reservas** y las atiende con su código en **Atención en mostrador**; el cliente las ve en **Mis reservas**, y la campana 🔔 muestra los avisos (RF11).
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.

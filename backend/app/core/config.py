@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:4200"
     reset_token_minutes: int = 60
     brevo_api_key: str = ""
+    # Reservas (CU-09): vigencia tras el horario elegido, anticipación máxima y zona horaria de las tiendas (Bolivia, UTC-4)
+    reserva_horas_vigencia: int = 24
+    reserva_dias_max: int = 14
+    zona_horaria_horas: int = -4
     brevo_sender_email: str = "no-reply@fashionstore.com"
     brevo_sender_name: str = "FashionStore"
 

@@ -6,12 +6,7 @@ from app.modules.plataforma.publico import suscripcion_activa_de
 from app.modules.sucursales.cu14_sucursales import schemas
 from app.modules.sucursales.cu14_sucursales.repository import CiudadRepository, SucursalRepository
 from app.modules.sucursales.models import Ciudad, Sucursal
-
-
-def tiene_pendientes(sucursal: Sucursal) -> bool:
-    """Gancho para el Lote 2: reservas pendientes u operaciones sin sincronizar (CU-14, excepción 5).
-    Hoy no existen esas tablas, por lo que no hay nada pendiente que resolver."""
-    return False
+from app.modules.sucursales.publico import tiene_pendientes
 
 
 class SucursalService:
@@ -87,7 +82,7 @@ class SucursalService:
     def desactivar(self, sucursal_id: int) -> schemas.SucursalOut:
         sucursal = self._obtener(sucursal_id)
         if sucursal.activa:
-            if tiene_pendientes(sucursal):
+            if tiene_pendientes(self.db, self.empresa_id, sucursal.id):  # reservas activas u operaciones sin sincronizar (CU-14, excepción 5)
                 raise Conflicto("La sucursal tiene reservas pendientes u operaciones sin sincronizar. Resuélvalas antes de desactivarla.")
             sucursal.activa = False
             self.db.commit()

@@ -35,3 +35,26 @@ def sucursal_activa_de_empresa(db: Session, empresa_id: int, sucursal_id: int) -
 
 def nombres_de_sucursales(db: Session, empresa_id: int) -> dict[int, str]:
     return {i: n for i, n in db.execute(select(Sucursal.id, Sucursal.nombre).where(Sucursal.empresa_id == empresa_id))}
+
+
+def datos_de_sucursal_activa(db: Session, empresa_id: int, sucursal_id: int) -> dict | None:
+    """Nombre y horario de una sucursal activa de la empresa; None si no existe, está inactiva o es de otra empresa."""
+    fila = db.execute(
+        select(Sucursal.id, Sucursal.nombre, Sucursal.horario)
+        .where(Sucursal.empresa_id == empresa_id, Sucursal.id == sucursal_id, Sucursal.activa.is_(True))
+    ).first()
+    return None if fila is None else {"id": fila[0], "nombre": fila[1], "horario": fila[2]}
+
+
+# Verificadores de «trabajo pendiente» de una sucursal. Cada paquete que deja cosas por resolver en una sucursal (reservas, operaciones
+# sin sincronizar) registra el suyo al cargarse; así `sucursales` no depende de ellos y no hay ciclos entre paquetes.
+_VERIFICADORES_PENDIENTES: list = []
+
+
+def registrar_verificador_de_pendientes(verificador) -> None:
+    """`verificador(db, empresa_id, sucursal_id) -> bool`: ¿la sucursal tiene algo pendiente que impida desactivarla?"""
+    _VERIFICADORES_PENDIENTES.append(verificador)
+
+
+def tiene_pendientes(db: Session, empresa_id: int, sucursal_id: int) -> bool:
+    return any(verificador(db, empresa_id, sucursal_id) for verificador in _VERIFICADORES_PENDIENTES)

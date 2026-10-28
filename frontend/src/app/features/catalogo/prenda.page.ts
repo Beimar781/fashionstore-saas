@@ -6,6 +6,7 @@ import { CatalogoApi } from '../../core/api/catalogo.api';
 import { InventarioApi } from '../../core/api/inventario.api';
 import { Opciones, PrendaDetalle, SucursalCatalogo } from '../../core/catalogo.models';
 import { Disponibilidad } from '../../core/inventario.models';
+import { ReservaBorradorService } from '../../core/reservas/reserva-borrador.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
@@ -60,6 +61,10 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                       @if (v.cantidad > 5) { <span class="badge ok">Disponible</span> } @else { <span class="badge warn">Quedan {{ v.cantidad }}</span> }</div>
                     <p class="small muted" style="margin-top:.3rem">{{ sucursalId() ? 'En la sucursal elegida' : 'Sumando todas las sucursales' }}: {{ v.cantidad }} unidades.</p>
                   </div>
+                  <div class="row">
+                    <button type="button" class="btn primary" (click)="agregarAReserva(p)">+ Agregar a mi reserva</button>
+                    @if (borrador.total() > 0) { <a class="btn" routerLink="/tienda/reservar">Ver mi reserva ({{ borrador.total() }})</a> }
+                  </div>
                 } @else if (!o.variantes.some(hayDisponible)) {
                   <div class="alert warn">Por ahora esta prenda está agotada{{ sucursalId() ? ' en la sucursal elegida' : '' }}. Pruebe con otra sucursal.</div>
                 }
@@ -108,6 +113,7 @@ export class PrendaPage implements OnInit {
   private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  readonly borrador = inject(ReservaBorradorService);
 
   readonly media = MEDIA_URL;
   readonly prenda = signal<PrendaDetalle | null>(null);
@@ -150,6 +156,13 @@ export class PrendaPage implements OnInit {
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
       error: (e) => this.toast.error(mensajeError(e)),
     });
+  }
+
+  agregarAReserva(p: PrendaDetalle) {
+    const v = this.variante();
+    if (!v) return;
+    this.borrador.agregar({ variante_id: v.variante_id, sku: v.sku, producto: p.nombre, talla: v.talla, color: v.color, max: Math.max(v.cantidad, 1) });
+    this.toast.ok(`${p.nombre} (${v.talla}, ${v.color}) agregada a su reserva.`);
   }
 
   cambiarSucursal(id: number | null) { this.sucursalId.set(id); this.cargar(); }

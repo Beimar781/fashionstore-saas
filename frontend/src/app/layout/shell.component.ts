@@ -3,7 +3,9 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { ROL } from '../core/models';
 import { ConnectivityService } from '../core/offline/connectivity.service';
+import { ReservaBorradorService } from '../core/reservas/reserva-borrador.service';
 import { ConfirmarSalidaComponent } from '../core/ui/confirmar-salida.component';
+import { NotificacionesComponent } from '../core/ui/notificaciones.component';
 
 interface Item { ruta: string; texto: string; icono: string; operativo?: boolean; }
 
@@ -24,6 +26,8 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
 ];
 const NAV_ENCARGADO: Item[] = [
+  { ruta: '/sucursal/reservas', texto: 'Reservas', icono: '📅' },
+  { ruta: '/sucursal/atencion', texto: 'Atención en mostrador', icono: '🛎️' },
   { ruta: '/sucursal/inventario', texto: 'Inventario', icono: '📊' },
   { ruta: '/sucursal/recepciones', texto: 'Recepción de mercadería', icono: '📥' },
   { ruta: '/sucursal/movimientos', texto: 'Movimientos', icono: '🧾' },
@@ -33,6 +37,8 @@ const NAV_PROVEEDOR: Item[] = [
 ];
 const NAV_CLIENTE: Item[] = [
   { ruta: '/tienda/catalogo', texto: 'Catálogo', icono: '🛍️' },
+  { ruta: '/tienda/reservar', texto: 'Mi reserva', icono: '🧺' },
+  { ruta: '/tienda/reservas', texto: 'Mis reservas', icono: '📅' },
 ];
 
 const porRol: Record<string, Item[]> = {
@@ -42,7 +48,7 @@ const porRol: Record<string, Item[]> = {
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent],
   template: `
     <div class="layout">
       <aside class="side">
@@ -52,7 +58,7 @@ const porRol: Record<string, Item[]> = {
             @if (it.operativo && auth.restringido()) {
               <span class="link disabled" title="Suscripción no vigente"><i>{{ it.icono }}</i>{{ it.texto }}<em>🔒</em></span>
             } @else {
-              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}</a>
+              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }</a>
             }
           }
         </nav>
@@ -71,13 +77,14 @@ const porRol: Record<string, Item[]> = {
         @if (s()?.empresa) {
           <div class="topbar">
             <span><strong>{{ s()?.empresa?.razon_social }}</strong></span>
+            <span class="row"><app-notificaciones />
             @if (s()?.suscripcion; as sus) {
              @if (auth.rol() !== 'Cliente') {
               <span class="badge" [class.ok]="sus.estado === 'ACTIVA'" [class.danger]="sus.estado !== 'ACTIVA'">
                 Plan {{ sus.plan.nombre }} · {{ sus.estado }}
               </span>
              }
-            }
+            }</span>
           </div>
         }
         <router-outlet />
@@ -95,6 +102,7 @@ const porRol: Record<string, Item[]> = {
     .link:hover { background: rgba(255,255,255,.07); text-decoration: none; } .link.activo { background: rgba(255,255,255,.13); }
     .link i { font-style: normal; width: 1.3rem; text-align: center; } .link em { margin-left: auto; font-style: normal; }
     .link.disabled { opacity: .45; cursor: not-allowed; }
+    .cuenta { margin-left: auto; background: var(--accent); color: #fff; border-radius: 999px; font-size: .72rem; padding: 0 .45rem; font-weight: 700; }
     .user { margin-top: auto; display: grid; gap: .5rem; padding: .8rem; border-top: 1px solid rgba(255,255,255,.12); }
     .who strong { display: block; font-size: .9rem; } .who small { color: #a79fb2; }
     .out { color: var(--side-ink); justify-self: start; border: 1px solid rgba(255,255,255,.2); }
@@ -111,6 +119,7 @@ const porRol: Record<string, Item[]> = {
 export class ShellComponent {
   readonly auth = inject(AuthService);
   readonly net = inject(ConnectivityService);
+  readonly borrador = inject(ReservaBorradorService);
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }
