@@ -29,6 +29,7 @@ import { AuthLayoutComponent } from './auth-layout.component';
         @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
         @if (!net.online()) { <div class="alert warn">Sin conexión: solo puede continuar con una sesión previa en este dispositivo.</div> }
         <button class="btn primary" type="submit" [disabled]="cargando() || !f.valid || !password">{{ cargando() ? 'Ingresando…' : 'Ingresar' }}</button>
+        <p class="small muted">¿Es cliente y aún no tiene cuenta? <a routerLink="/registro">Crear cuenta</a></p>
       </form>
     </app-auth-layout>`,
   styles: `

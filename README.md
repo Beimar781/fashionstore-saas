@@ -46,7 +46,7 @@ Luego, con el entorno virtual activado:
 ```powershell
 python scripts/crear_bd.py      # crea la base de datos
 alembic upgrade head            # crea las tablas
-python -m app.seed              # carga roles, planes, SuperAdmin y dos empresas de ejemplo
+python -m app.seed              # carga roles, planes, SuperAdmin y dos empresas de ejemplo (con catálogo y existencias)
 uvicorn app.main:app --reload   # inicia la API
 ```
 
@@ -74,6 +74,14 @@ El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
 | Encargado | EMP-A o EMP-B | encargado@tienda.com | Demo2026* |
 | Cajero | EMP-A o EMP-B | cajero@tienda.com | Demo2026* |
 | Cliente | EMP-A | cliente@emp-a.com | Demo2026* |
+
+## Catálogo de ejemplo
+
+El seed crea para EMP-A (Moda Urbana) y EMP-B (Estilo Andino) categorías, tallas, colores, una temporada, una colección, productos con
+variantes, existencias por sucursal y una promoción. El Administrador gestiona todo en **Productos**, **Categorías, tallas y colores**,
+**Temporadas y colecciones** y **Promociones**; el Cliente lo ve en **Catálogo**. Un cliente nuevo se registra en `/registro` con el código de la tienda.
+Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
+`pip install -r requirements.txt` y `alembic upgrade head`.
 
 ## Recuperar contraseña
 

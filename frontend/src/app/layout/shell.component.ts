@@ -15,6 +15,13 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/plan', texto: 'Mi plan', icono: '📋' },
   { ruta: '/empresa/usuarios', texto: 'Usuarios y roles', icono: '👥', operativo: true },
   { ruta: '/empresa/sucursales', texto: 'Sucursales', icono: '🏬', operativo: true },
+  { ruta: '/empresa/catalogo/productos', texto: 'Productos', icono: '👗', operativo: true },
+  { ruta: '/empresa/catalogo/atributos', texto: 'Categorías, tallas y colores', icono: '🎨', operativo: true },
+  { ruta: '/empresa/catalogo/temporadas', texto: 'Temporadas y colecciones', icono: '🗓️', operativo: true },
+  { ruta: '/empresa/catalogo/promociones', texto: 'Promociones', icono: '🏷️', operativo: true },
+];
+const NAV_CLIENTE: Item[] = [
+  { ruta: '/tienda/catalogo', texto: 'Catálogo', icono: '🛍️' },
 ];
 
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
@@ -50,9 +57,11 @@ const NAV_EMPRESA: Item[] = [
           <div class="topbar">
             <span><strong>{{ s()?.empresa?.razon_social }}</strong></span>
             @if (s()?.suscripcion; as sus) {
+             @if (auth.rol() !== 'Cliente') {
               <span class="badge" [class.ok]="sus.estado === 'ACTIVA'" [class.danger]="sus.estado !== 'ACTIVA'">
                 Plan {{ sus.plan.nombre }} · {{ sus.estado }}
               </span>
+             }
             }
           </div>
         }
@@ -90,5 +99,5 @@ export class ShellComponent {
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }
-  readonly items = computed<Item[]>(() => (this.auth.rol() === ROL.SUPER ? NAV_PLATAFORMA : NAV_EMPRESA));
+  readonly items = computed<Item[]>(() => (this.auth.rol() === ROL.SUPER ? NAV_PLATAFORMA : this.auth.rol() === ROL.CLIENTE ? NAV_CLIENTE : NAV_EMPRESA));
 }

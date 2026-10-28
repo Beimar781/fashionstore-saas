@@ -15,6 +15,7 @@ from app.core.security import hash_password
 from app.modules.acceso.models import Rol, Usuario
 from app.modules.plataforma.models import Empresa, Plan, Suscripcion
 from app.modules.sucursales.models import Ciudad, Sucursal
+from app.seed_catalogo import cargar as cargar_catalogo
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
 CLAVE = "Demo2026*"
@@ -92,6 +93,8 @@ def ejecutar(db: Session) -> None:
         for rol, nom, ape, email, suc in e["otros"]:
             _usuario(db, empresa.id, roles[rol], nom, ape, email, CLAVE, sucs[suc].id)
         _usuario(db, empresa.id, roles[CLIENTE], "Cliente", "Demo", f"cliente@{e['codigo'].lower()}.com", CLAVE)
+        db.flush()
+        cargar_catalogo(db, empresa)
     db.commit()
 
 

@@ -26,6 +26,11 @@ export class AuthService {
   accessToken(): string | null { return localStorage.getItem(K_ACCESS); }
   refreshToken(): string | null { return localStorage.getItem(K_REFRESH); }
 
+  /** CU-01 · Registro de cliente: la cuenta queda creada y la sesión iniciada. */
+  registrarCliente(body: { codigo_empresa: string; nombre: string; apellidos: string; email: string; password: string }): Observable<TokenResponse> {
+    return this.http.post<TokenResponse>(`${API_URL}/auth/registro`, body).pipe(tap((r) => this.guardar(r)));
+  }
+
   olvidePassword(body: { codigo_empresa: string | null; email: string }): Observable<{ detail: string }> {
     return this.http.post<{ detail: string }>(`${API_URL}/auth/olvide-password`, body);
   }

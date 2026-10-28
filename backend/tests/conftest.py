@@ -149,3 +149,22 @@ def mundo(datos):
     datos.ciudad(a); datos.ciudad(b)
     return type("Mundo", (), dict(basico=basico, pro=pro, a=a, b=b,
                                   admin_a=datos.usuario(a, ADMIN), admin_b=datos.usuario(b, ADMIN)))
+
+
+@pytest.fixture
+def tienda_a(datos, mundo, client, db):
+    """Catálogo base de EMP-A (la API, como Administrador) y su cabecera de sesión."""
+    from tests.catalogo_util import tienda
+    h = datos.login(mundo.admin_a, mundo.a)
+    t = tienda(client, h, db)
+    t.h_admin = h
+    return t
+
+
+@pytest.fixture
+def tienda_b(datos, mundo, client, db):
+    from tests.catalogo_util import tienda
+    h = datos.login(mundo.admin_b, mundo.b)
+    t = tienda(client, h, db)
+    t.h_admin = h
+    return t

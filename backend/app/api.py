@@ -1,12 +1,19 @@
 """Registro de routers por paquete de casos de uso (P1..P10 del documento)."""
 from fastapi import APIRouter
 
+from app.modules.acceso.cu01_registro_cliente.router import router as cu01_registro
 from app.modules.acceso.cu02_login.router import router as cu02_login
 from app.modules.acceso.cu13_usuarios.router import router as cu13_usuarios
+from app.modules.catalogo.cu03_consultar_catalogo.router import router as cu03_catalogo
+from app.modules.catalogo.cu04_buscar_filtrar.router import router as cu04_buscar
 from app.modules.plataforma.cu33_empresas.router import router as cu33_empresas
 from app.modules.plataforma.cu34_planes.router import router as cu34_planes
 from app.modules.plataforma.cu35_suscripciones.router import router as cu35_suscripciones
 from app.modules.sucursales.cu14_sucursales.router import router as cu14_sucursales
+from app.primer_parcial.catalogo.cu16_categorias_tallas_colores.router import router as cu16_atributos
+from app.primer_parcial.catalogo.cu17_temporadas_colecciones.router import router as cu17_temporadas
+from app.primer_parcial.catalogo.cu18_productos.router import router as cu18_productos
+from app.primer_parcial.catalogo.cu19_promociones.router import router as cu19_promociones
 
 api_router = APIRouter()
 
@@ -17,6 +24,7 @@ def health():
 
 
 # P2 · Usuarios y acceso
+api_router.include_router(cu01_registro)
 api_router.include_router(cu02_login)
 api_router.include_router(cu13_usuarios)
 # P1 · Plataforma SaaS
@@ -25,7 +33,14 @@ api_router.include_router(cu34_planes)
 api_router.include_router(cu35_suscripciones)
 # P3 · Sucursales y proveedores
 api_router.include_router(cu14_sucursales)
+# P4 · Catálogo: consulta del cliente (SaaS) y administración (primer parcial)
+api_router.include_router(cu03_catalogo)
+api_router.include_router(cu04_buscar)
+api_router.include_router(cu16_atributos)
+api_router.include_router(cu17_temporadas)
+api_router.include_router(cu18_productos)
+api_router.include_router(cu19_promociones)
 
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
-# SaaS (app/modules): P4 catalogo, P5 inventario, P6 reservas, P7 ventas, P8 offline, P9 ia, P10 reportes.
+# SaaS (app/modules): P5 inventario, P6 reservas, P7 ventas, P8 offline, P9 ia, P10 reportes.
 # Primer parcial (app/primer_parcial): P3 proveedores, P4 catalogo, P6 reservas, P7 ventas, P9 ia, P10 reportes.

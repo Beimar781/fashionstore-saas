@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
     refresh_token_days: int = 7
+    # Imágenes de productos: una carpeta por empresa dentro de media_dir
+    media_dir: str = "media"
+    media_max_mb: int = 5
     cors_origins: str = "http://localhost:4200,http://127.0.0.1:4200"
     # Recuperación de contraseña: sin BREVO_API_KEY el enlace se imprime en la consola del servidor (desarrollo).
     frontend_url: str = "http://localhost:4200"

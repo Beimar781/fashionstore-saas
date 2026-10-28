@@ -4,7 +4,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { API_URL } from '../api.config';
 import { AuthService } from './auth.service';
 
-const esAuthPublica = (url: string) => url.includes('/auth/login') || url.includes('/auth/refresh');
+const esAuthPublica = (url: string) => url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/registro');
 
 /** Agrega el token Bearer a las peticiones a la API y, ante un 401, intenta renovar la sesión una vez. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

@@ -4,7 +4,7 @@ El Lote 1 (núcleo multitenant) está implementado y probado. El resto del docum
 **toda tabla nueva lleva `empresa_id`, todo repositorio nuevo hereda de `TenantRepository`, y toda ruta de empresa usa `contexto_operativo(...)`.**
 
 ## Lote 2 — Operación comercial por empresa y offline
-CU-01, CU-03, CU-04, CU-05, CU-09, CU-29, CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
+~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), CU-05, CU-09, CU-29, CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
 - Web: IndexedDB ya tiene los almacenes `catalogo`, `operaciones` y `cache_meta` (`core/offline/local-db.service.ts`).
 - Móvil: SQLite ya tiene las tablas `productos_locales` y `operaciones_pendientes` con los estados de RN11 (`lib/core/db/local_database.dart`).
 - Gancho existente: `sucursales/cu14_sucursales/service.py::tiene_pendientes()` (CU-14, excepción de desactivar con pendientes).
@@ -19,7 +19,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 | CU conservados | App del backend base (Django) | Paquete destino (FastAPI) |
 |---|---|---|
 | CU-15, CU-31 proveedores | `suppliers` | P3 `sucursales` (proveedores) |
-| CU-16, CU-17, CU-18, CU-19 catálogo y promociones | `catalog`, `promotions` | P4 `catalogo` |
+| ~~CU-16, CU-17, CU-18, CU-19 catálogo y promociones~~ (hechos en la Fase A) | `catalog`, `promotions` | `primer_parcial/catalogo` |
 | CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos | `orders`, `payments` | P6/P7 |
 | CU-24, CU-25 reservas de sucursal | `reservations` | P6 |
 | CU-27, CU-28, CU-30 ventas y punto de venta | `pos`, `orders` | P7 |

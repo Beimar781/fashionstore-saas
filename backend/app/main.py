@@ -3,8 +3,11 @@
 Cada paquete de casos de uso (plataforma, acceso, sucursales, ...) expone sus routers; para agregar
 un paquete nuevo basta con registrar su router en `app/api.py`.
 """
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import app.db_models  # noqa: F401  (registra los modelos)
 from app.api import api_router
@@ -26,6 +29,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     registrar_manejadores(app)
+    carpeta_media = Path(get_settings().media_dir)
+    carpeta_media.mkdir(parents=True, exist_ok=True)
+    app.mount("/media", StaticFiles(directory=carpeta_media), name="media")  # imágenes de productos
     app.include_router(api_router, prefix="/api")
     return app
 
