@@ -83,6 +83,13 @@ class TemporadaService:
         self.db.commit()
         return schemas.ColeccionOut.desde(coleccion)
 
+    def asignar_proveedor(self, coleccion_id: int, proveedor_id: int | None) -> schemas.ColeccionOut:
+        """Lo llama el paquete proveedores (que ya validó el proveedor) para vincular una colección con quien la provee."""
+        coleccion = self._coleccion(coleccion_id)
+        coleccion.proveedor_id = proveedor_id
+        self.db.commit()
+        return schemas.ColeccionOut.desde(coleccion)
+
     def eliminar_coleccion(self, coleccion_id: int) -> None:
         coleccion = self._coleccion(coleccion_id)
         if self.colecciones.en_uso(coleccion.id):

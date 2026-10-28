@@ -19,10 +19,25 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/catalogo/atributos', texto: 'Categorías, tallas y colores', icono: '🎨', operativo: true },
   { ruta: '/empresa/catalogo/temporadas', texto: 'Temporadas y colecciones', icono: '🗓️', operativo: true },
   { ruta: '/empresa/catalogo/promociones', texto: 'Promociones', icono: '🏷️', operativo: true },
+  { ruta: '/empresa/proveedores', texto: 'Proveedores', icono: '🚚', operativo: true },
+  { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
+  { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
+];
+const NAV_ENCARGADO: Item[] = [
+  { ruta: '/sucursal/inventario', texto: 'Inventario', icono: '📊' },
+  { ruta: '/sucursal/recepciones', texto: 'Recepción de mercadería', icono: '📥' },
+  { ruta: '/sucursal/movimientos', texto: 'Movimientos', icono: '🧾' },
+];
+const NAV_PROVEEDOR: Item[] = [
+  { ruta: '/proveedor', texto: 'Mis envíos y propuestas', icono: '🚚' },
 ];
 const NAV_CLIENTE: Item[] = [
   { ruta: '/tienda/catalogo', texto: 'Catálogo', icono: '🛍️' },
 ];
+
+const porRol: Record<string, Item[]> = {
+  [ROL.SUPER]: NAV_PLATAFORMA, [ROL.CLIENTE]: NAV_CLIENTE, [ROL.ENCARGADO]: NAV_ENCARGADO, [ROL.PROVEEDOR]: NAV_PROVEEDOR,
+};
 
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
 @Component({
@@ -99,5 +114,5 @@ export class ShellComponent {
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }
-  readonly items = computed<Item[]>(() => (this.auth.rol() === ROL.SUPER ? NAV_PLATAFORMA : this.auth.rol() === ROL.CLIENTE ? NAV_CLIENTE : NAV_EMPRESA));
+  readonly items = computed<Item[]>(() => porRol[this.auth.rol() as string] ?? NAV_EMPRESA);
 }

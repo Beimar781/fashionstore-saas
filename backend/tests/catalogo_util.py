@@ -75,3 +75,22 @@ def cabecera_cliente(datos, empresa):
 def por_variante(producto):
     """{(talla, color): variante} de un producto devuelto por la API."""
     return {(v["talla"], v["color"]): v for v in producto["variantes"]}
+
+
+def entrar(client, empresa, email, password="Clave1234"):
+    """Cabecera de sesión iniciando sesión por la API con código de empresa, correo y contraseña."""
+    r = client.post("/api/auth/login", json={"codigo_empresa": empresa.codigo, "email": email, "password": password})
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+def crear_proveedor(client, h_admin, nombre="Textiles Sur", con_acceso=True, **extra):
+    """Proveedor por la API; con acceso crea la cuenta del portal (<correo>/Clave1234)."""
+    cuerpo = {"razon_social": nombre, "email": f"{nombre.split()[0].lower()}@proveedor.com", "telefono": "70000000", **extra}
+    r = client.post("/api/proveedores", json=cuerpo, headers=h_admin)
+    assert r.status_code == 201, r.text
+    proveedor = r.json()
+    if con_acceso:
+        r = client.post(f"/api/proveedores/{proveedor['id']}/acceso", json={"email": cuerpo["email"], "password": "Clave1234"}, headers=h_admin)
+        assert r.status_code == 201, r.text
+    return proveedor

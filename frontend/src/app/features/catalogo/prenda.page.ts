@@ -3,7 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../core/api.config';
 import { CatalogoApi } from '../../core/api/catalogo.api';
+import { InventarioApi } from '../../core/api/inventario.api';
 import { Opciones, PrendaDetalle, SucursalCatalogo } from '../../core/catalogo.models';
+import { Disponibilidad } from '../../core/inventario.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
@@ -64,6 +66,21 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               </div>
             }
 
+            @if (disponibilidad(); as d) {
+              <div class="stack">
+                <strong>Disponibilidad por sucursal</strong>
+                <div class="sucursales">
+                  @for (s of d.sucursales; track s.sucursal_id) {
+                    <button type="button" class="card pad suc" [class.sel]="sucursalId() === s.sucursal_id" (click)="cambiarSucursal(sucursalId() === s.sucursal_id ? null : s.sucursal_id)">
+                      <span class="row between"><strong>{{ s.sucursal }}</strong>@if (s.disponible) { <span class="badge ok">{{ s.total }} unid.</span> } @else { <span class="badge danger">Sin stock</span> }</span>
+                      <span class="muted small">{{ s.ciudad }}{{ s.horario ? ' · ' + s.horario : '' }}</span>
+                      @if (s.disponible) { <span class="small">Tallas: {{ s.tallas.join(' · ') }}<br />Colores: {{ s.colores.join(', ') }}</span> }
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
             <dl class="datos small">
               @if (p.material) { <dt>Material</dt><dd>{{ p.material }}</dd> }
               @if (p.cuidado) { <dt>Cuidado</dt><dd>{{ p.cuidado }}</dd> }
@@ -81,11 +98,14 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
     .miniaturas button { border: 2px solid transparent; padding: 0; border-radius: 8px; overflow: hidden; width: 60px; height: 76px; cursor: pointer; background: none; }
     .miniaturas button.sel { border-color: var(--accent); } .miniaturas img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .precio b { font-size: 1.5rem; margin-left: .3rem; }
+    .sucursales { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .6rem; }
+    .suc { text-align: left; display: grid; gap: .25rem; cursor: pointer; font: inherit; color: inherit; } .suc.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
     .datos { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; margin: 0; } dt { color: var(--muted); } dd { margin: 0; }
     @media (max-width: 760px) { .detalle { grid-template-columns: 1fr; } }`,
 })
 export class PrendaPage implements OnInit {
   private api = inject(CatalogoApi);
+  private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
 
@@ -93,6 +113,7 @@ export class PrendaPage implements OnInit {
   readonly prenda = signal<PrendaDetalle | null>(null);
   readonly opciones = signal<Opciones | null>(null);
   readonly sucursales = signal<SucursalCatalogo[]>([]);
+  readonly disponibilidad = signal<Disponibilidad | null>(null);
   readonly sucursalId = signal<number | null>(null);
   readonly colorId = signal<number | null>(null);
   readonly tallaCodigo = signal<string | null>(null); // la talla se recuerda por código, no por id: cambia entre grupos de tallas
@@ -124,6 +145,7 @@ export class PrendaPage implements OnInit {
 
   cargar() {
     this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: (e) => this.toast.error(mensajeError(e)) });
+    this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.toast.error(mensajeError(e)) });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
       error: (e) => this.toast.error(mensajeError(e)),

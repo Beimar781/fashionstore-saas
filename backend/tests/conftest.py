@@ -27,6 +27,12 @@ from app.modules.sucursales.models import Ciudad, Sucursal  # noqa: E402
 
 CLAVE = "Clave1234"
 
+# Las pruebas crean decenas de usuarios: se abarata el hash (solo aquí; en producción se usa la configuración segura por defecto).
+from argon2 import PasswordHasher  # noqa: E402
+from app.core import security  # noqa: E402
+
+security._hasher = PasswordHasher(time_cost=1, memory_cost=1024, parallelism=1)
+
 
 def _crear_bd_si_no_existe():
     """Crea la base de pruebas si no existe (se conecta a la base 'postgres' con las mismas credenciales)."""
@@ -167,4 +173,24 @@ def tienda_b(datos, mundo, client, db):
     h = datos.login(mundo.admin_b, mundo.b)
     t = tienda(client, h, db)
     t.h_admin = h
+    return t
+
+
+@pytest.fixture
+def inv(datos, mundo, tienda_a, client, db):
+    """Fase B sobre EMP-A: dos sucursales con Encargado cada una, una camisa (S, M × Rojo, Azul), un proveedor con portal y un Cajero."""
+    from tests.catalogo_util import cabecera_cliente, crear_proveedor, entrar, por_variante, talla_id
+    t = tienda_a
+    t.centro, t.norte = datos.sucursal(mundo.a, "Centro"), datos.sucursal(mundo.a, "Norte")
+    t.camisa = t.producto("Camisa Oxford", t.camisas["id"], t.col["id"], [talla_id(t.alfa, "S"), talla_id(t.alfa, "M")], [t.rojo["id"], t.azul["id"]])
+    t.var = por_variante(t.camisa)
+    t.v_sm_rojo = t.var[("S", "Rojo")]
+    for nombre, suc in (("enc_centro", t.centro), ("enc_norte", t.norte)):
+        datos.usuario(mundo.a, "Encargado", email=f"{nombre}@a.com", sucursal=suc)
+        setattr(t, "h_" + nombre, entrar(client, mundo.a, f"{nombre}@a.com"))
+    datos.usuario(mundo.a, "Cajero", email="cajero@a.com", sucursal=t.centro)
+    t.h_cajero = entrar(client, mundo.a, "cajero@a.com")
+    t.h_cliente = cabecera_cliente(datos, mundo.a)
+    t.proveedor = crear_proveedor(client, t.h_admin)
+    t.h_prov = entrar(client, mundo.a, "textiles@proveedor.com")
     return t

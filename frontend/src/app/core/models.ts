@@ -1,10 +1,11 @@
-export type Rol = 'SuperAdministrador' | 'Administrador' | 'Encargado' | 'Cajero' | 'Cliente';
+export type Rol = 'SuperAdministrador' | 'Administrador' | 'Encargado' | 'Cajero' | 'Cliente' | 'Proveedor';
 export const ROL = {
   SUPER: 'SuperAdministrador' as Rol,
   ADMIN: 'Administrador' as Rol,
   ENCARGADO: 'Encargado' as Rol,
   CAJERO: 'Cajero' as Rol,
   CLIENTE: 'Cliente' as Rol,
+  PROVEEDOR: 'Proveedor' as Rol,
 };
 
 export interface UsuarioSesion { id: number; nombre: string; apellidos: string; email: string; rol: Rol; sucursal_id: number | null; sucursal_nombre: string | null; }

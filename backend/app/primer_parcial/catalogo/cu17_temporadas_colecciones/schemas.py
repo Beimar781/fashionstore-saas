@@ -64,6 +64,7 @@ class ColeccionOut(BaseModel):
     slug: str
     temporada_id: int
     temporada: str
+    proveedor_id: int | None
     fecha_lanzamiento: date | None
     activa: bool
 
@@ -71,5 +72,5 @@ class ColeccionOut(BaseModel):
     def desde(cls, c) -> "ColeccionOut":
         return cls(
             id=c.id, nombre=c.nombre, slug=c.slug, temporada_id=c.temporada_id, temporada=c.temporada.nombre,
-            fecha_lanzamiento=c.fecha_lanzamiento, activa=c.activa,
+            proveedor_id=c.proveedor_id, fecha_lanzamiento=c.fecha_lanzamiento, activa=c.activa,
         )

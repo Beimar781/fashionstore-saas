@@ -26,8 +26,20 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     loadChildren: () => import('./features/catalogo/catalogo.routes').then((m) => m.TIENDA_ROUTES),
   },
+  {
+    path: 'sucursal',
+    canActivate: [rolGuard(ROL.ENCARGADO)],
+    loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
+    loadChildren: () => import('./features/inventario/inventario.routes').then((m) => m.SUCURSAL_ROUTES),
+  },
+  {
+    path: 'proveedor',
+    canActivate: [rolGuard(ROL.PROVEEDOR)],
+    loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
+    loadChildren: () => import('./features/primer-parcial/proveedores/proveedores.routes').then((m) => m.PORTAL_PROVEEDOR_ROUTES),
+  },
   // Paneles de los demás roles (se completan con las siguientes fases)
-  ...['sucursal', 'pos'].map((path) => ({
+  ...['pos'].map((path) => ({
     path, canActivate: [authGuard],
     loadComponent: () => import('./features/panel-pendiente.page').then((m) => m.PanelPendientePage),
   })),

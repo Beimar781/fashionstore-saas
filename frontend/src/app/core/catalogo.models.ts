@@ -14,7 +14,7 @@ export const TIPOS_TEMPORADA: { valor: TipoTemporada; texto: string }[] = [
   { valor: 'ESCOLAR', texto: 'Escolar' }, { valor: 'PROMOCIONAL', texto: 'Promocional' }, { valor: 'NUEVA_COLECCION', texto: 'Nueva colección' },
 ];
 export interface Temporada { id: number; nombre: string; codigo: string; tipo: TipoTemporada; inicio: string; fin: string; activa: boolean; }
-export interface Coleccion { id: number; nombre: string; slug: string; temporada_id: number; temporada: string; fecha_lanzamiento: string | null; activa: boolean; }
+export interface Coleccion { id: number; nombre: string; slug: string; temporada_id: number; temporada: string; proveedor_id: number | null; fecha_lanzamiento: string | null; activa: boolean; }
 
 // ---- CU-18 · productos ----
 export type Genero = 'MASCULINO' | 'FEMENINO' | 'UNISEX' | 'NINOS';

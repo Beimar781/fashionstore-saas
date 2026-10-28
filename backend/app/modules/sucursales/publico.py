@@ -25,3 +25,13 @@ def sucursales_activas(db: Session, empresa_id: int) -> list[dict]:
         .order_by(Ciudad.nombre, Sucursal.nombre)
     )
     return [{"id": i, "nombre": n, "ciudad": c, "direccion": d, "horario": h} for i, n, c, d, h in filas]
+
+
+def sucursal_activa_de_empresa(db: Session, empresa_id: int, sucursal_id: int) -> bool:
+    return db.scalar(
+        select(Sucursal.id).where(Sucursal.empresa_id == empresa_id, Sucursal.id == sucursal_id, Sucursal.activa.is_(True))
+    ) is not None
+
+
+def nombres_de_sucursales(db: Session, empresa_id: int) -> dict[int, str]:
+    return {i: n for i, n in db.execute(select(Sucursal.id, Sucursal.nombre).where(Sucursal.empresa_id == empresa_id))}

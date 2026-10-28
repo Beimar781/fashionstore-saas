@@ -6,6 +6,7 @@ ADMIN = "Administrador"
 ENCARGADO = "Encargado"
 CAJERO = "Cajero"
 CLIENTE = "Cliente"
+PROVEEDOR = "Proveedor"  # portal de proveedores (CU-31): envía avisos de remisión y propuestas de producto
 ROLES_INTERNOS = (ADMIN, ENCARGADO, CAJERO)
 ROLES_CON_SUCURSAL = (ENCARGADO, CAJERO)
 
@@ -29,6 +30,7 @@ PANEL_POR_ROL = {
     ENCARGADO: "reservas_sucursal",
     CAJERO: "punto_venta",
     CLIENTE: "catalogo",
+    PROVEEDOR: "proveedor",
 }
 
 MSG_SUSCRIPCION_NO_VIGENTE = "La suscripción de su empresa no está vigente."

@@ -94,7 +94,7 @@ class Coleccion(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
     temporada_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("temporadas.id"))
-    proveedor_id: Mapped[int | None] = mapped_column(BigInteger)
+    proveedor_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("proveedores.id"))
     nombre: Mapped[str] = mapped_column(String(120))
     slug: Mapped[str] = mapped_column(String(140))
     fecha_lanzamiento: Mapped[date | None] = mapped_column(Date)

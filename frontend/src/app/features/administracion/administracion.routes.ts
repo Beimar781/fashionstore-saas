@@ -7,4 +7,6 @@ export const ADMINISTRACION_ROUTES: Routes = [
   { path: 'usuarios', canActivate: [operativoGuard], loadComponent: () => import('./usuarios.page').then((m) => m.UsuariosPage), title: 'Usuarios · FashionStore' },
   { path: 'sucursales', canActivate: [operativoGuard], loadComponent: () => import('./sucursales.page').then((m) => m.SucursalesPage), title: 'Sucursales · FashionStore' },
   { path: 'catalogo', canActivate: [operativoGuard], loadChildren: () => import('../primer-parcial/catalogo/catalogo-admin.routes').then((m) => m.CATALOGO_ADMIN_ROUTES) },
+  { path: '', canActivate: [operativoGuard], loadChildren: () => import('../primer-parcial/proveedores/proveedores.routes').then((m) => m.PROVEEDORES_ADMIN_ROUTES) },
+  { path: 'inventario', canActivate: [operativoGuard], loadChildren: () => import('../inventario/inventario.routes').then((m) => m.INVENTARIO_ADMIN_ROUTES) },
 ];

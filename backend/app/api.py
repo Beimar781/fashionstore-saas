@@ -6,10 +6,15 @@ from app.modules.acceso.cu02_login.router import router as cu02_login
 from app.modules.acceso.cu13_usuarios.router import router as cu13_usuarios
 from app.modules.catalogo.cu03_consultar_catalogo.router import router as cu03_catalogo
 from app.modules.catalogo.cu04_buscar_filtrar.router import router as cu04_buscar
+from app.modules.inventario.cu05_disponibilidad.router import router as cu05_disponibilidad
+from app.modules.inventario.cu20_inventario_global.router import router as cu20_inventario_global
+from app.modules.inventario.cu26_inventario_sucursal.router import router as cu26_inventario_sucursal
 from app.modules.plataforma.cu33_empresas.router import router as cu33_empresas
 from app.modules.plataforma.cu34_planes.router import router as cu34_planes
 from app.modules.plataforma.cu35_suscripciones.router import router as cu35_suscripciones
 from app.modules.sucursales.cu14_sucursales.router import router as cu14_sucursales
+from app.primer_parcial.proveedores.cu15_proveedores.router import router as cu15_proveedores
+from app.primer_parcial.proveedores.cu31_abastecimiento.router import router as cu31_abastecimiento
 from app.primer_parcial.catalogo.cu16_categorias_tallas_colores.router import router as cu16_atributos
 from app.primer_parcial.catalogo.cu17_temporadas_colecciones.router import router as cu17_temporadas
 from app.primer_parcial.catalogo.cu18_productos.router import router as cu18_productos
@@ -40,7 +45,14 @@ api_router.include_router(cu16_atributos)
 api_router.include_router(cu17_temporadas)
 api_router.include_router(cu18_productos)
 api_router.include_router(cu19_promociones)
+# P3 · Proveedores y abastecimiento (primer parcial)
+api_router.include_router(cu15_proveedores)
+api_router.include_router(cu31_abastecimiento)
+# P5 · Inventario por sucursal
+api_router.include_router(cu05_disponibilidad)
+api_router.include_router(cu20_inventario_global)
+api_router.include_router(cu26_inventario_sucursal)
 
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
-# SaaS (app/modules): P5 inventario, P6 reservas, P7 ventas, P8 offline, P9 ia, P10 reportes.
-# Primer parcial (app/primer_parcial): P3 proveedores, P4 catalogo, P6 reservas, P7 ventas, P9 ia, P10 reportes.
+# SaaS (app/modules): P6 reservas, P7 ventas, P8 offline, P9 ia, P10 reportes.
+# Primer parcial (app/primer_parcial): P6 reservas, P7 ventas, P9 ia, P10 reportes.

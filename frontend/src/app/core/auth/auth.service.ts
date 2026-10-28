@@ -81,6 +81,7 @@ export class AuthService {
       case ROL.ADMIN: return s.restringido ? '/empresa/plan' : '/empresa/plan';
       case ROL.ENCARGADO: return '/sucursal';
       case ROL.CAJERO: return '/pos';
+      case ROL.PROVEEDOR: return '/proveedor';
       default: return '/tienda';
     }
   }

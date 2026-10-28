@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.modules.inventario.cu26_inventario_sucursal.service import InventarioService
 from app.modules.inventario.models import Existencia
 from app.primer_parcial.catalogo.publico import Variante
 
@@ -29,3 +30,12 @@ def variantes_con_stock(empresa_id: int, sucursal_id: int | None):
     if sucursal_id is not None:
         condiciones.append(Existencia.sucursal_id == sucursal_id)
     return select(1).where(*condiciones).exists()
+
+
+def aplicar_movimientos(
+    db: Session, empresa_id: int, sucursal_id: int, lineas: list[tuple[int, int]], tipo: str, referencia_tipo: str,
+    referencia_id: int | None = None, usuario_id: int | None = None, nota: str = "",
+) -> None:
+    """Único camino para cambiar existencias (reservas, ventas, devoluciones, recepciones): valida y deja bitácora.
+    No hace commit: lo hace el caso de uso que lo llama, para que todo sea una sola transacción."""
+    InventarioService(db, empresa_id).aplicar_movimientos(sucursal_id, lineas, tipo, referencia_tipo, referencia_id, usuario_id, nota)

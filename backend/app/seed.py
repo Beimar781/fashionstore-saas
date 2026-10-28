@@ -9,12 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import app.db_models  # noqa: F401
-from app.core.constantes import ADMIN, CAJERO, CLIENTE, ENCARGADO, SUPERADMIN
+from app.core.constantes import ADMIN, CAJERO, CLIENTE, ENCARGADO, PROVEEDOR, SUPERADMIN
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.modules.acceso.models import Rol, Usuario
 from app.modules.plataforma.models import Empresa, Plan, Suscripcion
 from app.modules.sucursales.models import Ciudad, Sucursal
+from app.seed_abastecimiento import cargar as cargar_abastecimiento
 from app.seed_catalogo import cargar as cargar_catalogo
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
@@ -95,6 +96,8 @@ def ejecutar(db: Session) -> None:
         _usuario(db, empresa.id, roles[CLIENTE], "Cliente", "Demo", f"cliente@{e['codigo'].lower()}.com", CLAVE)
         db.flush()
         cargar_catalogo(db, empresa)
+        db.flush()
+        cargar_abastecimiento(db, empresa, roles[PROVEEDOR], hash_password(CLAVE))
     db.commit()
 
 
@@ -107,3 +110,4 @@ if __name__ == "__main__":
         print(f"{e['codigo']} · {e['razon_social']} (plan {e['plan']}):")
         print(f"   Administrador: {e['admin'][2]} / {CLAVE}")
         print(f"   Encargado y Cajero: encargado@tienda.com, cajero@tienda.com / {CLAVE}  (el mismo correo existe en ambas empresas)")
+        print(f"   Proveedor (portal): proveedor@tienda.com / {CLAVE}")

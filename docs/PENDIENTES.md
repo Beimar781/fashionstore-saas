@@ -4,13 +4,13 @@ El Lote 1 (núcleo multitenant) está implementado y probado. El resto del docum
 **toda tabla nueva lleva `empresa_id`, todo repositorio nuevo hereda de `TenantRepository`, y toda ruta de empresa usa `contexto_operativo(...)`.**
 
 ## Lote 2 — Operación comercial por empresa y offline
-~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), CU-05, CU-09, CU-29, CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
+~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), ~~CU-05~~ (hecho en la Fase B), CU-09, CU-29, CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
 - Web: IndexedDB ya tiene los almacenes `catalogo`, `operaciones` y `cache_meta` (`core/offline/local-db.service.ts`).
 - Móvil: SQLite ya tiene las tablas `productos_locales` y `operaciones_pendientes` con los estados de RN11 (`lib/core/db/local_database.dart`).
 - Gancho existente: `sucursales/cu14_sucursales/service.py::tiene_pendientes()` (CU-14, excepción de desactivar con pendientes).
 
 ## Lote 3 — Gestión avanzada
-CU-10, CU-20, CU-21, CU-22, CU-23, CU-26, CU-40, CU-41, CU-42 → P7 devoluciones, P9 IA/analítica, P10 reportes.
+CU-10, ~~CU-20~~, CU-21, CU-22, CU-23, ~~CU-26~~ (hechos en la Fase B), CU-40, CU-41, CU-42 → P7 devoluciones, P9 IA/analítica, P10 reportes.
 - RN07 ya está resuelta: proteger los endpoints de IA con `Depends(exigir_funcionalidad("reportes_ia"))`.
 
 ## Casos de uso conservados del primer parcial (deben funcionar dentro de cada empresa)
@@ -18,7 +18,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 
 | CU conservados | App del backend base (Django) | Paquete destino (FastAPI) |
 |---|---|---|
-| CU-15, CU-31 proveedores | `suppliers` | P3 `sucursales` (proveedores) |
+| ~~CU-15, CU-31 proveedores~~ (hechos en la Fase B) | `suppliers` | `primer_parcial/proveedores` |
 | ~~CU-16, CU-17, CU-18, CU-19 catálogo y promociones~~ (hechos en la Fase A) | `catalog`, `promotions` | `primer_parcial/catalogo` |
 | CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos | `orders`, `payments` | P6/P7 |
 | CU-24, CU-25 reservas de sucursal | `reservations` | P6 |

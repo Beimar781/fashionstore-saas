@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
-from app.core.constantes import ADMIN, CAJERO, CLIENTE, ENCARGADO
+from app.core.constantes import ADMIN, CAJERO, CLIENTE, ENCARGADO, PROVEEDOR
 from app.core.database import get_db
 from app.modules.acceso.dependencias import Contexto
 from app.modules.plataforma.publico import contexto_operativo
@@ -10,7 +10,7 @@ from app.primer_parcial.catalogo.cu17_temporadas_colecciones.service import Temp
 
 router = APIRouter(tags=["CU-17 Temporadas y colecciones"])
 solo_admin = contexto_operativo(ADMIN)
-cualquier_rol = contexto_operativo(ADMIN, ENCARGADO, CAJERO, CLIENTE)  # todos leen; solo el Administrador escribe
+cualquier_rol = contexto_operativo(ADMIN, ENCARGADO, CAJERO, CLIENTE, PROVEEDOR)  # todos leen (el proveedor elige colección al proponer); solo el Administrador escribe
 
 
 @router.get("/temporadas", response_model=list[schemas.TemporadaOut])
