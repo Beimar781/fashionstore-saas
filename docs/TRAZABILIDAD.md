@@ -1,7 +1,12 @@
-# Trazabilidad requisitos → casos de uso → código → pruebas (Lote 1)
+# Trazabilidad requisitos → casos de uso → código → pruebas
 
-Los mensajes de error, reglas (RN) y rutas REST del código son los del documento (fichas de CU, 2.4, 4.4.3 y 5.2.1).
-El backend implementa **todas** las rutas de la tabla 4.4.3 del documento (26) y las pruebas replican los pasos de la sección 5.2.1 y 5.3.1.
+Los mensajes de error, reglas (RN) y rutas REST del código son los del documento (fichas de CU, 2.4 y 5.2.1).
+Las pruebas replican los pasos de las secciones 5.2.1 y 5.3.1.
+
+Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modules`) y **Primer parcial (Anexo B)**
+(`backend/app/primer_parcial`). El plan por fases está en `docs/PLAN_PRIMER_PARCIAL.md`.
+
+## SaaS (CU nuevos o modificados)
 
 | CU | Backend (`backend/app/modules/…`) | Rutas REST | Web (`frontend/src/app/features/…`) | Móvil | Pruebas (`backend/tests/`) |
 |---|---|---|---|---|---|
@@ -12,6 +17,42 @@ El backend implementa **todas** las rutas de la tabla 4.4.3 del documento (26) y
 | CU-34 Planes | `plataforma/cu34_planes` | `GET/POST /api/plataforma/planes`, `PUT …/{id}`, `POST …/inactivar` | `plataforma/planes.page.ts` | — | `test_cu34_planes.py` (5 pasos) |
 | CU-35 Suscripciones | `plataforma/cu35_suscripciones` | `GET …/empresas/{id}/suscripcion`, `POST …/suscripciones`, `POST …/suscripcion/suspender` | `plataforma/suscripcion.page.ts` | — | `test_cu35_suscripciones.py` (6 pasos) |
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
+
+Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
+CU-01 (A) · CU-03, CU-04 (A) · CU-05, CU-20, CU-26 (B) · CU-09, CU-10 (C) · CU-29 (E) · CU-41 (F) ·
+CU-21, CU-22, CU-23, CU-42, CU-36 (G) · CU-37 a CU-40 (H).
+
+## Primer parcial (Anexo B)
+
+Casos de uso conservados; solo se les agrega `empresa_id`. Backend en `backend/app/primer_parcial/<paquete>/cuNN_<nombre>/`,
+web en `frontend/src/app/features/primer-parcial/<paquete>/`, móvil en `movil/lib/primer_parcial/<paquete>/`,
+pruebas en `backend/tests/primer_parcial/`.
+
+| Paquete | CU | Backend | Rutas REST | Web | Móvil | Pruebas |
+|---|---|---|---|---|---|---|
+| proveedores (P3) | CU-15 Proveedores | — | — | — | — | — |
+| proveedores (P3) | CU-31 Productos y abastecimiento | — | — | — | — | — |
+| catalogo (P4) | CU-16 Categorías, tallas y colores | — | — | — | — | — |
+| catalogo (P4) | CU-17 Temporadas y colecciones | — | — | — | — | — |
+| catalogo (P4) | CU-18 Productos con variantes | — | — | — | — | — |
+| catalogo (P4) | CU-19 Promociones | — | — | — | — | — |
+| reservas (P6) | CU-08 Carrito | — | — | — | — | — |
+| reservas (P6) | CU-24 Reservas de la sucursal | — | — | — | — | — |
+| reservas (P6) | CU-25 Recepción y atención | — | — | — | — | — |
+| ventas (P7) | CU-11 Compra digital | — | — | — | — | — |
+| ventas (P7) | CU-12 Historial de compras | — | — | — | — | — |
+| ventas (P7) | CU-28 Productos en caja | — | — | — | — | — |
+| ventas (P7) | CU-30 Pago en caja y comprobante | — | — | — | — | — |
+| ventas (P7) | CU-32 Pago electrónico | — | — | — | — | — |
+| reportes (P10) | CU-27 Ventas de la sucursal | — | — | — | — | — |
+| ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
+| ia (P9) | CU-07 Asistente y recomendador | — | — | — | — | — |
+
+## Reglas de dependencia entre paquetes
+
+Los paquetes se hablan solo por `publico.py` y sin ciclos; lo verifica `tests/test_arquitectura_paquetes.py`.
+Excepción conocida del lote 1: `acceso`, `plataforma` y `sucursales` se importan entre sí (token, empresa y suscripción).
+Ningún paquete nuevo puede volver hacia ellos ni importar archivos internos de otro paquete.
 
 ## Arquitectura (RNF07: presentación / negocio / persistencia / sincronización)
 Cada caso de uso es una carpeta con `router.py` (presentación REST), `service.py` (reglas de negocio), `repository.py`

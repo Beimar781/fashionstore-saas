@@ -10,9 +10,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-TEST_URL = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/fashionstore_test"
-)
+from sqlalchemy.engine import make_url  # noqa: E402
+from app.core.config import get_settings  # noqa: E402
+
+# Por defecto usa el usuario y la clave del .env, con una base aparte para pruebas.
+TEST_URL = os.environ.get("TEST_DATABASE_URL") or make_url(get_settings().database_url).set(database="fashionstore_test").render_as_string(hide_password=False)
 os.environ["ALEMBIC_DATABASE_URL"] = TEST_URL
 
 from app.core.constantes import ADMIN, CAJERO, CLIENTE, ENCARGADO, SUPERADMIN  # noqa: E402

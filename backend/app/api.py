@@ -26,5 +26,6 @@ api_router.include_router(cu35_suscripciones)
 # P3 · Sucursales y proveedores
 api_router.include_router(cu14_sucursales)
 
-# Paquetes pendientes (siguientes presentaciones): P4 catálogo, P5 inventario, P6 carrito y reservas,
-# P7 ventas y devoluciones, P8 offline/sincronización, P9 IA/RA/analítica, P10 reportes.
+# Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
+# SaaS (app/modules): P4 catalogo, P5 inventario, P6 reservas, P7 ventas, P8 offline, P9 ia, P10 reportes.
+# Primer parcial (app/primer_parcial): P3 proveedores, P4 catalogo, P6 reservas, P7 ventas, P9 ia, P10 reportes.
