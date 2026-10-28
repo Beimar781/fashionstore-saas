@@ -16,6 +16,10 @@ from app.modules.plataforma.cu33_empresas.router import router as cu33_empresas
 from app.modules.plataforma.cu34_planes.router import router as cu34_planes
 from app.modules.plataforma.cu35_suscripciones.router import router as cu35_suscripciones
 from app.modules.sucursales.cu14_sucursales.router import router as cu14_sucursales
+from app.primer_parcial.reservas.cu08_carrito.router import router as cu08_carrito
+from app.primer_parcial.ventas.cu11_compra_digital.router import router as cu11_compra
+from app.primer_parcial.ventas.cu12_historial_compras.router import router as cu12_historial
+from app.primer_parcial.ventas.cu32_pago_electronico.router import router as cu32_pagos
 from app.primer_parcial.reservas.cu24_gestionar_reservas_sucursal.router import router as cu24_reservas_sucursal
 from app.primer_parcial.reservas.cu25_confirmar_atencion.router import router as cu25_atencion
 from app.primer_parcial.proveedores.cu15_proveedores.router import router as cu15_proveedores
@@ -63,7 +67,12 @@ api_router.include_router(cu10_reservas)
 api_router.include_router(cu24_reservas_sucursal)
 api_router.include_router(cu25_atencion)
 api_router.include_router(rf11_notificaciones)
+# P6/P7 · Compra digital (primer parcial): carrito, checkout, historial y pago
+api_router.include_router(cu08_carrito)
+api_router.include_router(cu11_compra)
+api_router.include_router(cu12_historial)
+api_router.include_router(cu32_pagos)
 
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
 # SaaS (app/modules): P7 ventas, P8 offline, P9 ia, P10 reportes.
-# Primer parcial (app/primer_parcial): P6 carrito (CU-08), P7 ventas, P9 ia, P10 reportes.
+# Primer parcial (app/primer_parcial): P7 ventas (caja: CU-28, CU-30), P9 ia, P10 reportes.

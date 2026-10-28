@@ -18,6 +18,7 @@ from app.modules.sucursales.models import Ciudad, Sucursal
 from app.seed_abastecimiento import cargar as cargar_abastecimiento
 from app.seed_catalogo import cargar as cargar_catalogo
 from app.seed_reservas import cargar as cargar_reservas
+from app.seed_ventas import cargar as cargar_ventas
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
 CLAVE = "Demo2026*"
@@ -101,6 +102,8 @@ def ejecutar(db: Session) -> None:
         cargar_abastecimiento(db, empresa, roles[PROVEEDOR], hash_password(CLAVE))
         db.flush()
         cargar_reservas(db, empresa)
+        db.flush()
+        cargar_ventas(db, empresa)
     db.commit()
 
 
@@ -114,3 +117,4 @@ if __name__ == "__main__":
         print(f"   Administrador: {e['admin'][2]} / {CLAVE}")
         print(f"   Encargado y Cajero: encargado@tienda.com, cajero@tienda.com / {CLAVE}  (el mismo correo existe en ambas empresas)")
         print(f"   Proveedor (portal): proveedor@tienda.com / {CLAVE}")
+        print("   Pago de prueba del cliente: tarjeta 4242 4242 4242 4242 (cualquier fecha futura y CVC)")

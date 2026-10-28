@@ -58,3 +58,13 @@ def registrar_verificador_de_pendientes(verificador) -> None:
 
 def tiene_pendientes(db: Session, empresa_id: int, sucursal_id: int) -> bool:
     return any(verificador(db, empresa_id, sucursal_id) for verificador in _VERIFICADORES_PENDIENTES)
+
+
+def datos_de_sucursal(db: Session, empresa_id: int, sucursal_id: int) -> dict:
+    """Nombre, dirección y teléfono de una sucursal (aunque ya esté inactiva), para documentos impresos."""
+    fila = db.execute(
+        select(Sucursal.nombre, Sucursal.direccion, Sucursal.telefono, Ciudad.nombre)
+        .join(Ciudad, Ciudad.id == Sucursal.ciudad_id)
+        .where(Sucursal.empresa_id == empresa_id, Sucursal.id == sucursal_id)
+    ).first()
+    return {"nombre": fila[0], "direccion": fila[1] or "", "telefono": fila[2] or "", "ciudad": fila[3]} if fila else {}

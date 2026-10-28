@@ -20,7 +20,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 |---|---|---|
 | ~~CU-15, CU-31 proveedores~~ (hechos en la Fase B) | `suppliers` | `primer_parcial/proveedores` |
 | ~~CU-16, CU-17, CU-18, CU-19 catálogo y promociones~~ (hechos en la Fase A) | `catalog`, `promotions` | `primer_parcial/catalogo` |
-| CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos | `orders`, `payments` | P6/P7 |
+| ~~CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos~~ (hechos en la Fase D) | `orders`, `payments` | `primer_parcial/reservas` y `primer_parcial/ventas` |
 | ~~CU-24, CU-25 reservas de sucursal~~ (hechos en la Fase C) | `reservations` | `primer_parcial/reservas` |
 | CU-27, CU-28, CU-30 ventas y punto de venta | `pos`, `orders` | P7 |
 | CU-06, CU-07 vestidor virtual (RA) y asistente IA | `infer_service`, `ai` | P9 |

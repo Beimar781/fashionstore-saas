@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { ROL } from '../core/models';
 import { ConnectivityService } from '../core/offline/connectivity.service';
+import { CarritoEstadoService } from '../core/carrito/carrito-estado.service';
 import { ReservaBorradorService } from '../core/reservas/reserva-borrador.service';
 import { ConfirmarSalidaComponent } from '../core/ui/confirmar-salida.component';
 import { NotificacionesComponent } from '../core/ui/notificaciones.component';
@@ -37,6 +38,8 @@ const NAV_PROVEEDOR: Item[] = [
 ];
 const NAV_CLIENTE: Item[] = [
   { ruta: '/tienda/catalogo', texto: 'Catálogo', icono: '🛍️' },
+  { ruta: '/tienda/carrito', texto: 'Mi carrito', icono: '🛒' },
+  { ruta: '/tienda/compras', texto: 'Mis compras', icono: '🧾' },
   { ruta: '/tienda/reservar', texto: 'Mi reserva', icono: '🧺' },
   { ruta: '/tienda/reservas', texto: 'Mis reservas', icono: '📅' },
 ];
@@ -58,7 +61,7 @@ const porRol: Record<string, Item[]> = {
             @if (it.operativo && auth.restringido()) {
               <span class="link disabled" title="Suscripción no vigente"><i>{{ it.icono }}</i>{{ it.texto }}<em>🔒</em></span>
             } @else {
-              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }</a>
+              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }@if (it.ruta === '/tienda/carrito' && carrito.total() > 0) { <em class="cuenta">{{ carrito.total() }}</em> }</a>
             }
           }
         </nav>
@@ -120,6 +123,7 @@ export class ShellComponent {
   readonly auth = inject(AuthService);
   readonly net = inject(ConnectivityService);
   readonly borrador = inject(ReservaBorradorService);
+  readonly carrito = inject(CarritoEstadoService);
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }

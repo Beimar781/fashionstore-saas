@@ -94,4 +94,73 @@ se lleva las prendas.
 
 ## Fase D
 
-*(Se completa al terminar la fase: mensajes y reglas de CU-08, CU-11, CU-12 y CU-32 que no estén en el Anexo B.)*
+Los CU-08, CU-11, CU-12 y CU-32 **sí tienen ficha y prueba en el Anexo B**; sus mensajes oficiales se usan tal cual:
+«La cantidad solicitada supera el stock disponible temporalmente.» (CU-08), «La transacción no pudo ser procesada, verifique su método de pago o saldo
+disponible.» (CU-11), «Aún no has realizado ninguna compra en nuestras tiendas.» (CU-12) y «Transacción denegada por su banco» (CU-32).
+Lo de abajo es lo que las fichas **no** definen.
+
+### Decisiones de diseño que conviene reflejar en las fichas
+
+- **CU-08 · el carrito tiene sucursal.** El stock sale de la sucursal elegida, así que el carrito se asocia a una sola sucursal (la primera que se elige al agregar
+  una prenda; se puede cambiar en el carrito). Las prendas que no tengan stock en la nueva sucursal quedan marcadas y no se pueden pagar. El stock no se aparta en
+  el carrito: se verifica al agregar, al mostrar el carrito, al hacer el checkout y al cobrar.
+- **CU-08 · impuestos.** Los precios ya incluyen el IVA (13 %, configurable); el carrito y el comprobante muestran cuánto del total es IVA.
+- **CU-11 · el pedido nace en el checkout.** «Proceder al pago» convierte el carrito en un pedido *Pendiente de pago* con precios congelados; el pedido pasa a
+  *Pagado* cuando la pasarela aprueba, y recién entonces se descuenta el stock, se numera el comprobante y se vacía el carrito. Un cliente tiene un solo pedido por
+  pagar a la vez: un nuevo checkout cancela el anterior.
+- **CU-11 · comprobante.** Número correlativo por sucursal (`CMP-<sucursal>-<número>`), descargable en PDF.
+- **CU-12 · qué es una compra.** Se listan los pedidos *Pagados* y los *Pendientes de confirmación*; los pedidos sin pagar o cancelados no aparecen. Las ventas
+  presenciales (CU-29) se agregarán al mismo historial.
+- **CU-32 · autorizar y cobrar en dos tiempos.** Primero la pasarela *autoriza* la tarjeta; el sistema confirma el stock y solo entonces *cobra*. Si las prendas se
+  agotan mientras el cliente paga, se anula la autorización y no se cobra nada.
+- **CU-32 · pasarela.** Stripe en modo de prueba cuando hay claves en el `.env`; si no, una pasarela simulada que solo acepta tarjetas de prueba. Stripe no cobra en
+  bolivianos: en modo de prueba se cobra el equivalente en dólares (6,96 Bs por dólar, configurable). El número de la tarjeta y el CVC nunca se guardan: solo marca,
+  últimos 4 dígitos y vencimiento.
+- **CU-32 · tarjeta guardada.** El cliente puede guardar la tarjeta para próximas compras, usarla y eliminarla.
+- **CU-32 · respuesta por consulta, no por webhook.** El sistema lee el resultado directamente de la pasarela (la ficha admite «Webhook o Response»). Un pago sin
+  respuesta queda *Pendiente de confirmación* y el cliente puede pedir verificarlo.
+
+### Mensajes nuevos
+
+| CU | Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|---|
+| CU-08 | Agregar sin haber elegido sucursal | «Elija la sucursal en la que desea comprar.» | 422 | Pendiente |
+| CU-08 | Agregar una prenda inactiva, retirada o de otra empresa | «La prenda ya no está disponible en el catálogo.» | 422 | Pendiente |
+| CU-08 | Agregar de otra sucursal con el carrito ya iniciado | «Su carrito es para la sucursal {nombre}. Cambie de sucursal en el carrito o vacíelo.» | 409 | Pendiente |
+| CU-08 | Modificar o quitar una prenda que no es del carrito del cliente | «Prenda del carrito no encontrada.» | 404 | Pendiente |
+| CU-08 | Prenda del carrito sin stock tras cambiar de sucursal o de stock | Aviso: «{prenda} ({talla}, {color}): en {sucursal} hay {n} disponible(s) y tiene {m} en el carrito.» | — | Pendiente |
+| CU-08 | Prenda del carrito retirada del catálogo | Aviso: «{prenda} ({talla}, {color}) ya no está disponible en el catálogo. Quítela del carrito.» | — | Pendiente |
+| CU-11 | Checkout con el carrito vacío | «Su carrito está vacío.» | 422 | Pendiente |
+| CU-11 | Checkout con prendas sin stock o retiradas | «Hay prendas sin stock suficiente o retiradas del catálogo. Ajuste su carrito antes de pagar.» + el detalle | 409 | Pendiente |
+| CU-11 | Entrega a domicilio sin dirección | «Ingrese la dirección de entrega.» | 422 | Pendiente |
+| CU-11 | Sin NIT o CI | «Ingrese su NIT o CI para la facturación.» | 422 | Pendiente |
+| CU-12 | Pedido inexistente, de otro cliente o de otra empresa | «Pedido no encontrado.» | 404 | Pendiente |
+| CU-12 | Descargar el comprobante de una compra sin pagar | «Solo hay comprobante para compras pagadas.» | 409 | Pendiente |
+| CU-32 | El stock se agotó antes de pedir el pago | «Algunas prendas se agotaron: {prenda} ({talla}, {color}): quedan {n}, necesita {m}. No se realizó ningún cobro. Ajuste su carrito e intente de nuevo.» | 409 | Pendiente |
+| CU-32 | El stock se agotó mientras el cliente pagaba | Igual, con «se agotaron mientras pagaba» | 409 | Pendiente |
+| CU-32 | Pago rechazado: motivo del banco | «Transacción denegada por su banco» (fondos insuficientes o tarjeta rechazada); otros motivos: «Su tarjeta está vencida.», «El código de seguridad (CVC) es incorrecto.», «Este entorno solo admite tarjetas de prueba.» (solo pasarela simulada) | 402 | Pendiente (el primero ya está en la ficha) |
+| CU-32 | Pago sin respuesta de la pasarela | «Pendiente de confirmación: la pasarela no respondió. Verificaremos el estado de su pago; no se le cobrará dos veces.» | 200 | Pendiente (la ficha solo dice «Pendiente de confirmación») |
+| CU-32 | Pago aprobado | «Pago aprobado.» | 200 | Pendiente |
+| CU-32 | Pedido que ya no está por pagar | «El pedido no está pendiente de pago.» | 409 | Pendiente |
+| CU-32 | Confirmar un pago ya rechazado o cancelado | «Este pago ya fue procesado. Inicie un nuevo pago.» | 409 | Pendiente |
+| CU-32 | Conciliar un pago que no está pendiente de confirmación | «Este pago no está pendiente de confirmación.» | 409 | Pendiente |
+| CU-32 | Número de tarjeta inválido (solo pasarela simulada) | «El número de la tarjeta no es válido.» | 422 | Pendiente |
+| CU-32 | CVC inválido (solo pasarela simulada) | «El código de seguridad (CVC) debe tener 3 o 4 dígitos.» | 422 | Pendiente |
+| CU-32 | Faltan los datos de la tarjeta (solo pasarela simulada) | «Ingrese los datos de la tarjeta.» | 422 | Pendiente |
+| CU-32 | Tarjeta guardada inexistente, ajena o de otra pasarela | «Tarjeta no encontrada.» | 404 | Pendiente |
+| CU-32 | Pago inexistente o de otro cliente | «Pago no encontrado.» | 404 | Pendiente |
+| CU-32 | La pasarela no está disponible | «No se pudo comunicar con la pasarela de pago. Intente nuevamente.» | 502 | Pendiente |
+
+### Tarjetas de prueba de la pasarela simulada
+
+| Tarjeta | Resultado |
+|---|---|
+| 4242 4242 4242 4242 (Visa) y 5555 5555 5555 4444 (Mastercard) | Pago aprobado |
+| 4000 0000 0000 9995 | Rechazada: fondos insuficientes («Transacción denegada por su banco») |
+| 4000 0000 0000 0002 | Rechazada por el banco |
+| 4000 0000 0000 0069 | Rechazada: tarjeta vencida |
+| 4000 0000 0000 0127 | Rechazada: CVC incorrecto |
+| 4000 0000 0000 0119 | La pasarela no responde: queda *Pendiente de confirmación* (se concilia después) |
+| Cualquier otro número válido | Rechazada: solo se admiten tarjetas de prueba |
+
+Con Stripe en modo de prueba valen las tarjetas de prueba de Stripe (por ejemplo 4242 4242 4242 4242 y 4000 0000 0000 9995).

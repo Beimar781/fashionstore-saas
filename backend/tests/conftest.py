@@ -1,6 +1,10 @@
 """Pruebas automatizadas (RNF11): pytest + TestClient (HTTPX) contra PostgreSQL real.
 El esquema se crea con la migración Alembic 0001, de modo que también se prueba el script del 3.5.4."""
 import os
+
+# Las pruebas nunca llaman a Stripe: aunque el .env tenga claves, aquí se fuerza el pago simulado.
+os.environ["STRIPE_SECRET_KEY"] = ""
+os.environ["STRIPE_PUBLISHABLE_KEY"] = ""
 from datetime import date, timedelta
 
 import pytest

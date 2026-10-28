@@ -7,4 +7,8 @@ export const TIENDA_ROUTES: Routes = [
   { path: 'catalogo/:id', loadComponent: () => import('./prenda.page').then((m) => m.PrendaPage), title: 'Prenda · FashionStore' },
   { path: 'reservar', loadComponent: () => import('../reservas/reservar.page').then((m) => m.ReservarPage), title: 'Mi reserva · FashionStore' },
   { path: 'reservas', loadComponent: () => import('../reservas/mis-reservas.page').then((m) => m.MisReservasPage), title: 'Mis reservas · FashionStore' },
+  { path: 'carrito', loadComponent: () => import('../primer-parcial/reservas/carrito.page').then((m) => m.CarritoPage), title: 'Mi carrito · FashionStore' },
+  { path: 'checkout', loadComponent: () => import('../primer-parcial/ventas/checkout.page').then((m) => m.CheckoutPage), title: 'Pagar · FashionStore' },
+  { path: 'compras', loadComponent: () => import('../primer-parcial/ventas/mis-compras.page').then((m) => m.MisComprasPage), title: 'Mis compras · FashionStore' },
+  { path: 'compras/:id', loadComponent: () => import('../primer-parcial/ventas/compra-detalle.page').then((m) => m.CompraDetallePage), title: 'Mi compra · FashionStore' },
 ];

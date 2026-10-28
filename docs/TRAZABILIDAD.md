@@ -45,14 +45,14 @@ pruebas en `backend/tests/primer_parcial/`.
 | catalogo (P4) | CU-17 Temporadas y colecciones | `catalogo/cu17_temporadas_colecciones` | `GET/POST /api/temporadas`, `PUT/DELETE …/{id}`; `GET/POST /api/colecciones`, `PUT/DELETE …/{id}` | `primer-parcial/catalogo/temporadas.page.ts` | — | `primer_parcial/test_cu17_temporadas_colecciones.py` (5 pasos + 3) |
 | catalogo (P4) | CU-18 Productos con variantes | `catalogo/cu18_productos` | `GET/POST /api/productos`, `GET/PUT …/{id}`, `POST …/{id}/activar`, `…/desactivar`, `POST …/{id}/variantes`, `PUT …/{id}/variantes/{vid}`, `POST …/{id}/imagenes`, `…/imagenes/{iid}/principal`, `DELETE …/imagenes/{iid}` | `primer-parcial/catalogo/productos.page.ts`, `producto-detalle.page.ts` | — | `primer_parcial/test_cu18_productos.py` (5 pasos + 6: SKU corto, talla de otro grupo, imagen por contenido) |
 | catalogo (P4) | CU-19 Promociones | `catalogo/cu19_promociones` (+ `publico.py::descuentos_vigentes` para catálogo y POS) | `GET/POST /api/promociones`, `PUT/DELETE …/{id}` | `primer-parcial/catalogo/promociones.page.ts` | — | `primer_parcial/test_cu19_promociones.py` (6 pasos + 6) |
-| reservas (P6) | CU-08 Carrito | — | — | — | — | — |
+| reservas (P6) | CU-08 Carrito | `reservas/cu08_carrito` (+ `publico.py`: `CarritoService` para el checkout) | `GET /api/carrito`, `POST …/items`, `PUT/DELETE …/items/{id}`, `PUT …/sucursal`, `DELETE /api/carrito` | `primer-parcial/reservas/carrito.page.ts`, botón «Agregar al carrito» en `catalogo/prenda.page.ts` | — | `primer_parcial/test_cu08_carrito.py` (6 pasos + 10) |
 | reservas (P6) | CU-24 Reservas de la sucursal | `reservas/cu24_gestionar_reservas_sucursal` | `GET /api/reservas-sucursal`, `GET …/{id}`, `POST …/{id}/preparar`, `POST …/{id}/items/{item}/no-encontrado` | `primer-parcial/reservas/reservas-sucursal.page.ts` | — | `primer_parcial/test_cu24_gestionar_reservas_sucursal.py` (5 pasos + 5) |
 | reservas (P6) | CU-25 Recepción y atención | `reservas/cu25_confirmar_atencion` | `POST /api/atencion-reservas/validar`, `POST …/{id}/atender`, `POST …/{id}/completar` | `primer-parcial/reservas/atencion.page.ts` | — | `primer_parcial/test_cu25_confirmar_atencion.py` (5 pasos + 4) |
-| ventas (P7) | CU-11 Compra digital | — | — | — | — | — |
-| ventas (P7) | CU-12 Historial de compras | — | — | — | — | — |
+| ventas (P7) | CU-11 Compra digital | `ventas/cu11_compra_digital` (+ `finalizar()`: stock, comprobante y carrito al aprobarse el pago) | `POST /api/compras/checkout` | `primer-parcial/ventas/checkout.page.ts` | — | `primer_parcial/test_cu11_compra_digital.py` (5 pasos + 9: stock al pagar, no se cobra sin stock) |
+| ventas (P7) | CU-12 Historial de compras | `ventas/cu12_historial_compras` (+ `comprobante.py`, PDF) | `GET /api/compras`, `GET …/{id}`, `GET …/{id}/comprobante` | `primer-parcial/ventas/mis-compras.page.ts`, `compra-detalle.page.ts` | — | `primer_parcial/test_cu12_historial_compras.py` (5 pasos + 5) |
 | ventas (P7) | CU-28 Productos en caja | — | — | — | — | — |
 | ventas (P7) | CU-30 Pago en caja y comprobante | — | — | — | — | — |
-| ventas (P7) | CU-32 Pago electrónico | — | — | — | — | — |
+| ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
 | reportes (P10) | CU-27 Ventas de la sucursal | — | — | — | — | — |
 | ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
 | ia (P9) | CU-07 Asistente y recomendador | — | — | — | — | — |
@@ -100,6 +100,28 @@ lleva las prendas pasa a CU-29; por eso «completar» con *llevará prendas* dej
 CU-24, excepción «No encontrado en físico»: se libera la reserva y se descuenta la prenda del inventario (AJUSTE_SALIDA), con aviso de ajuste
 de stock a la sucursal y disculpas al cliente. El gancho de CU-14 quedó activo: una sucursal con reservas activas no se desactiva
 (`sucursales/publico.py::registrar_verificador_de_pendientes`, sin dependencia circular).
+
+## Esquema de la Fase D (migración 0006)
+
+`carritos` y `carrito_items` (un carrito por cliente y empresa, con su sucursal), `pedidos` y `pedido_items` (un solo pedido para todos los canales: la venta
+de caja, CU-29, lo reutiliza; precios y nombres congelados), `pagos` (cada intento queda registrado, aprobado o no, para los reportes de pago),
+`clientes_pasarela`, `tarjetas_guardadas` (marca, últimos 4 y vencimiento; nunca el número ni el CVC) y `secuencias_comprobante` (numeración por sucursal).
+La migración también agrega `PEDIDO` como referencia válida de la bitácora de inventario.
+
+Flujo de la compra digital:
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | El cliente agrega prendas; el stock se valida al agregar (no se aparta) | CU-08 `CarritoService.agregar` |
+| 2 | «Proceder al pago»: el carrito se congela en un pedido PENDIENTE_PAGO con entrega y NIT/CI | CU-11 `CompraService.checkout` |
+| 3 | Se vuelve a verificar el stock y se crea el intento de pago (Stripe: PaymentIntent de captura manual) | CU-32 `PagoService.iniciar` |
+| 4 | El cliente ingresa la tarjeta y se ve si la pasarela aprueba (la tarjeta queda *autorizada*), rechaza (402) o no responde | CU-32 `PagoService.confirmar` |
+| 5 | Si autorizó: se descuenta el stock de la sucursal (movimiento VENTA), se numera el comprobante y se vacía el carrito; **recién entonces se cobra** | CU-11 `finalizar` + `pasarela.capturar` |
+| 5b | Si el stock se agotó mientras pagaba: se anula la autorización, el pago y el pedido quedan CANCELADOS y no se cobra | CU-32 `_aplicar` |
+
+Sin `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` en `backend/.env` se usa la pasarela simulada (solo tarjetas de prueba, ver `docs/MENSAJES_PENDIENTES_WORD.md`).
+Con las dos claves de prueba, la web carga Stripe.js y el número de la tarjeta lo captura Stripe: nunca pasa por nuestro servidor. **El adaptador de Stripe
+se probó con un Stripe simulado en memoria; no se probó contra Stripe real porque no hay claves en este entorno.**
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

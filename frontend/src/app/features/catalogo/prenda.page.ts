@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../core/api.config';
 import { CatalogoApi } from '../../core/api/catalogo.api';
+import { ComprasApi } from '../../core/api/compras.api';
+import { CarritoEstadoService } from '../../core/carrito/carrito-estado.service';
 import { InventarioApi } from '../../core/api/inventario.api';
 import { Opciones, PrendaDetalle, SucursalCatalogo } from '../../core/catalogo.models';
 import { Disponibilidad } from '../../core/inventario.models';
@@ -62,7 +64,9 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                     <p class="small muted" style="margin-top:.3rem">{{ sucursalId() ? 'En la sucursal elegida' : 'Sumando todas las sucursales' }}: {{ v.cantidad }} unidades.</p>
                   </div>
                   <div class="row">
-                    <button type="button" class="btn primary" (click)="agregarAReserva(p)">+ Agregar a mi reserva</button>
+                    <button type="button" class="btn primary" (click)="agregarAlCarrito(p)" [disabled]="!sucursalParaCarrito()" [title]="sucursalParaCarrito() ? '' : 'Elija una sucursal para comprar'">🛒 Agregar al carrito</button>
+                    <button type="button" class="btn" (click)="agregarAReserva(p)">+ Agregar a mi reserva</button>
+                    @if (carrito.total() > 0) { <a class="btn" routerLink="/tienda/carrito">Ver mi carrito ({{ carrito.total() }})</a> }
                     @if (borrador.total() > 0) { <a class="btn" routerLink="/tienda/reservar">Ver mi reserva ({{ borrador.total() }})</a> }
                   </div>
                 } @else if (!o.variantes.some(hayDisponible)) {
@@ -114,6 +118,8 @@ export class PrendaPage implements OnInit {
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
   readonly borrador = inject(ReservaBorradorService);
+  private compras = inject(ComprasApi);
+  readonly carrito = inject(CarritoEstadoService);
 
   readonly media = MEDIA_URL;
   readonly prenda = signal<PrendaDetalle | null>(null);
@@ -154,6 +160,18 @@ export class PrendaPage implements OnInit {
     this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.toast.error(mensajeError(e)) });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
+      error: (e) => this.toast.error(mensajeError(e)),
+    });
+  }
+
+  /** El carrito es de una sola sucursal: la del carrito si ya tiene prendas, o la que se esté mirando. */
+  sucursalParaCarrito() { return this.carrito.total() > 0 ? this.carrito.sucursalId() : this.sucursalId() ?? this.carrito.sucursalId(); }
+
+  agregarAlCarrito(p: PrendaDetalle) {
+    const v = this.variante(), sucursal = this.sucursalParaCarrito();
+    if (!v || !sucursal) return;
+    this.compras.agregar(v.variante_id, 1, sucursal).subscribe({
+      next: (c) => { this.carrito.fijar(c); this.toast.ok(`${p.nombre} (${v.talla}, ${v.color}) agregada al carrito.`); this.cargar(); },
       error: (e) => this.toast.error(mensajeError(e)),
     });
   }

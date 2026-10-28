@@ -62,3 +62,9 @@ def exigir_funcionalidad(nombre: str):
         return ctx
 
     return _dep
+
+
+def datos_de_empresa(db: Session, empresa_id: int) -> dict:
+    """Datos de la empresa para documentos impresos (comprobantes)."""
+    e = db.get(Empresa, empresa_id)
+    return {"razon_social": e.razon_social, "nit": e.nit, "telefono": e.telefono or "", "email": e.email_contacto or ""}

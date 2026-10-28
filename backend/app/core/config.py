@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     reserva_horas_vigencia: int = 24
     reserva_dias_max: int = 14
     zona_horaria_horas: int = -4
+    # Compras (CU-08, CU-11): los precios ya incluyen el IVA; aquí solo se calcula cuánto es
+    iva_porcentaje: int = 13
+    # Pagos (CU-32): sin claves de Stripe se usa un pago simulado con tarjetas de prueba. Las claves van en .env, nunca en el código.
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
+
+    @property
+    def stripe_activo(self) -> bool:
+        return bool(self.stripe_secret_key and self.stripe_publishable_key)
     brevo_sender_email: str = "no-reply@fashionstore.com"
     brevo_sender_name: str = "FashionStore"
 
