@@ -43,6 +43,8 @@ class PagoResumenOut(BaseModel):
     metodo: str
     proveedor: str
     monto: Dinero
+    monto_recibido: Dinero | None = None
+    cambio: Dinero | None = None
     tarjeta_marca: str
     tarjeta_ultimos4: str
     mensaje: str
@@ -68,6 +70,11 @@ class PedidoOut(BaseModel):
     moneda: str
     total_unidades: int
     comprobante_numero: str | None
+    comprobante_tipo: str | None = None  # FACTURA o INTERNO_TEMPORAL
+    comprobante_aviso: str | None = None  # aviso de la ficha CU-30 cuando el servicio de impuestos no respondió
+    cliente: str | None = None
+    vendedor: str | None = None
+    reserva_id: int | None = None
     creado_en: datetime
     pagado_en: datetime | None
     items: list[ItemPedidoOut]

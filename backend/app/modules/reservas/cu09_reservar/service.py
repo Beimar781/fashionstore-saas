@@ -126,6 +126,26 @@ class ReservaService:
         for i in pendientes:
             i.estado = "NO_ENCONTRADO" if no_encontrado else "LIBERADO"
 
+    def completar_con_venta(self, reserva: Reserva, vendidos: dict[int, int], pedido_id: int, usuario_id: int | None) -> None:
+        """La venta de caja (CU-29/CU-30) cierra la reserva: lo vendido pasa de reservado a vendido y lo que el cliente no se llevó
+        vuelve a disponible. No hace commit: va en la misma transacción del cobro."""
+        reservados = {i.variante_id: i for i in reserva.items if i.estado == "RESERVADO"}
+        if any(v not in reservados or cantidad > reservados[v].cantidad for v, cantidad in vendidos.items()):
+            raise Conflicto("La venta incluye prendas que no están en la reserva.")
+        if reserva.estado == "PREPARADA":
+            self.cambiar_estado(reserva, "EN_PROBADOR")  # el cliente pasó directo a caja
+        self.cambiar_estado(reserva, "COMPLETADA")
+        vendidas = [(v, c) for v, c in vendidos.items() if c > 0]
+        sobrantes = [(v, i.cantidad - vendidos.get(v, 0)) for v, i in reservados.items() if i.cantidad > vendidos.get(v, 0)]
+        if vendidas:
+            aplicar_movimientos(self.db, self.empresa_id, reserva.sucursal_id, vendidas, "VENTA_RESERVA", "VENTA", pedido_id, usuario_id, f"Venta de la reserva {reserva.codigo}")
+        if sobrantes:
+            aplicar_movimientos(self.db, self.empresa_id, reserva.sucursal_id, sobrantes, "LIBERA_RESERVA", "RESERVA", reserva.id, usuario_id, f"Prendas de la reserva {reserva.codigo} que el cliente no compró")
+        for variante_id, item in reservados.items():
+            comprado = vendidos.get(variante_id, 0)
+            item.estado = "VENDIDO" if comprado else "LIBERADO"
+            item.cantidad = comprado or item.cantidad
+
     def expirar_vencidas(self) -> int:
         """Las reservas que pasaron su vigencia sin atenderse devuelven su stock. No hay tareas programadas: se aplica al
         consultar las reservas, así que el stock nunca queda apartado de más."""

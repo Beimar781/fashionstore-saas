@@ -20,6 +20,17 @@ Prohibido: Shopify/Magento/PrestaShop/WooCommerce. No usar Django/Celery/Redis (
 - Web: `features/<paquete>/` con rutas lazy; llamadas HTTP en `core/api/*.api.ts`; estado con signals (la app es zoneless).
 - Móvil: `lib/features/<paquete>/{data,presentation}`; SQLite en `lib/core/db`; operaciones offline con UUID generado en el cliente y estados
   REGISTRADA_LOCAL → ENVIADA → CONFIRMADA | RECHAZADA | EN_CONFLICTO (RN11/RN12); el reenvío es idempotente (RNF05).
+- **Mensajes pendientes para el Word (regla 11):** al terminar cada fase, agregar a `docs/MENSAJES_PENDIENTES_WORD.md` los mensajes nuevos (con su
+  código HTTP), las reglas de negocio y las decisiones que no están en las fichas del Word. De ahí sale la actualización del documento de la presentación 2.
+- **Servicios externos (regla 12):** Stripe, correo, IA, servicio de impuestos: un adaptador con modo simulado cuando no hay claves, probado con un doble en
+  memoria, y las claves solo en `backend/.env`. Nunca claves en el código ni en el chat.
+- **Librerías nuevas (regla 13):** se agregan a `requirements.txt` o `package.json` y se comprueba con una instalación limpia
+  (`pip install -r requirements.txt`, `npm install`).
+- **Restricciones CHECK (regla 14):** antes de usar un valor nuevo en una columna con `CHECK` (tipos y referencias de inventario, estados, métodos de pago),
+  revisar la restricción existente y ampliarla en la migración nueva. Una migración ya subida nunca se edita.
+- **Reutilizar lo construido (regla 15):** pedidos (con `canal` DIGITAL o PRESENCIAL y entrega EN_TIENDA), numeración de comprobantes `CMP-<sucursal>-<número>`,
+  generador de PDF del comprobante (`cu12_historial_compras/comprobante.py`), pasarela del CU-32 y bitácora de inventario (referencias `VENTA`, `PEDIDO` y
+  `DEVOLUCION` ya permitidas) en vez de duplicarlos.
 
 ## Pruebas
 `cd backend && python -m pytest -q` — una prueba por paso de las tablas 5.2.1/5.3.1 del documento (`tests/test_cuNN_*.py`).

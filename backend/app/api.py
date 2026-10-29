@@ -16,6 +16,10 @@ from app.modules.plataforma.cu33_empresas.router import router as cu33_empresas
 from app.modules.plataforma.cu34_planes.router import router as cu34_planes
 from app.modules.plataforma.cu35_suscripciones.router import router as cu35_suscripciones
 from app.modules.sucursales.cu14_sucursales.router import router as cu14_sucursales
+from app.modules.ventas.cu29_venta_presencial.router import router as cu29_venta_presencial
+from app.primer_parcial.ventas.cu28_productos_en_caja.router import router as cu28_productos_en_caja
+from app.primer_parcial.ventas.cu30_pago_en_caja.router import router as cu30_pago_en_caja
+from app.primer_parcial.reportes.cu27_ventas_sucursal.router import router as cu27_ventas_sucursal
 from app.primer_parcial.reservas.cu08_carrito.router import router as cu08_carrito
 from app.primer_parcial.ventas.cu11_compra_digital.router import router as cu11_compra
 from app.primer_parcial.ventas.cu12_historial_compras.router import router as cu12_historial
@@ -72,7 +76,12 @@ api_router.include_router(cu08_carrito)
 api_router.include_router(cu11_compra)
 api_router.include_router(cu12_historial)
 api_router.include_router(cu32_pagos)
+# P7/P10 · Punto de venta: productos en caja (CU-28), venta presencial (CU-29, SaaS), cobro y comprobante (CU-30), ventas de la sucursal (CU-27)
+api_router.include_router(cu28_productos_en_caja)
+api_router.include_router(cu29_venta_presencial)
+api_router.include_router(cu30_pago_en_caja)
+api_router.include_router(cu27_ventas_sucursal)
 
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
-# SaaS (app/modules): P7 ventas, P8 offline, P9 ia, P10 reportes.
-# Primer parcial (app/primer_parcial): P7 ventas (caja: CU-28, CU-30), P9 ia, P10 reportes.
+# SaaS (app/modules): P7 ventas (devoluciones, CU-41), P8 offline, P9 ia, P10 reportes.
+# Primer parcial (app/primer_parcial): P9 ia.

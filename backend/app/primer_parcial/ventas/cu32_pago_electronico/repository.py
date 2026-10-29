@@ -5,9 +5,13 @@ from app.primer_parcial.ventas.models import ClientePasarela, Pago, Pedido, Tarj
 class PagoRepository(TenantRepository[Pago]):
     model = Pago
 
-    def del_cliente(self, pago_id: int, cliente_id: int) -> Pago | None:
-        """El pago se busca por su pedido: solo el cliente dueño del pedido puede verlo o confirmarlo."""
-        stmt = self._consulta().join(Pedido, Pedido.id == Pago.pedido_id).where(Pago.id == pago_id, Pedido.cliente_id == cliente_id)
+    def del_pedido_visible(self, pago_id: int, cliente_id: int | None, sucursal_id: int | None) -> Pago | None:
+        """El pago se busca por su pedido: un cliente solo ve los de sus compras digitales; el personal de caja, los de las ventas de su sucursal."""
+        stmt = self._consulta().join(Pedido, Pedido.id == Pago.pedido_id).where(Pago.id == pago_id)
+        if cliente_id is not None:
+            stmt = stmt.where(Pedido.cliente_id == cliente_id, Pedido.canal == "DIGITAL")
+        else:
+            stmt = stmt.where(Pedido.canal == "PRESENCIAL", Pedido.sucursal_id == sucursal_id)
         return self.db.scalar(stmt)
 
     def abiertos_de(self, pedido_id: int) -> list[Pago]:

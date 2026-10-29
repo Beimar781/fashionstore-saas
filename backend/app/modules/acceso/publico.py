@@ -28,3 +28,9 @@ def nombres_de_usuarios(db: Session, empresa_id: int, ids: set[int]) -> dict[int
         return {}
     filas = db.execute(select(Usuario.id, Usuario.nombre, Usuario.apellidos).where(Usuario.empresa_id == empresa_id, Usuario.id.in_(ids)))
     return {i: f"{n} {a}".strip() for i, n, a in filas}
+
+
+def cliente_por_email(db: Session, empresa_id: int, email: str) -> Usuario | None:
+    """Cliente registrado de la empresa con ese correo (para vincularle una venta de caja); None si no existe o es de otra empresa."""
+    usuario = UsuarioRepository(db, empresa_id).por_email(email.strip().lower())
+    return usuario if usuario is not None and usuario.activo and usuario.rol.nombre == "Cliente" else None

@@ -182,8 +182,12 @@ def test_15_configuracion_de_pago_y_tarjetas_de_prueba(inv, client):
     assert {t["numero"] for t in c["tarjetas_prueba"]} >= {"4242 4242 4242 4242", "4000 0000 0000 9995", "4000 0000 0000 0119"}
 
 
-def test_16_solo_el_cliente_paga(inv, mundo, client):
+def test_16_quien_puede_pagar_una_compra_digital(inv, mundo, client):
     p = _pedido(inv, mundo, client)
-    for h in (inv.h_enc_centro, inv.h_cajero, inv.h_admin, inv.h_prov):
+    for h in (inv.h_admin, inv.h_prov):  # roles que no cobran
         assert iniciar(client, h, p["id"]).status_code == 403
         assert client.get("/api/pagos/config", headers=h).status_code == 403
+    for h in (inv.h_enc_centro, inv.h_cajero):  # la caja solo cobra ventas presenciales: una compra digital no es suya
+        assert iniciar(client, h, p["id"]).status_code == 404
+    for h in (inv.h_enc_centro, inv.h_cajero, inv.h_admin):  # las tarjetas guardadas son solo del cliente
+        assert client.get("/api/pagos/tarjetas", headers=h).status_code == 403

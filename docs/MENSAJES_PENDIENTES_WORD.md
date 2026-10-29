@@ -164,3 +164,59 @@ Lo de abajo es lo que las fichas **no** definen.
 | Cualquier otro número válido | Rechazada: solo se admiten tarjetas de prueba |
 
 Con Stripe en modo de prueba valen las tarjetas de prueba de Stripe (por ejemplo 4242 4242 4242 4242 y 4000 0000 0000 9995).
+
+## Fase E
+
+CU-27, CU-28 y CU-30 **sí tienen ficha y prueba en el Anexo B**; sus mensajes oficiales se usan tal cual: «Acceso denegado a datos de otras sucursales.» (CU-27),
+«El código de barras escaneado no coincide con ningún producto registrado en la base de datos.» (CU-28) y «Falla de red con el servicio de impuestos, se generará un
+comprobante interno temporal.» (CU-30). **CU-29 no tiene ficha ni prueba** en el Word (solo aparece en la tabla 2.5.5 como «Modificado», RF15 y RF19): falta redactarla.
+
+### Decisiones de diseño que conviene reflejar en las fichas
+
+- **CU-29 · flujo.** El cajero escanea o busca las prendas (CU-28), arma la pre-factura y registra la venta presencial, que queda *pendiente de cobro* (el stock no se
+  toca). También puede cobrar una reserva: escribe el código, elige lo que el cliente se lleva y el resto vuelve a disponible. Una reserva solo se cobra si está
+  *preparada* o *en probador*, es de su sucursal y no venció. Una reserva tiene una sola venta abierta: la nueva reemplaza a la anterior.
+- **CU-29 · cliente.** Si se indica el correo de un cliente registrado (o la venta nace de su reserva), la compra aparece en su historial (CU-12). Sin cliente, la
+  venta es de mostrador; el NIT/CI por defecto es 0 y la razón social «Sin nombre».
+- **CU-29 / CU-30 · sucursal.** Un Cajero (o el Encargado, que también puede operar la caja) solo vende y cobra en su sucursal (RN10). Una venta de otra sucursal u otra
+  empresa no existe para él (404).
+- **CU-30 · el stock se descuenta al cobrar**, no al registrar la venta. Movimiento VENTA con referencia VENTA; si la venta viene de una reserva, el stock pasa de
+  *reservado* a *vendido* (VENTA_RESERVA) y lo que el cliente no se lleva vuelve a *disponible*. Cada venta lleva un comprobante `CMP-<sucursal>-<número>`.
+- **CU-30 · medios de pago.** Efectivo (el sistema calcula el cambio), QR simple local (el cajero confirma que se pagó) y tarjeta (con la misma pasarela de CU-32; en
+  caja no se guardan tarjetas). Un solo método por venta; el pago mixto no se implementa en esta versión.
+- **CU-30 · sin stock a mitad del cobro.** Si las prendas se agotan mientras se cobra, no se descuenta nada y no se registra ningún cobro. En efectivo o QR la venta sigue
+  pendiente para que el cajero la anule y la rehaga; con tarjeta se anula la autorización y la venta queda cancelada.
+- **CU-30 · servicio de impuestos.** Adaptador simulado (regla 12): autoriza el comprobante con un código de prueba y el comprobante es una *factura*. Si el servicio no
+  responde, la venta se cobra igual y el comprobante queda como *interno temporal*. La conversión posterior del temporal en factura todavía no está implementada.
+- **CU-27 · cierre de caja.** No hay un registro de cierre: el «cierre» del día es el arqueo por método (efectivo, tarjeta, QR), con el efectivo que debe haber en caja
+  (lo cobrado en efectivo, ya descontado el cambio). Incluye las ventas de caja, los pedidos online pagados de la sucursal y las reservas completadas del día.
+- **CU-27 · otra sucursal.** Pedir los datos de otra sucursal (o un ticket de otra sucursal de la misma empresa) responde 403 con el mensaje de la ficha; un ticket de otra
+  empresa responde 404 (no se revela que existe).
+- **CU-12 · historial.** Ahora incluye también las compras presenciales de los clientes registrados, y el cliente puede descargar su comprobante.
+
+### Mensajes nuevos
+
+| CU | Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|---|
+| CU-27 | Venta inexistente o de otra empresa | «Venta no encontrada.» | 404 | Pendiente |
+| CU-27 / CU-28 / CU-29 / CU-30 | Empleado sin sucursal asignada | «Su usuario no tiene una sucursal asignada.» | 403 | Pendiente (RN10) |
+| CU-29 | Venta sin prendas | «Agregue al menos una prenda a la venta.» | 422 | Pendiente |
+| CU-29 | Prenda inactiva, retirada o de otra empresa | «Una o más prendas ya no están disponibles en el catálogo.» | 422 | Pendiente |
+| CU-29 | Falta stock en la sucursal del cajero | «No hay stock suficiente en {sucursal} para: {prenda} ({talla}, {color}): solicitadas {n}, disponibles {d}; …» | 409 | Pendiente |
+| CU-29 | Código de reserva inexistente, de otra empresa, no preparada, cancelada, completada o vencida | «El código de reserva no existe o ya ha expirado su vigencia.» (el mismo de CU-25) | 404 | Ya está en CU-25 |
+| CU-29 | La reserva es de otra sucursal | «La reserva corresponde a otra sucursal.» | 409 | Pendiente |
+| CU-29 | Prendas o cantidades que no están en la reserva | «La venta incluye prendas o cantidades que no están en la reserva.» | 422 | Pendiente |
+| CU-29 | Correo de cliente inexistente, de un empleado o de otra empresa | «No hay un cliente registrado con ese correo.» | 404 | Pendiente |
+| CU-29 | Anular una venta ya cobrada | «Una venta ya cobrada no se puede anular; registre una devolución.» | 409 | Pendiente |
+| CU-29 | Anular una venta ya anulada | «La venta ya está anulada.» | 409 | Pendiente |
+| CU-30 | Efectivo sin monto recibido | «Ingrese el monto recibido.» | 422 | Pendiente |
+| CU-30 | Monto recibido menor al total | «El monto recibido es menor al total de la venta.» | 422 | Pendiente |
+| CU-30 | Cobrar una venta que no está pendiente | «La venta no está pendiente de cobro.» | 409 | Pendiente |
+| CU-30 | Comprobante de una venta sin cobrar | «Solo hay comprobante de ventas cobradas.» | 409 | Pendiente |
+| CU-30 | El stock se agotó a mitad del cobro | «Algunas prendas se agotaron mientras pagaba: {prenda} ({talla}, {color}): quedan {n}, necesita {m}. No se realizó ningún cobro. Anule la venta y regístrela de nuevo con lo disponible.» | 409 | Pendiente |
+| CU-30 | La reserva venció a mitad del cobro | «La reserva ya no está vigente. No se realizó ningún cobro.» | 409 | Pendiente |
+| CU-30 | Tarjeta rechazada en caja | Los mismos de CU-11 y CU-32: «La transacción no pudo ser procesada…» con el motivo «Transacción denegada por su banco» | 402 | Ya están en CU-11 y CU-32 |
+
+### Configuración nueva
+
+`IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` (opcional): simula que el servicio de impuestos no responde, para mostrar el comprobante interno temporal de la ficha CU-30.

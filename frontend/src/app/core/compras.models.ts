@@ -11,12 +11,14 @@ export interface Carrito {
 export type EstadoPedido = 'PENDIENTE_PAGO' | 'PENDIENTE_CONFIRMACION' | 'PAGADO' | 'CANCELADO';
 export interface ItemPedido { id: number; variante_id: number; sku: string; producto: string; talla: string; color: string; cantidad: number; precio_unitario: string; precio_final: string; subtotal: string; }
 export interface PagoResumen {
-  id: number; estado: string; metodo: string; proveedor: string; monto: string; tarjeta_marca: string; tarjeta_ultimos4: string; mensaje: string; motivo: string; creado_en: string;
+  id: number; estado: string; metodo: string; proveedor: string; monto: string; monto_recibido?: string | null; cambio?: string | null; tarjeta_marca: string; tarjeta_ultimos4: string; mensaje: string; motivo: string; creado_en: string;
 }
 export interface Pedido {
   id: number; codigo: string; estado: EstadoPedido; canal: string; tipo_entrega: string; direccion_entrega: string; nit_ci: string; razon_social: string;
   sucursal_id: number; sucursal: string; subtotal: string; descuento: string; iva_incluido: string; total: string; moneda: string; total_unidades: number;
-  comprobante_numero: string | null; creado_en: string; pagado_en: string | null; items: ItemPedido[]; pagos: PagoResumen[];
+  comprobante_numero: string | null; comprobante_tipo?: 'FACTURA' | 'INTERNO_TEMPORAL' | null; comprobante_aviso?: string | null;
+  cliente?: string | null; vendedor?: string | null; reserva_id?: number | null;
+  creado_en: string; pagado_en: string | null; items: ItemPedido[]; pagos: PagoResumen[];
 }
 export interface CompraResumen { id: number; codigo: string; fecha: string; sucursal: string; canal: string; estado: EstadoPedido; total: string; total_unidades: number; comprobante_numero: string | null; }
 export interface Historial { compras: CompraResumen[]; mensaje: string | null; }

@@ -22,13 +22,14 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | CU-14 Ciudades y sucursales | `sucursales/cu14_sucursales` | `GET/POST /api/sucursales`, `PUT …/{id}`, `POST …/activar`, `…/desactivar`, `GET/POST /api/ciudades` | `administracion/sucursales.page.ts` | — | `test_cu14_sucursales.py` (7 pasos) |
 | CU-20 Consultar inventario global | `inventario/cu20_inventario_global` | `GET /api/inventario/global` (q, categoría, temporada, estado, sucursal, paginación) | `inventario/inventario.page.ts` (Administrador) | — | `test_cu20_inventario_global.py` (8 pruebas: disponibles, reservadas, vendidas, agotadas, próximas a ingresar) |
 | CU-26 Gestionar disponibilidad e inventario de la sucursal | `inventario/cu26_inventario_sucursal` (+ `publico.py::aplicar_movimientos`, único camino para cambiar existencias) | `GET /api/inventario/sucursal`, `POST …/sucursal/movimientos`, `PUT …/sucursal/variantes/{id}/umbral`, `GET /api/inventario/movimientos`, `GET /api/inventario/recepciones`, `POST …/recepciones/{lote}/recibir` | `inventario/inventario.page.ts`, `recepciones.page.ts`, `movimientos.page.ts` (Encargado) | — | `test_cu26_inventario_sucursal.py` (15 pruebas: ajustes, bitácora, recepción de lotes, núcleo de movimientos) |
+| CU-29 Registrar venta presencial | `ventas/cu29_venta_presencial` (usa `primer_parcial/ventas/publico.py`) | `POST /api/caja/ventas`, `GET …/ventas/pendientes`, `GET/DELETE …/ventas/{id}`, `GET /api/caja/reservas/{codigo}` | `primer-parcial/ventas/caja.page.ts` (Cajero en `/pos/caja`, Encargado en `/sucursal/caja`) | — | `test_cu29_venta_presencial.py` (15 pruebas: stock de la sucursal del cajero, desde una reserva, aislamiento) |
 | CU-33 Empresas (tenants) | `plataforma/cu33_empresas` | `GET/POST /api/plataforma/empresas`, `PUT …/{id}`, `POST …/suspender`, `…/reactivar` (+ `DELETE` rechazado) | `plataforma/empresas.page.ts` | — | `test_cu33_empresas.py` (6 pasos) |
 | CU-34 Planes | `plataforma/cu34_planes` | `GET/POST /api/plataforma/planes`, `PUT …/{id}`, `POST …/inactivar` | `plataforma/planes.page.ts` | — | `test_cu34_planes.py` (5 pasos) |
 | CU-35 Suscripciones | `plataforma/cu35_suscripciones` | `GET …/empresas/{id}/suscripcion`, `POST …/suscripciones`, `POST …/suscripcion/suspender` | `plataforma/suscripcion.page.ts` | — | `test_cu35_suscripciones.py` (6 pasos) |
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-CU-29 (E) · CU-41 (F) ·
+CU-41 (F) ·
 CU-21, CU-22, CU-23, CU-42, CU-36 (G) · CU-37 a CU-40 (H).
 
 ## Primer parcial (Anexo B)
@@ -50,10 +51,10 @@ pruebas en `backend/tests/primer_parcial/`.
 | reservas (P6) | CU-25 Recepción y atención | `reservas/cu25_confirmar_atencion` | `POST /api/atencion-reservas/validar`, `POST …/{id}/atender`, `POST …/{id}/completar` | `primer-parcial/reservas/atencion.page.ts` | — | `primer_parcial/test_cu25_confirmar_atencion.py` (5 pasos + 4) |
 | ventas (P7) | CU-11 Compra digital | `ventas/cu11_compra_digital` (+ `finalizar()`: stock, comprobante y carrito al aprobarse el pago) | `POST /api/compras/checkout` | `primer-parcial/ventas/checkout.page.ts` | — | `primer_parcial/test_cu11_compra_digital.py` (5 pasos + 9: stock al pagar, no se cobra sin stock) |
 | ventas (P7) | CU-12 Historial de compras | `ventas/cu12_historial_compras` (+ `comprobante.py`, PDF) | `GET /api/compras`, `GET …/{id}`, `GET …/{id}/comprobante` | `primer-parcial/ventas/mis-compras.page.ts`, `compra-detalle.page.ts` | — | `primer_parcial/test_cu12_historial_compras.py` (5 pasos + 5) |
-| ventas (P7) | CU-28 Productos en caja | — | — | — | — | — |
-| ventas (P7) | CU-30 Pago en caja y comprobante | — | — | — | — | — |
+| ventas (P7) | CU-28 Productos en caja | `ventas/cu28_productos_en_caja` | `GET /api/caja/productos?q=`, `GET /api/caja/productos/codigo/{codigo}` | `primer-parcial/ventas/caja.page.ts` | — | `primer_parcial/test_cu28_productos_en_caja.py` (5 pasos + 2) |
+| ventas (P7) | CU-30 Pago en caja y comprobante | `ventas/cu30_pago_en_caja` (+ `core/impuestos.py`, adaptador del servicio de impuestos; tarjeta por `cu32_pago_electronico`) | `POST /api/caja/ventas/{id}/cobrar` (efectivo y QR), `GET …/{id}/comprobante`; con tarjeta `POST /api/pagos/pedidos/{id}/iniciar` y `…/{pago}/confirmar` | `primer-parcial/ventas/caja.page.ts`, `pago-tarjeta.component.ts` | — | `primer_parcial/test_cu30_pago_en_caja.py` (5 pasos + 11: sin stock a mitad del cobro, desde una reserva) |
 | ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
-| reportes (P10) | CU-27 Ventas de la sucursal | — | — | — | — | — |
+| reportes (P10) | CU-27 Ventas de la sucursal | `reportes/cu27_ventas_sucursal` | `GET /api/reportes/sucursal/resumen`, `GET …/ventas`, `GET …/ventas/{id}` | `primer-parcial/reportes/ventas-sucursal.page.ts` (Encargado) | — | `primer_parcial/test_cu27_ventas_sucursal.py` (5 pasos + 4) |
 | ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
 | ia (P9) | CU-07 Asistente y recomendador | — | — | — | — | — |
 
@@ -122,6 +123,26 @@ Flujo de la compra digital:
 Sin `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` en `backend/.env` se usa la pasarela simulada (solo tarjetas de prueba, ver `docs/MENSAJES_PENDIENTES_WORD.md`).
 Con las dos claves de prueba, la web carga Stripe.js y el número de la tarjeta lo captura Stripe: nunca pasa por nuestro servidor. **El adaptador de Stripe
 se probó con un Stripe simulado en memoria; no se probó contra Stripe real porque no hay claves en este entorno.**
+
+## Esquema de la Fase E (migración 0007)
+
+Sin tablas nuevas: la venta de caja es un **pedido** de canal PRESENCIAL y entrega EN_TIENDA (regla 15). La migración agrega `pedidos.reserva_id` (venta nacida de una
+reserva, con un índice único para que una reserva tenga una sola venta abierta), `pedidos.comprobante_tipo` y `autorizacion_fiscal` (FACTURA o INTERNO_TEMPORAL),
+`pagos.monto_recibido` y `cambio` (arqueo de caja) y amplía el `CHECK` de `pagos.metodo` con `QR`.
+
+Flujo de la venta de caja:
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | El cajero escanea el código de barras (o el SKU) o busca por nombre; ve talla, color, precio con promoción y el stock de **su** sucursal | CU-28 |
+| 2 | Arma la pre-factura y registra la venta: queda PENDIENTE_PAGO, sin tocar el stock. Puede venir de una reserva preparada o en probador | CU-29 `VentaPresencialService.crear` |
+| 3 | Cobra: efectivo (calcula el cambio), QR, o tarjeta con la pasarela del CU-32 | CU-30 `CobroCajaService.cobrar` / CU-32 |
+| 4 | `CompraService.finalizar`: descuenta el stock de la sucursal (movimiento VENTA, referencia VENTA; desde una reserva, VENTA_RESERVA), numera el comprobante `CMP-<sucursal>-<número>` y pide la autorización al servicio de impuestos | CU-11 `finalizar` |
+| 4b | Si el stock se agotó a mitad del cobro: no se descuenta nada y no se registra ningún cobro (con tarjeta se anula la autorización) | `SinStock` |
+| 5 | Si el servicio de impuestos no responde, la venta no se pierde: queda un comprobante interno temporal y se muestra el aviso de la ficha | `core/impuestos.py` |
+
+El Encargado consulta el día en CU-27 (resumen, cierre de caja por método, efectivo esperado en caja, reservas completadas y tickets). El servicio de impuestos es
+simulado; con `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` se ve el comprobante interno temporal.
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

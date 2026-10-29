@@ -32,6 +32,9 @@ class Pedido(Base):
     moneda: Mapped[str] = mapped_column(String(3), default="BOB")
     motivo_cancelacion: Mapped[str] = mapped_column(String(200), default="")
     comprobante_numero: Mapped[str | None] = mapped_column(String(30))
+    comprobante_tipo: Mapped[str | None] = mapped_column(String(20))  # FACTURA o INTERNO_TEMPORAL (servicio de impuestos caído)
+    autorizacion_fiscal: Mapped[str | None] = mapped_column(String(40))
+    reserva_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("reservas.id"))  # venta de caja nacida de una reserva
     creado_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     pagado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -78,6 +81,8 @@ class Pago(Base):
     referencia_externa: Mapped[str | None] = mapped_column(String(80))
     metodo_pago_ref: Mapped[str | None] = mapped_column(String(80))
     guardar_tarjeta: Mapped[bool] = mapped_column(Boolean, default=False)
+    monto_recibido: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))  # efectivo: lo que entregó el cliente
+    cambio: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     tarjeta_marca: Mapped[str] = mapped_column(String(20), default="")
     tarjeta_ultimos4: Mapped[str] = mapped_column(String(4), default="")
     mensaje: Mapped[str] = mapped_column(String(300), default="")

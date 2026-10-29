@@ -18,6 +18,18 @@ class PedidoRepository(TenantRepository[Pedido]):
     def pendientes_de_pago(self, cliente_id: int) -> list[Pedido]:
         return list(self.db.scalars(self._consulta().where(Pedido.cliente_id == cliente_id, Pedido.estado == "PENDIENTE_PAGO")))
 
+    def abiertos_presenciales(self, sucursal_id: int) -> list[Pedido]:
+        """Ventas de caja de la sucursal que todavía no se cobran."""
+        stmt = (
+            self._consulta().where(Pedido.canal == "PRESENCIAL", Pedido.sucursal_id == sucursal_id, Pedido.estado.in_(("PENDIENTE_PAGO", "PENDIENTE_CONFIRMACION")))
+            .options(selectinload(Pedido.items)).order_by(Pedido.creado_en.desc(), Pedido.id.desc())
+        )
+        return list(self.db.scalars(stmt))
+
+    def abierto_de_reserva(self, reserva_id: int) -> Pedido | None:
+        stmt = self._consulta().where(Pedido.reserva_id == reserva_id, Pedido.estado.in_(("PENDIENTE_PAGO", "PENDIENTE_CONFIRMACION")))
+        return self.db.scalar(stmt)
+
     def agregar_item(self, pedido: Pedido, **campos) -> PedidoItem:
         item = PedidoItem(empresa_id=self.empresa_id, **campos)
         pedido.items.append(item)

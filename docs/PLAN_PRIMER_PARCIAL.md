@@ -1,7 +1,18 @@
 # Plan: casos de uso del primer parcial dentro del SaaS
 
 Base: el monorepo `fashionstore-saas` (FastAPI + Angular PWA + Flutter), con aislamiento por `empresa_id`. Ya están hechos CU-02, 13, 14, 33, 34 y 35.
-Quedan **36 casos de uso** del documento, repartidos en las fases de abajo.
+Quedan **16 casos de uso** de los 36 que había al empezar; las fases A a D ya están hechas y subidas.
+
+| Fase | Estado | Commit | CU |
+|---|---|---|---|
+| A Catálogo | Hecha | `0f151cd` | 01, 03, 04, 16, 17, 18, 19 |
+| B Proveedores e inventario | Hecha | `e474c8f` | 05, 15, 20, 26, 31 |
+| C Reservas | Hecha | `6b64a86` | 09, 10, 24, 25 y RF11 |
+| D Compra digital | Hecha | `60831af` | 08, 11, 12, 32 |
+| E Punto de venta | **Siguiente** | | 27, 28, 29, 30 |
+| F, G, H, I | Pendientes | | 41 · 07, 21, 22, 23, 36, 42 · 37 a 40 · 06 |
+
+Hasta la Fase D: 308 pruebas del backend pasando, la web compila y la última migración es la 0006.
 
 Fuentes (todo en `D:\proyectos\1er parcial si2\`):
 - `1er-parcialSI2\backend-ecommerce-si2`: Django (apps catalog, inventory, orders, payments, pos, promotions, reservations, suppliers, reports, ai, notifications).
@@ -16,7 +27,7 @@ Fuentes (todo en `D:\proyectos\1er parcial si2\`):
 - Corre Flutter, hace `git push` y ve los errores reales de tu máquina.
 - El `CLAUDE.md` del repo ya le da las reglas de arquitectura, y las pruebas le avisan si rompe algo.
 
-Mi parte: revisar cada entrega (clono el repo, corro pruebas y build), ajustar el plan y actualizar el documento y la trazabilidad.
+Mi parte: revisar cada entrega (clono el repo, corro pruebas y build en una copia limpia), ajustar el plan y actualizar el documento y la trazabilidad. Después de cada fase me pasas el resumen que te da Claude Code.
 
 ## 2. Qué hay que construir
 
@@ -29,9 +40,10 @@ Origen: **Portar** (existe en el código viejo y se pasa a FastAPI con `empresa_
 | | CU-18 | Productos con variantes talla×color e imágenes | Portar | Product, ProductVariant, ProductImage |
 | | CU-19 | Promociones y descuentos | Portar | `promotions/` |
 | | CU-01 | Registrar cuenta de cliente | Portar | `accounts/` (registro) |
-| | CU-03, 04, 05 | Consultar catálogo, buscar y filtrar, tallas y colores con disponibilidad por sucursal | Portar | `catalog/views.py` |
+| | CU-03, 04 | Consultar catálogo, buscar y filtrar | Portar | `catalog/views.py` |
 | B Proveedores e inventario | CU-15 | Proveedores | Portar | `suppliers/` |
 | | CU-31 | Información de productos y abastecimiento (el Proveedor envía productos; el Administrador los revisa; recepción de compra suma stock) | Portar | ProductSubmission, PurchaseReceipt |
+| | CU-05 | Tallas y colores con disponibilidad por sucursal | Portar | `catalog/views.py` |
 | | CU-26 | Disponibilidad e inventario de la sucursal (Encargado) | Ampliar | `inventory/` BranchStock, InventoryMovement |
 | | CU-20 | Inventario global: disponibles, reservadas, vendidas, agotadas y próximas a ingresar | Ampliar | `inventory/` (falta "próximas a ingresar") |
 | C Reservas | CU-09 | Reservar varias prendas en una sucursal | Portar | `reservations/` |
@@ -55,7 +67,7 @@ Origen: **Portar** (existe en el código viejo y se pasa a FastAPI con `empresa_
 | H Móvil y offline | CU-37 | Descargar catálogo para uso offline | **Nuevo** | no existe |
 | | CU-38, 39 | Sincronizar operaciones pendientes; consultar estado local | **Nuevo** | no existe |
 | | CU-40 | Gestionar conflictos de sincronización | **Nuevo** | no existe |
-| | CU-06 | Vestidor virtual con realidad aumentada | Portar | `infer_service/`, `catalog/` ARAsset, módulo `fitting` del móvil |
+| I Vestidor virtual | CU-06 | Vestidor virtual con realidad aumentada | Portar | `infer_service/`, `catalog/` ARAsset, módulo `fitting` del móvil |
 
 ## 3. Cómo se organiza el código
 
@@ -96,7 +108,8 @@ Dos zonas, igual que el documento: lo que es del **SaaS multitenant** queda a si
 
 Reglas de dependencia:
 - Los paquetes se hablan solo por `publico.py`; nunca tocan las tablas de otro. Por ejemplo, `ventas` pide stock a `inventario` mediante su `publico.py`.
-- Las dependencias van en un solo sentido, sin ciclos. Por ejemplo: `primer_parcial/catalogo` ← `modules/inventario` ← `primer_parcial/ventas` ← `modules/ventas`.
+- Las dependencias van en un solo sentido, sin ciclos. Cadena real hasta la Fase D: `primer_parcial/catalogo` ← `modules/inventario` ← `modules/reservas` ← `primer_parcial/reservas` (carrito) ← `primer_parcial/ventas`. Lo que sigue se apoya en esa cadena: `modules/ventas` (CU-29, CU-41) usará `primer_parcial/ventas`, y los reportes leerán de ventas y reservas, nunca al revés.
+- Un paquete SaaS puede depender de uno del primer parcial (por ejemplo, el catálogo del SaaS usa los modelos de `primer_parcial/catalogo`); lo que no puede haber son ciclos.
 - Para el usuario final no hay diferencia: los menús y las pantallas muestran todo junto. La separación es solo de carpetas y de documentación.
 - Las migraciones y el `docs/TRAZABILIDAD.md` siguen siendo uno solo; este último tiene dos tablas: «SaaS» y «Primer parcial (Anexo B)».
 
@@ -116,13 +129,18 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 1. Un paquete por carpeta y un caso de uso por subcarpeta, en la zona que le toca según la sección 3 (SaaS o `primer_parcial`): `<zona>/<paquete>/cuNN_<nombre>/{router,service,repository,schemas}.py`. Nada de lógica suelta fuera de un CU.
 2. Modelo con `empresa_id` y repositorio que hereda de `TenantRepository`; la empresa sale siempre del token.
 3. Únicos por empresa: `slug`, `sku`, `codigo`, `nombre`. Imágenes en una carpeta por empresa. Stock por sucursal de la empresa.
-4. Migración Alembic nueva (0003 en adelante); no se edita la 0001 ni la 0002.
+4. Una migración Alembic nueva por fase (0003 fue la A; la última es la 0006; la siguiente es la 0007). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
 5. Textos de error iguales a los de la ficha del CU en el documento (Anexo B para los conservados).
 6. Pruebas en `backend/tests/test_cuNN_*.py`, una por paso de la ficha, más una de aislamiento entre empresas.
 7. Funciones por plan (IA, reportes) con `exigir_funcionalidad(...)`.
 8. Web: rutas lazy por paquete y llamadas HTTP en `core/api/*.api.ts`. Móvil: una carpeta por paquete.
 9. Al terminar cada fase: actualizar `docs/TRAZABILIDAD.md`, correr `python -m pytest -q` y `npm run build`, y hacer commit.
 10. Cada fase agrega datos de ejemplo al seed para EMP-A y EMP-B.
+11. Al terminar cada fase, agregar a `docs/MENSAJES_PENDIENTES_WORD.md` los mensajes nuevos (con su código HTTP), las reglas de negocio y las decisiones que no están en las fichas del Word. De ahí sale la actualización del documento de la presentación 2.
+12. Servicios externos (Stripe, correo, IA): un adaptador con modo simulado cuando no hay claves, probado con un doble en memoria, y las claves solo en `backend/.env`. Nunca claves en el código ni en el chat.
+13. Librerías nuevas: se agregan a `requirements.txt` o `package.json` y se comprueba con una instalación limpia (`pip install -r requirements.txt`, `npm install`).
+14. Antes de usar un valor nuevo en una columna con `CHECK` (tipos y referencias de inventario, estados), revisar la restricción existente y ampliarla en la migración nueva.
+15. Reutilizar lo ya construido en vez de duplicarlo: pedidos (ya tienen `canal` DIGITAL o PRESENCIAL y entrega EN_TIENDA), numeración de comprobantes `CMP-<sucursal>-<número>`, generador de PDF del comprobante (`cu12_historial_compras/comprobante.py`), pasarela del CU-32 y bitácora de inventario (referencias `VENTA`, `PEDIDO` y `DEVOLUCION` ya permitidas).
 
 ## 6. Orden recomendado
 
@@ -152,7 +170,7 @@ Sigue la sección «Forma de trabajo» de CLAUDE.md: habla siempre en español, 
 Resume en 10 líneas cómo vas a hacerlo y espera mi OK.
 ```
 
-**Prompt A (catálogo)**
+**Prompt A (catálogo)** — *hecho*
 ```
 Implementa la Fase A. En el SaaS (backend/app/modules): CU-03 y CU-04 (consultar catálogo, buscar y filtrar) en catalogo
 y CU-01 (registro de cliente) en acceso. Del primer parcial (backend/app/primer_parcial/catalogo): CU-16 (categorías,
@@ -165,7 +183,7 @@ en features/catalogo. Agrega productos de ejemplo al seed. Al terminar corre pyt
 docs/TRAZABILIDAD.md y haz commit.
 ```
 
-**Prompt B (proveedores e inventario)**
+**Prompt B (proveedores e inventario)** — *hecho*
 ```
 Implementa la Fase B. Del primer parcial: CU-15 (proveedores) y CU-31 (el Proveedor envía productos, el Administrador los
 aprueba o rechaza, la recepción de compra suma stock) en backend/app/primer_parcial/proveedores. En el SaaS (modules/inventario):
@@ -175,7 +193,7 @@ existencias: disponible, reservada, vendida, agotada y próxima a ingresar (esta
 pendientes). Todo movimiento de inventario se registra con tipo, referencia y usuario. Mismas reglas del plan.
 ```
 
-**Prompt C (reservas)**
+**Prompt C (reservas)** — *hecho*
 ```
 Implementa la Fase C. En el SaaS (modules/reservas): CU-09 (reservar varias prendas en una sucursal con horario aproximado)
 y CU-10 (consultar y cancelar reservas, el Cliente). Del primer parcial (primer_parcial/reservas): CU-24 y CU-25 (el
@@ -184,7 +202,7 @@ disponible a reservado; cancelar o expirar lo devuelve. Notifica la reserva a la
 y notifications/ del backend viejo. Mismas reglas.
 ```
 
-**Prompt D (compra digital)**
+**Prompt D (compra digital)** — *hecho*
 ```
 Implementa la Fase D, todo del primer parcial: CU-08 (carrito, en primer_parcial/reservas) y CU-11 (compra digital), CU-12
 (historial de compras) y CU-32 (pago electrónico con Stripe en modo prueba; si no hay clave configurada, pago de simulación),
@@ -194,19 +212,34 @@ de la sucursal elegida. Mismas reglas.
 
 **Prompt E (punto de venta)**
 ```
-Implementa la Fase E. Del primer parcial: CU-28 (consultar productos en caja) y CU-30 (cobro en efectivo o tarjeta y comprobante
-con número por sucursal) en primer_parcial/ventas, y CU-27 (ventas de la sucursal) en primer_parcial/reportes. En el SaaS
-(modules/ventas): CU-29 (registrar venta presencial, también desde una reserva). Basándote en pos/ y payments/ del backend viejo.
-Cada venta descuenta el stock de la sucursal del Cajero. Mismas reglas.
+Antes de empezar, agrega a CLAUDE.md las reglas 11 a 15 de la sección 5 de docs/PLAN_PRIMER_PARCIAL.md (mensajes pendientes para el
+Word, servicios externos con modo simulado, librerías nuevas, restricciones CHECK y reutilizar lo construido).
+El archivo docs/PLAN_PRIMER_PARCIAL.md ya está actualizado en mi carpeta pero todavía no se subió: inclúyelo en el commit de esta fase
+(no lo modifiques; solo agrégalo con git add).
+Implementa la Fase E. Del primer parcial: CU-28 (consultar productos en caja: el Cajero busca prendas y ve talla, color y
+stock de SU sucursal) y CU-30 (cobro en efectivo o con tarjeta y comprobante) en primer_parcial/ventas, y CU-27 (ventas de la
+sucursal: resumen diario y listado) en primer_parcial/reportes. En el SaaS (modules/ventas): CU-29 (registrar venta presencial,
+también desde una reserva ya preparada). Basándote en pos/ y payments/ del backend viejo.
+Reutiliza lo de la Fase D (regla 15): la tabla de pedidos con canal PRESENCIAL y entrega EN_TIENDA, la numeración
+CMP-<sucursal>-<número>, el PDF de comprobante, la pasarela del CU-32 para el cobro con tarjeta y la bitácora de inventario
+con referencia VENTA. Cada venta descuenta el stock de la sucursal del Cajero; si viene de una reserva, pasa de reservado a
+vendido. Si el cliente está registrado, la venta aparece en su historial (CU-12). Un Cajero solo vende en su sucursal.
+Pruebas por paso y de aislamiento entre EMP-A y EMP-B; incluye una prueba de venta que se queda sin stock a mitad del cobro.
+Web: pantalla de caja en features/primer-parcial/ventas. Seed: ventas presenciales de ejemplo. Termina con la sección de la
+fase en docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas.
 ```
 
 **Prompt F (devoluciones, nuevo)**
 ```
 Implementa la Fase F: CU-41 (devoluciones y cambios de prendas), en modules/ventas (cu41_devoluciones). Es un caso de uso
 NUEVO, no existe en el código viejo. Lee su ficha en el documento y el objetivo 11 del enunciado. El Cajero o Encargado
-registra la devolución de una venta o pedido existente (parcial o total), con motivo; la prenda vuelve al stock de la sucursal
-y se registra el movimiento de inventario; si es un cambio, se descuenta la prenda nueva. No se puede devolver más de lo
-vendido ni una venta de otra empresa. Mismas reglas del plan.
+registra la devolución de una venta presencial o de una compra digital (parcial o total), con motivo; la prenda vuelve al
+stock de la sucursal con referencia DEVOLUCION en la bitácora de inventario; si es un cambio, se descuenta la prenda nueva.
+Si la compra se pagó con tarjeta, el reembolso pasa por la misma pasarela del CU-32 (en simulado se marca como reembolsado;
+con Stripe, reembolso de prueba); si fue en efectivo, queda registrada la devolución del dinero. No se puede devolver más
+de lo vendido, ni dos veces la misma prenda, ni una venta de otra empresa. Las devoluciones restan en las ventas netas de
+los reportes. Pruebas por paso, de aislamiento y de devolución repetida. Termina con la sección de la fase en
+docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas del plan.
 ```
 
 **Prompt G (reportes e IA)**
@@ -215,9 +248,10 @@ Implementa la Fase G. En el SaaS: CU-21 (ventas y reservas) y CU-22 (indicadores
 (reportes generativos: el Administrador escribe o dicta por voz una petición y el sistema interpreta y genera el reporte,
 basándote en reports/prompt_interpreter.py del backend viejo; la voz usa la Web Speech API del navegador) y CU-42 (dashboard
 analítico con Machine Learning, por ejemplo pronóstico de demanda o clasificación de rotación con scikit-learn) en modules/ia;
-CU-36 (plan, límites y uso de la empresa) en plataforma. Del primer parcial: CU-07 (asistente y recomendador, basándote en ai/)
+CU-36 (plan, límites y uso de la empresa) en plataforma. CU-21 incluye ventas digitales y presenciales netas de devoluciones y una vista de pagos (aprobados, rechazados y pendientes de confirmación, desde la tabla pagos). Del primer parcial: CU-07 (asistente y recomendador, basándote en ai/)
 en primer_parcial/ia. Las funciones de IA y reportes se protegen con exigir_funcionalidad según el plan. La IA externa se
-consume por API con clave en .env; sin clave, responde con un modo de respaldo. Mismas reglas.
+consume por API con clave en .env; sin clave, responde con un modo de respaldo (regla 12). Termina con la sección de la fase en
+docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas.
 ```
 
 **Prompt H (móvil y offline)**
@@ -286,11 +320,12 @@ Mejoras para la versión en Flutter:
 
 ## 10. Pendientes que necesito de ti
 
-- Claves de prueba de Stripe, solo si quieres CU-32 con tarjeta real (si no, queda en simulación).
+- **Claves de prueba de Stripe** (CU-32): crear la cuenta gratis, activar el *modo de prueba* y copiar `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` a `backend/.env`. El adaptador solo se probó contra un Stripe simulado en memoria; con las claves hay que hacer una compra real de prueba (4242 4242 4242 4242) y ver el pago en el panel de Stripe. Sin claves todo funciona en modo simulado.
 - Cuenta de Brevo para el correo de restablecer contraseña, cuando se despliegue.
 - Decidir dónde desplegar (Render, Railway, un VPS) cuando terminen las fases.
 
-## 11. Correcciones que le tocan al repo antes de seguir
+## 11. Para el final
 
-- Quitar `package-lock.json` suelto de la raíz.
-- `docs/TRAZABILIDAD.md` aún cita la tabla 4.4.3 del documento (ya no existe): quitar esa frase.
+- Pasar al Word de la presentación 2 todo lo de `docs/MENSAJES_PENDIENTES_WORD.md` (mensajes de CU-08, 09, 10, 11, 12, 24, 25, 32 y RF11, más lo que salga de las fases siguientes).
+- `CLAUDE.md` y este plan nombran a Claude Code: decidir qué hacer con ellos antes de la entrega final.
+- Revisar en Word los números de página del índice del documento.

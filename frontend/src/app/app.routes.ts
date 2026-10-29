@@ -38,11 +38,12 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     loadChildren: () => import('./features/primer-parcial/proveedores/proveedores.routes').then((m) => m.PORTAL_PROVEEDOR_ROUTES),
   },
-  // Paneles de los demás roles (se completan con las siguientes fases)
-  ...['pos'].map((path) => ({
-    path, canActivate: [authGuard],
-    loadComponent: () => import('./features/panel-pendiente.page').then((m) => m.PanelPendientePage),
-  })),
+  {
+    path: 'pos',
+    canActivate: [rolGuard(ROL.CAJERO)],
+    loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
+    loadChildren: () => import('./features/primer-parcial/ventas/ventas.routes').then((m) => m.CAJA_ROUTES),
+  },
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: '**', redirectTo: 'login' },
 ];

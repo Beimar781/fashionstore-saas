@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     # Pagos (CU-32): sin claves de Stripe se usa un pago simulado con tarjetas de prueba. Las claves van en .env, nunca en el código.
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
+    # Servicio de impuestos (CU-30): hoy es simulado; esta opción simula que no responde, para ver el comprobante interno temporal
+    impuestos_simular_falla: bool = False
     tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
 
     @property

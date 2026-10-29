@@ -4,7 +4,7 @@ El Lote 1 (núcleo multitenant) está implementado y probado. El resto del docum
 **toda tabla nueva lleva `empresa_id`, todo repositorio nuevo hereda de `TenantRepository`, y toda ruta de empresa usa `contexto_operativo(...)`.**
 
 ## Lote 2 — Operación comercial por empresa y offline
-~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), ~~CU-05~~ (hecho en la Fase B), ~~CU-09~~ (hecho en la Fase C), CU-29, CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
+~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), ~~CU-05~~ (hecho en la Fase B), ~~CU-09~~ (hecho en la Fase C), ~~CU-29~~ (hecho en la Fase E), CU-36, CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
 - Web: IndexedDB ya tiene los almacenes `catalogo`, `operaciones` y `cache_meta` (`core/offline/local-db.service.ts`).
 - Móvil: SQLite ya tiene las tablas `productos_locales` y `operaciones_pendientes` con los estados de RN11 (`lib/core/db/local_database.dart`).
 - Gancho de CU-14 (desactivar con pendientes): ya cubre las reservas; la cola offline (CU-38) debe registrar el suyo con `sucursales/publico.py::registrar_verificador_de_pendientes`.
@@ -22,7 +22,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 | ~~CU-16, CU-17, CU-18, CU-19 catálogo y promociones~~ (hechos en la Fase A) | `catalog`, `promotions` | `primer_parcial/catalogo` |
 | ~~CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos~~ (hechos en la Fase D) | `orders`, `payments` | `primer_parcial/reservas` y `primer_parcial/ventas` |
 | ~~CU-24, CU-25 reservas de sucursal~~ (hechos en la Fase C) | `reservations` | `primer_parcial/reservas` |
-| CU-27, CU-28, CU-30 ventas y punto de venta | `pos`, `orders` | P7 |
+| ~~CU-27, CU-28, CU-30 ventas y punto de venta~~ (hechos en la Fase E) | `pos`, `orders` | `primer_parcial/ventas` y `primer_parcial/reportes` |
 | CU-06, CU-07 vestidor virtual (RA) y asistente IA | `infer_service`, `ai` | P9 |
 
 Riesgo a planificar: el vestidor virtual del móvil está en React Native; en Flutter requiere cámara + estimación de pose

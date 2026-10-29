@@ -3,15 +3,15 @@
 El carrito es de un cliente dentro de una empresa y de una sucursal (de ahí sale el stock). No aparta stock: la disponibilidad se
 vuelve a verificar al agregar, al mostrar el carrito y al pagar.
 """
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.errors import Conflicto, DatosInvalidos, NoEncontrado
 from app.modules.inventario.publico import disponible_por_variante
 from app.modules.sucursales.publico import datos_de_sucursal_activa, nombres_de_sucursales
 from app.core.tiempo import ahora
+from app.core.tipos import iva_incluido
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
 from app.primer_parcial.reservas.cu08_carrito import schemas
 from app.primer_parcial.reservas.cu08_carrito.repository import CarritoRepository, VarianteCarritoRepository
@@ -20,7 +20,6 @@ from app.primer_parcial.reservas.models import Carrito
 MSG_STOCK = "La cantidad solicitada supera el stock disponible temporalmente."  # excepción de la ficha CU-08
 MSG_ELEGIR_SUCURSAL = "Elija la sucursal en la que desea comprar."
 MSG_NO_DISPONIBLE = "La prenda ya no está disponible en el catálogo."
-CENTAVO = Decimal("0.01")
 
 
 class CarritoService:
@@ -119,7 +118,6 @@ class CarritoService:
 
     def _salida(self, carrito: Carrito | None) -> schemas.CarritoOut:
         """Arma el carrito con precios vigentes (promociones incluidas), disponibilidad actual y totales."""
-        cfg = get_settings()
         items = list(carrito.items) if carrito else []
         sucursal_id = carrito.sucursal_id if carrito else None
         sucursal = nombres_de_sucursales(self.db, self.empresa_id).get(sucursal_id) if sucursal_id else None
@@ -148,7 +146,7 @@ class CarritoService:
 
         subtotal = sum((f.precio * f.cantidad for f in filas), Decimal(0))
         total = sum((f.subtotal for f in filas), Decimal(0))
-        iva = (total * cfg.iva_porcentaje / (100 + cfg.iva_porcentaje)).quantize(CENTAVO, ROUND_HALF_UP)
+        iva = iva_incluido(total)
         return schemas.CarritoOut(
             sucursal_id=sucursal_id, sucursal=sucursal, items=filas, total_unidades=sum(f.cantidad for f in filas), subtotal=subtotal,
             descuento=subtotal - total, iva_incluido=iva, total=total, avisos=avisos,

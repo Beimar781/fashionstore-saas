@@ -26,7 +26,12 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
 ];
+const NAV_CAJERO: Item[] = [
+  { ruta: '/pos/caja', texto: 'Caja', icono: '🧾' },
+];
 const NAV_ENCARGADO: Item[] = [
+  { ruta: '/sucursal/caja', texto: 'Caja', icono: '🧾' },
+  { ruta: '/sucursal/ventas', texto: 'Ventas de la sucursal', icono: '📈' },
   { ruta: '/sucursal/reservas', texto: 'Reservas', icono: '📅' },
   { ruta: '/sucursal/atencion', texto: 'Atención en mostrador', icono: '🛎️' },
   { ruta: '/sucursal/inventario', texto: 'Inventario', icono: '📊' },
@@ -45,7 +50,7 @@ const NAV_CLIENTE: Item[] = [
 ];
 
 const porRol: Record<string, Item[]> = {
-  [ROL.SUPER]: NAV_PLATAFORMA, [ROL.CLIENTE]: NAV_CLIENTE, [ROL.ENCARGADO]: NAV_ENCARGADO, [ROL.PROVEEDOR]: NAV_PROVEEDOR,
+  [ROL.SUPER]: NAV_PLATAFORMA, [ROL.CLIENTE]: NAV_CLIENTE, [ROL.ENCARGADO]: NAV_ENCARGADO, [ROL.CAJERO]: NAV_CAJERO, [ROL.PROVEEDOR]: NAV_PROVEEDOR,
 };
 
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */

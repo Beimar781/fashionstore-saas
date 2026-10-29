@@ -40,6 +40,9 @@ class UsuarioRepository(TenantRepository[Usuario]):
             stmt = stmt.where(Usuario.id != excluir_id)
         return self.db.scalar(stmt.limit(1)) is not None
 
+    def por_email(self, email: str) -> Usuario | None:
+        return self.db.scalar(self._consulta().where(func.lower(Usuario.email) == email.lower()))
+
     def contar_administradores_activos(self) -> int:
         stmt = (
             select(func.count())

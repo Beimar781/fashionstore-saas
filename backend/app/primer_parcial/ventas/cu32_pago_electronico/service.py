@@ -9,6 +9,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.constantes import CLIENTE
 from app.core.errors import AppError, Conflicto, NoEncontrado
 from app.modules.acceso.dependencias import Contexto
 from app.primer_parcial.ventas.cu11_compra_digital.schemas import PagoResumenOut
@@ -74,7 +75,8 @@ class PagoService:
         if faltante:  # si el stock cambió desde el carrito, se avisa antes de pedir la tarjeta
             raise SinStock(faltante)
         guardada = None
-        if datos.tarjeta_guardada_id is not None:
+        guardar = datos.guardar_tarjeta and self._es_cliente  # en caja no se guardan tarjetas
+        if datos.tarjeta_guardada_id is not None and self._es_cliente:
             guardada = self.tarjetas.del_cliente(datos.tarjeta_guardada_id, self.ctx.usuario.id)
             if guardada is None or guardada.proveedor != self.pasarela.proveedor:
                 raise NoEncontrado("Tarjeta no encontrada.")
@@ -86,7 +88,7 @@ class PagoService:
         try:
             intento = self.pasarela.crear_intento(
                 monto_bob=pedido.total, descripcion=f"Pedido {pedido.codigo}", metadata={"pedido": pedido.codigo, "empresa_id": str(self.empresa_id)},
-                cliente_ref=self._cliente_pasarela(), metodo_ref=guardada.referencia if guardada else None, guardar=datos.guardar_tarjeta,
+                cliente_ref=self._cliente_pasarela(), metodo_ref=guardada.referencia if guardada else None, guardar=guardar,
             )
         except AppError:
             raise
@@ -95,7 +97,7 @@ class PagoService:
         pago = self.pagos.agregar(Pago(
             pedido_id=pedido.id, metodo="TARJETA", proveedor=self.pasarela.proveedor, estado="PENDIENTE", monto=pedido.total, moneda=pedido.moneda,
             monto_pasarela=intento.monto_pasarela, moneda_pasarela=intento.moneda_pasarela, referencia_externa=intento.referencia,
-            metodo_pago_ref=guardada.referencia if guardada else None, guardar_tarjeta=datos.guardar_tarjeta and guardada is None,
+            metodo_pago_ref=guardada.referencia if guardada else None, guardar_tarjeta=guardar and guardada is None,
             usuario_id=self.ctx.usuario.id,
         ))
         self.db.commit()
@@ -199,21 +201,30 @@ class PagoService:
             pago=PagoResumenOut.model_validate(pago, from_attributes=True), pedido=self.compras.salida([pedido])[0],
         )
 
+    @property
+    def _es_cliente(self) -> bool:
+        return self.ctx.rol == CLIENTE
+
     def _pedido(self, pedido_id: int) -> Pedido:
+        """Un cliente paga sus pedidos digitales; el personal de caja cobra con tarjeta las ventas presenciales de su sucursal."""
         pedido = self.compras.pedidos.obtener_completo(pedido_id)
-        if pedido is None or pedido.cliente_id != self.ctx.usuario.id:
-            raise NoEncontrado("Pedido no encontrado.")  # también si es de otro cliente o de otra empresa
+        propio = pedido is not None and (
+            (pedido.cliente_id == self.ctx.usuario.id and pedido.canal == "DIGITAL") if self._es_cliente
+            else (pedido.canal == "PRESENCIAL" and pedido.sucursal_id == self.ctx.sucursal_id)
+        )
+        if not propio:
+            raise NoEncontrado("Pedido no encontrado.")  # también si es de otro cliente, de otra sucursal o de otra empresa
         return pedido
 
     def _pago_y_pedido(self, pago_id: int) -> tuple[Pago, Pedido]:
-        pago = self.pagos.del_cliente(pago_id, self.ctx.usuario.id)
+        pago = self.pagos.del_pedido_visible(pago_id, self.ctx.usuario.id if self._es_cliente else None, self.ctx.sucursal_id)
         if pago is None:
             raise NoEncontrado("Pago no encontrado.")
         return pago, self._pedido(pago.pedido_id)
 
     def _cliente_pasarela(self) -> str | None:
         """Cliente del comprador en Stripe (se crea la primera vez) para poder guardar y reutilizar sus tarjetas."""
-        if self.pasarela.proveedor != "STRIPE":
+        if self.pasarela.proveedor != "STRIPE" or not self._es_cliente:
             return None
         fila = self.clientes.de_cliente(self.ctx.usuario.id)
         referencia = self.pasarela.asegurar_cliente(self.ctx.usuario.email, f"{self.ctx.usuario.nombre} {self.ctx.usuario.apellidos}", fila.referencia if fila else None)
