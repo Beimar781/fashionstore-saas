@@ -355,9 +355,12 @@ backend. Lee la sección 9 del plan («Vestidor virtual») y aplica sus mejoras 
 
 ## 8. Cómo probar el móvil
 
-- **Emulador de Android Studio:** sirve para pantallas, login, catálogo, carrito, reservas y modo sin conexión. Para la cámara se puede usar la webcam de la PC (en el AVD, *Camera → Back → Webcam*), pero no sirve para validar el vestidor virtual.
-- **Teléfono Android real por USB (recomendado para el vestidor virtual):** activar *Depuración USB* y correr `flutter run`. Cámara, rendimiento y detección de pose se prueban con el hardware real. El teléfono y la PC deben estar en la misma red Wi‑Fi: `flutter run --dart-define=API_URL=http://IP_DE_LA_PC:8000/api`.
-- **App descargable:** no se crea otra aplicación; es el mismo proyecto `movil/`. `flutter build apk --release` genera un `.apk` que se instala en cualquier Android (pasándolo por Drive o GitHub Releases). Cuando el backend esté desplegado, solo se cambia `API_URL`.
+Decisión del equipo: **sin cable y sin emulador**. Mientras se desarrolla, el móvil se prueba con `flutter analyze` y `flutter test` (lógica, sincronización offline y pantallas). Al final, con el backend ya desplegado, se genera la app instalable y se prueba en los celulares de los dos integrantes.
+
+- **Durante las fases:** Claude Code corre `flutter analyze` y `flutter test` al terminar cada una. Eso no prueba la cámara ni el rendimiento del vestidor virtual.
+- **App instalable (`.apk`) sin Android Studio:** el repo tendrá un flujo de GitHub Actions (`.github/workflows/apk.yml`) que compila el `.apk` en la nube, con la dirección de la API en una variable del repositorio (`API_URL`). El `.apk` se descarga desde la pestaña *Actions* de GitHub y se pasa por WhatsApp o Drive; en el celular se acepta «instalar apps de origen desconocido». Hace falta la carpeta `movil/android/`, que se genera una sola vez con `flutter create --platforms=android .` (no necesita Android Studio). La alternativa local es `flutter build apk --release`, que sí necesita el SDK de Android.
+- **Antes del despliegue (opcional, recomendado para el vestidor):** un `.apk` que apunte a la PC por Wi‑Fi (`API_URL=http://IP_DE_LA_PC:8000/api`), instalado en el celular, sirve para ver si la cámara y la detección de pose rinden bien sin esperar al despliegue.
+- **Notificaciones push en el celular:** con Firebase (sección 10) llegan con la app cerrada; sin Firebase se muestran dentro de la app.
 
 **Vestidor virtual (CU-06).** El móvil viejo ya hace la detección de pose en el propio teléfono con **MoveNet Thunder** (modelo `movenet_thunder_int8.tflite`), suaviza los puntos con un filtro One Euro y ancla la prenda con el `anchor_config` de cada `ARAsset`. En Flutter se puede **reutilizar el mismo modelo `.tflite`** con `camera` + `tflite_flutter`, y portar el filtro y el cálculo de anclaje, que son matemática pura. La alternativa más rápida es `google_mlkit_pose_detection`. Es la parte más riesgosa del plan: por eso va al final y con aprobación previa.
 

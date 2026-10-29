@@ -1,0 +1,51 @@
+name: Compilar APK
+
+# Se lanza a mano: pestaña Actions → «Compilar APK» → Run workflow. El .apk queda como artefacto de esa ejecución.
+on:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movil
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar que existe la variable API_URL
+        working-directory: .
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::Falta la variable API_URL (Settings → Secrets and variables → Actions → Variables). Ejemplo: http://192.168.1.50:8000/api"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.6"
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      - name: Compilar el APK
+        run: flutter build apk --release --dart-define=API_URL=${{ vars.API_URL }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fashionstore-apk
+          path: movil/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
