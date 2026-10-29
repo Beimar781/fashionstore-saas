@@ -276,3 +276,49 @@ CU-41 **no tiene ficha ni prueba en el Word** (solo aparece en la tabla 2.5.5 y 
 | CU-41 | La pasarela no pudo reembolsar | «No se pudo reembolsar el pago en la pasarela: la devolución no se registró. Intente nuevamente.» | 502 | Pendiente |
 | CU-41 | La venta no tiene pago aprobado | «La venta no tiene un pago aprobado que reembolsar.» | 409 | Pendiente |
 | CU-41 | Nota inexistente o de otra sucursal/empresa | «Devolución no encontrada.» | 404 | Pendiente |
+
+## Fase G
+
+**CU-21, CU-22, CU-23, CU-36 y CU-42 no tienen ficha ni prueba en el Word** (solo aparecen en la tabla 2.5.2 y en las reglas RN07/RN08); **CU-07 sí** (Anexo B). Falta redactar las fichas de CU-21, 22, 23, 36 y 42.
+
+### Decisiones de diseño que conviene reflejar en las fichas
+
+- **RN07 · funcionalidades por plan.** Los reportes convencionales (CU-21, CU-22) los habilita `reportes_convencionales` y las funciones de IA (CU-23, CU-42 y CU-07, incluido el asistente que usa el cliente)
+  las habilita `reportes_ia` (plan Profesional). Sin ella la respuesta es 403 con el mensaje de plan, y el menú muestra la opción bloqueada.
+- **CU-21 · ventas netas.** Ventas netas = ventas pagadas (digitales y de caja) − valor devuelto + valor entregado en cambios (CU-41). Con filtro de canal, las devoluciones son las de las ventas de ese canal.
+  Las prendas más y menos vendidas se miden netas de devoluciones. Periodo por defecto: últimos 30 días; máximo 366 días. Se puede exportar a CSV.
+- **CU-21 · vista de pagos.** Sale de la tabla `pagos`: aprobados, rechazados y pendientes de confirmación (pagos con tarjeta cuya pasarela no respondió), con el detalle de los que tuvieron problemas.
+- **CU-22 · indicadores.** Cada cifra (ventas netas, ventas, ticket promedio, reservas, conversión de reservas) se compara con el periodo anterior de la misma duración (7, 14, 30 o 90 días). Stock bajo = disponible
+  igual o menor que el umbral mínimo de la sucursal (solo variantes con umbral definido).
+- **CU-23 · IA externa con respaldo (regla 12).** Con `ANTHROPIC_API_KEY` la IA solo interpreta la petición y devuelve una especificación JSON que el servidor **valida** (campos permitidos, sucursal de la empresa,
+  periodo máximo); si no hay clave, la API falla o la especificación no es válida, se usan reglas locales. Las cifras siempre salen de la base de datos, nunca de la IA. La voz usa la Web Speech API del navegador
+  (se transcribe en el cliente y el texto se envía como cualquier petición). «Último mes» se interpreta como los últimos 30 días; «mes pasado» o «mes anterior», como el mes calendario anterior.
+- **CU-23 · constancia.** Cada reporte generado queda registrado (petición, especificación, resultado y origen IA o reglas); el Administrador ve el historial de su empresa.
+- **CU-42 · modelos.** Rotación por KMeans (3 grupos: ALTA, MEDIA, BAJA) sobre unidades vendidas en 30 días y relación con el stock; con menos de 3 productos distintos se usan umbrales fijos. Pronóstico por regresión
+  lineal sobre las ventas semanales de las últimas 12 semanas, proyectado a 4 semanas, solo para productos con al menos 3 semanas con ventas. La recomendación compara la demanda proyectada con el stock (reponer,
+  sobrestock o adecuado).
+- **CU-36 · plan y uso.** Lo ve el Administrador aunque la suscripción haya vencido (RN05); en ese caso solo se muestran plan y vigencia. El único límite del plan es el de sucursales activas; usuarios, productos, ventas
+  del mes y consultas de IA se muestran como consumo informativo. Se avisa cuando faltan 15 días o menos para el vencimiento y cuando se alcanza el límite de sucursales.
+- **CU-07 · asistente.** Solo lo usa el Cliente. Entiende color, categoría, talla, rango de precios, género, ocasión, outfit y ofertas, usando también lo dicho antes en la conversación; busca con la misma búsqueda del
+  catálogo (CU-04) y solo ofrece prendas con stock (de la sucursal elegida, si la hay). Si no hay resultados suelta filtros en orden (precio, talla, color, estilo) y lo avisa. El recomendador usa la categoría y el color
+  que el cliente más compró y no repite lo que ya compró; si aún no compró, muestra lo más vendido.
+
+### Mensajes nuevos
+
+| CU | Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|---|
+| CU-21 / CU-22 / CU-23 / CU-42 / CU-07 | El plan no incluye la funcionalidad | «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» | 403 | Ya existe (RN07) |
+| CU-21 / CU-22 / CU-42 | Sucursal inexistente o de otra empresa | «Sucursal no encontrada.» | 404 | Pendiente |
+| CU-21 | Fecha inicial posterior a la final | «La fecha inicial no puede ser posterior a la final.» | 422 | Pendiente |
+| CU-21 | Periodo mayor a un año | «El periodo no puede superar 366 días.» | 422 | Pendiente |
+| CU-21 | Tipo de exportación desconocido | «Tipo de exportación no soportado. Use ventas, reservas o pagos.» | 422 | Pendiente |
+| CU-22 | Periodo distinto de 7, 14, 30 o 90 días | «El periodo debe ser de 7, 14, 30 o 90 días.» | 422 | Pendiente |
+| CU-23 | Petición vacía | «Escriba o dicte lo que desea consultar.» | 422 | Pendiente |
+| CU-23 | Reporte de otra empresa o inexistente | «Reporte no encontrado.» | 404 | Pendiente |
+| CU-42 | Aún no hay ventas suficientes (menos de 3 semanas con ventas por producto) | «Todavía no hay ventas suficientes para pronosticar la demanda: se necesitan al menos 3 semanas con ventas de un producto.» | 200 (aviso) | Pendiente |
+| CU-07 | Mensaje vacío o el último no es del cliente | «Escriba su consulta para el asistente.» | 422 | Pendiente |
+| CU-07 | Sin prendas con esas características | «No encontré prendas disponibles con esas características. Pruebe con otro color, otra categoría o un precio mayor.» | 200 (respuesta del asistente) | Pendiente |
+
+### Configuración nueva
+
+`ANTHROPIC_API_KEY=` y, opcionalmente, `IA_MODELO=` en `backend/.env`: activan la interpretación con IA externa de CU-07 y CU-23. Sin ellas se usa el modo de respaldo con reglas locales. Nueva librería: `scikit-learn` (con `numpy`) en `requirements.txt`.

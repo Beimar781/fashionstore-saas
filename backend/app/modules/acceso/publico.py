@@ -1,5 +1,5 @@
 """Interfaz pública del paquete P2 acceso para otros paquetes."""
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constantes import PROVEEDOR
@@ -8,6 +8,14 @@ from app.core.security import hash_password
 from app.modules.acceso.cu13_usuarios.repository import RolRepository, UsuarioRepository
 from app.modules.acceso.cu13_usuarios.schemas import validar_password  # noqa: F401
 from app.modules.acceso.models import Usuario
+from app.modules.plataforma.publico import registrar_medidor
+
+
+def _usuarios_activos(db: Session, empresa_id: int) -> int:
+    return db.scalar(select(func.count(Usuario.id)).where(Usuario.empresa_id == empresa_id, Usuario.activo.is_(True))) or 0
+
+
+registrar_medidor("usuarios", "Usuarios activos", _usuarios_activos)
 
 
 def crear_usuario_proveedor(db: Session, empresa_id: int, nombre: str, email: str, password: str) -> int:

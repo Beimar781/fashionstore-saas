@@ -1,4 +1,5 @@
 """Datos de ejemplo de ventas: compra digital del cliente demo (Fase D), ventas de caja (Fase E) y una devolución (Fase F). Idempotente."""
+from datetime import timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -23,7 +24,9 @@ from app.primer_parcial.ventas.cu30_pago_en_caja.service import CobroCajaService
 from app.primer_parcial.ventas.cu32_pago_electronico import schemas
 from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import PasarelaSimulada
 from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoService
-from app.primer_parcial.ventas.models import Pago, Pedido
+from app.core.tiempo import ahora
+from app.primer_parcial.catalogo.publico import Producto, Variante
+from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem
 
 
 def cargar(db: Session, empresa) -> None:
@@ -82,3 +85,49 @@ def cargar_devoluciones(db: Session, empresa) -> None:
     DevolucionService(db, ctx).registrar(DevolucionIn(
         comprobante=venta.comprobante_numero, motivo="Le quedó pequeña", items=[ItemDevueltoIn(pedido_item_id=venta.items[0].id, cantidad=1)],
     ))
+
+
+def cargar_historial(db: Session, empresa) -> None:
+    """Ventas de las últimas 10 semanas (Fase G) para que los reportes, los indicadores y el pronóstico con ML tengan datos. Son datos de demostración."""
+    if db.scalar(select(Pedido.id).where(Pedido.empresa_id == empresa.id, Pedido.codigo.like("HIST-%")).limit(1)):
+        return
+    sucursal = db.scalar(select(Sucursal).where(Sucursal.empresa_id == empresa.id, Sucursal.activa.is_(True)).order_by(Sucursal.id).limit(1))
+    if sucursal is None:
+        return
+    filas = db.execute(
+        select(Variante, Producto).join(Producto, Producto.id == Variante.producto_id).join(Existencia, Existencia.variante_id == Variante.id)
+        .where(Variante.empresa_id == empresa.id, Existencia.sucursal_id == sucursal.id).order_by(Producto.id, Variante.id)
+    ).all()
+    variantes: dict[int, tuple] = {}
+    for variante, producto in filas:
+        variantes.setdefault(producto.id, (variante, producto))  # una variante por producto
+    productos = list(variantes.values())[:4]
+    if not productos:
+        return
+    semanas, numero = 10, 0
+    for semana in range(semanas, 0, -1):  # de la más antigua a la más reciente
+        for canal, subconjunto in (("PRESENCIAL", productos), ("DIGITAL", productos[:2])):
+            lineas = []
+            for indice, (variante, producto) in enumerate(subconjunto):
+                base, tendencia = (2, 0.9) if indice == 0 else (6, 0.0) if indice == 1 else (5, -0.4) if indice == 2 else (1, 0.1)
+                unidades = max(1, round(base + tendencia * (semanas - semana)) + (semana * 3 + indice) % 3 - 1)
+                lineas.append((variante, producto, unidades, Decimal(variante.precio_especifico or producto.precio_base)))
+            total = sum((precio * unidades for _, _, unidades, precio in lineas), Decimal("0.00"))
+            momento = ahora() - timedelta(days=semana * 7 - (2 if canal == "PRESENCIAL" else 4), hours=3)
+            numero += 1
+            pedido = Pedido(
+                empresa_id=empresa.id, codigo=f"HIST-{numero:04d}", sucursal_id=sucursal.id, canal=canal, tipo_entrega="EN_TIENDA" if canal == "PRESENCIAL" else "RETIRO",
+                estado="PAGADO", subtotal=total, total=total, iva_incluido=(total * 13 / 113).quantize(Decimal("0.01")), pagado_en=momento,
+            )
+            for variante, producto, unidades, precio in lineas:
+                pedido.items.append(PedidoItem(
+                    empresa_id=empresa.id, variante_id=variante.id, sku=variante.sku, producto=producto.nombre, talla=variante.talla.codigo, color=variante.color.nombre,
+                    cantidad=unidades, precio_unitario=precio, precio_final=precio, subtotal=precio * unidades,
+                ))
+            db.add(pedido)
+            db.flush()
+            db.add(Pago(
+                empresa_id=empresa.id, pedido_id=pedido.id, metodo="EFECTIVO" if canal == "PRESENCIAL" else "TARJETA", proveedor="CAJA" if canal == "PRESENCIAL" else "SIMULADO",
+                estado="APROBADO", monto=total, creado_en=momento, referencia_externa=None if canal == "PRESENCIAL" else f"sim_hist_{empresa.id}_{numero}",
+                tarjeta_marca="" if canal == "PRESENCIAL" else "Visa", tarjeta_ultimos4="" if canal == "PRESENCIAL" else "4242", mensaje="Pago aprobado.",
+            ))

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     # Servicio de impuestos (CU-30): hoy es simulado; esta opción simula que no responde, para ver el comprobante interno temporal
     impuestos_simular_falla: bool = False
+    # IA (CU-07, CU-23): sin clave se usa el modo de respaldo con reglas locales. La clave va en .env, nunca en el código.
+    anthropic_api_key: str = ""
+    ia_modelo: str = "claude-haiku-5-5"
     tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
 
     @property

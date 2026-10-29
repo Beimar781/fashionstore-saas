@@ -14,6 +14,20 @@ from app.modules.plataforma.cu35_suscripciones.repository import SuscripcionRepo
 from app.modules.plataforma.models import Empresa, Suscripcion
 
 
+# Medidores del consumo de la empresa (CU-36): cada paquete anota el suyo al cargarse, así `plataforma` no depende de ellos.
+_MEDIDORES: list = []
+
+
+def registrar_medidor(clave: str, etiqueta: str, medir) -> None:
+    """`medir(db, empresa_id) -> int`: lo que la empresa lleva consumido (usuarios, productos, ventas del mes...)."""
+    if all(c != clave for c, _, _ in _MEDIDORES):
+        _MEDIDORES.append((clave, etiqueta, medir))
+
+
+def medidores() -> list:
+    return list(_MEDIDORES)
+
+
 def suscripcion_de(db: Session, empresa_id: int) -> Suscripcion | None:
     """Suscripción vigente de la empresa o, si no hay, la más reciente. Aplica el vencimiento
     automático (RN05) antes de responder."""

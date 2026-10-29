@@ -33,6 +33,17 @@ from app.primer_parcial.catalogo.cu16_categorias_tallas_colores.router import ro
 from app.primer_parcial.catalogo.cu17_temporadas_colecciones.router import router as cu17_temporadas
 from app.primer_parcial.catalogo.cu18_productos.router import router as cu18_productos
 from app.primer_parcial.catalogo.cu19_promociones.router import router as cu19_promociones
+from app.modules.plataforma.cu36_plan_y_uso.router import router as cu36_plan_y_uso
+from app.modules.reportes.cu21_ventas_y_reservas.router import router as cu21_reportes
+from app.modules.reportes.cu22_indicadores.router import router as cu22_indicadores
+from app.modules.ia.cu23_reportes_generativos.router import router as cu23_reportes_generativos
+from app.modules.ia.cu42_analitica_ml.router import router as cu42_analitica
+from app.primer_parcial.ia.cu07_asistente.router import router as cu07_asistente
+# Los medidores del consumo del plan (CU-36) se anotan al cargar estos paquetes
+import app.modules.acceso.publico  # noqa: F401,E402
+import app.modules.ia.publico  # noqa: F401,E402
+import app.primer_parcial.catalogo.publico  # noqa: F401,E402
+import app.primer_parcial.ventas.publico  # noqa: F401,E402
 
 api_router = APIRouter()
 
@@ -88,3 +99,12 @@ api_router.include_router(cu41_devoluciones)
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
 # SaaS (app/modules): P8 offline, P9 ia, P10 reportes.
 # Primer parcial (app/primer_parcial): P9 ia.
+# P1 · Plan, límites y uso de la empresa (CU-36)
+api_router.include_router(cu36_plan_y_uso)
+# P10 · Reportes convencionales (CU-21, CU-22)
+api_router.include_router(cu21_reportes)
+api_router.include_router(cu22_indicadores)
+# P9 · IA: reportes generativos (CU-23), analítica con ML (CU-42) y asistente (CU-07, primer parcial)
+api_router.include_router(cu23_reportes_generativos)
+api_router.include_router(cu42_analitica)
+api_router.include_router(cu07_asistente)

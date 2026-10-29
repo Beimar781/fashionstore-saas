@@ -8,7 +8,7 @@ import { ReservaBorradorService } from '../core/reservas/reserva-borrador.servic
 import { ConfirmarSalidaComponent } from '../core/ui/confirmar-salida.component';
 import { NotificacionesComponent } from '../core/ui/notificaciones.component';
 
-interface Item { ruta: string; texto: string; icono: string; operativo?: boolean; }
+interface Item { ruta: string; texto: string; icono: string; operativo?: boolean; plan?: 'reportes_ia' | 'reportes_convencionales'; }
 
 const NAV_PLATAFORMA: Item[] = [
   { ruta: '/plataforma/empresas', texto: 'Empresas', icono: '🏢' },
@@ -26,6 +26,10 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
   { ruta: '/empresa/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️', operativo: true },
+  { ruta: '/empresa/reportes', texto: 'Reportes', icono: '📑', operativo: true, plan: 'reportes_convencionales' },
+  { ruta: '/empresa/indicadores', texto: 'Indicadores', icono: '📈', operativo: true, plan: 'reportes_convencionales' },
+  { ruta: '/empresa/ia/reportes', texto: 'Reportes con IA', icono: '🤖', operativo: true, plan: 'reportes_ia' },
+  { ruta: '/empresa/ia/analitica', texto: 'Analítica con ML', icono: '🧠', operativo: true, plan: 'reportes_ia' },
 ];
 const NAV_CAJERO: Item[] = [
   { ruta: '/pos/caja', texto: 'Caja', icono: '🧾' },
@@ -48,6 +52,7 @@ const NAV_CLIENTE: Item[] = [
   { ruta: '/tienda/catalogo', texto: 'Catálogo', icono: '🛍️' },
   { ruta: '/tienda/carrito', texto: 'Mi carrito', icono: '🛒' },
   { ruta: '/tienda/compras', texto: 'Mis compras', icono: '🧾' },
+  { ruta: '/tienda/asistente', texto: 'Asistente de compras', icono: '✨', plan: 'reportes_ia' },
   { ruta: '/tienda/reservar', texto: 'Mi reserva', icono: '🧺' },
   { ruta: '/tienda/reservas', texto: 'Mis reservas', icono: '📅' },
 ];
@@ -68,6 +73,8 @@ const porRol: Record<string, Item[]> = {
           @for (it of items(); track it.ruta) {
             @if (it.operativo && auth.restringido()) {
               <span class="link disabled" title="Suscripción no vigente"><i>{{ it.icono }}</i>{{ it.texto }}<em>🔒</em></span>
+            } @else if (it.plan && !incluye(it.plan)) {
+              <span class="link disabled" title="Su plan no incluye esta funcionalidad"><i>{{ it.icono }}</i>{{ it.texto }}<em>🔒</em></span>
             } @else {
               <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }@if (it.ruta === '/tienda/carrito' && carrito.total() > 0) { <em class="cuenta">{{ carrito.total() }}</em> }</a>
             }
@@ -135,5 +142,7 @@ export class ShellComponent {
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }
+  /** ¿El plan de la empresa incluye la funcionalidad? (Cliente y Administrador la ven en su menú bloqueada si no.) */
+  incluye(clave: 'reportes_ia' | 'reportes_convencionales') { return !!this.s()?.suscripcion?.plan?.[clave]; }
   readonly items = computed<Item[]>(() => porRol[this.auth.rol() as string] ?? NAV_EMPRESA);
 }

@@ -24,13 +24,18 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | CU-26 Gestionar disponibilidad e inventario de la sucursal | `inventario/cu26_inventario_sucursal` (+ `publico.py::aplicar_movimientos`, único camino para cambiar existencias) | `GET /api/inventario/sucursal`, `POST …/sucursal/movimientos`, `PUT …/sucursal/variantes/{id}/umbral`, `GET /api/inventario/movimientos`, `GET /api/inventario/recepciones`, `POST …/recepciones/{lote}/recibir` | `inventario/inventario.page.ts`, `recepciones.page.ts`, `movimientos.page.ts` (Encargado) | — | `test_cu26_inventario_sucursal.py` (15 pruebas: ajustes, bitácora, recepción de lotes, núcleo de movimientos) |
 | CU-29 Registrar venta presencial | `ventas/cu29_venta_presencial` (usa `primer_parcial/ventas/publico.py`) | `POST /api/caja/ventas`, `GET …/ventas/pendientes`, `GET/DELETE …/ventas/{id}`, `GET /api/caja/reservas/{codigo}` | `primer-parcial/ventas/caja.page.ts` (Cajero en `/pos/caja`, Encargado en `/sucursal/caja`) | — | `test_cu29_venta_presencial.py` (15 pruebas: stock de la sucursal del cajero, desde una reserva, aislamiento) |
 | CU-41 Gestionar devoluciones y cambios | `ventas/cu41_devoluciones` (+ `nota.py`, PDF; reembolso por `pasarela_para` del CU-32) | `GET /api/devoluciones/venta?comprobante=`, `POST /api/devoluciones`, `GET /api/devoluciones`, `GET …/{id}`, `GET …/{id}/nota`, `POST …/diferencia` (cobro con tarjeta de la diferencia de un cambio), `GET/PUT …/configuracion` (plazo) | `ventas/devoluciones.page.ts` (Cajero en `/pos/devoluciones`, Encargado en `/sucursal/devoluciones`), `ventas/devoluciones-admin.page.ts` (Administrador) | — | `test_cu41_devoluciones.py` (20 pruebas: comprobante, plazo, parcial y repetida, reembolso por medio, fallo de pasarela, aislamiento, roles), `test_cu41_cambios.py` (13: diferencia en efectivo o con tarjeta, tarjeta rechazada, sin stock, Stripe simulado, reporte) |
+| CU-21 Reportes de ventas y reservas | `reportes/cu21_ventas_y_reservas` (+ `reportes/base.py` y `repository.py`, que comparten CU-22 y CU-23) | `GET /api/reportes/ventas`, `…/reservas`, `…/pagos`, `…/exportar/{ventas,reservas,pagos}` (CSV) | `reportes/reportes.page.ts` | — | `test_cu21_reportes.py` (9 pruebas: netas de devoluciones, canal, periodo, reservas, vista de pagos, CSV, plan, aislamiento) |
+| CU-22 Indicadores empresariales | `reportes/cu22_indicadores` | `GET /api/reportes/indicadores?dias=&sucursal=` | `reportes/indicadores.page.ts` | — | `test_cu22_indicadores.py` (5 pruebas: KPIs, variación contra el periodo anterior, stock bajo, plan, aislamiento) |
+| CU-23 Reportes generativos por prompt y por voz | `ia/cu23_reportes_generativos` (`interprete.py`: IA externa o reglas; `core/ia.py`: adaptador de Claude) | `POST /api/ia/reportes`, `GET /api/ia/reportes`, `GET …/{id}` | `ia/reporte-generativo.page.ts` (voz con la Web Speech API) | — | `test_cu23_reportes_generativos.py` (12 pruebas: reglas, IA con doble en memoria, respaldo, validación, historial, plan, aislamiento) |
+| CU-36 Plan, límites y uso de la empresa | `plataforma/cu36_plan_y_uso` (+ registro de medidores en `plataforma/publico.py`) | `GET /api/mi-plan` | `administracion/mi-plan.page.ts` | — | `test_cu36_plan_y_uso.py` (6 pruebas: plan, límite de sucursales, consumo, vencimiento, suscripción vencida, aislamiento) |
+| CU-42 Dashboard analítico con Machine Learning | `ia/cu42_analitica_ml` (scikit-learn: KMeans y regresión lineal) | `GET /api/ia/analitica?sucursal=` | `ia/analitica.page.ts` | — | `test_cu42_analitica_ml.py` (8 pruebas: rotación, pronóstico, recomendación, sin datos, plan, aislamiento) |
 | CU-33 Empresas (tenants) | `plataforma/cu33_empresas` | `GET/POST /api/plataforma/empresas`, `PUT …/{id}`, `POST …/suspender`, `…/reactivar` (+ `DELETE` rechazado) | `plataforma/empresas.page.ts` | — | `test_cu33_empresas.py` (6 pasos) |
 | CU-34 Planes | `plataforma/cu34_planes` | `GET/POST /api/plataforma/planes`, `PUT …/{id}`, `POST …/inactivar` | `plataforma/planes.page.ts` | — | `test_cu34_planes.py` (5 pasos) |
 | CU-35 Suscripciones | `plataforma/cu35_suscripciones` | `GET …/empresas/{id}/suscripcion`, `POST …/suscripciones`, `POST …/suscripcion/suspender` | `plataforma/suscripcion.page.ts` | — | `test_cu35_suscripciones.py` (6 pasos) |
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-CU-21, CU-22, CU-23, CU-42, CU-36 (G) · CU-37 a CU-40 (H).
+CU-37 a CU-40 (H).
 
 ## Primer parcial (Anexo B)
 
@@ -56,7 +61,7 @@ pruebas en `backend/tests/primer_parcial/`.
 | ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
 | reportes (P10) | CU-27 Ventas de la sucursal | `reportes/cu27_ventas_sucursal` | `GET /api/reportes/sucursal/resumen`, `GET …/ventas`, `GET …/ventas/{id}` | `primer-parcial/reportes/ventas-sucursal.page.ts` (Encargado) | — | `primer_parcial/test_cu27_ventas_sucursal.py` (5 pasos + 4) |
 | ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
-| ia (P9) | CU-07 Asistente y recomendador | — | — | — | — | — |
+| ia (P9) | CU-07 Asistente y recomendador | `ia/cu07_asistente` (usa la búsqueda del CU-04 vía `modules/catalogo/publico.py`) | `POST /api/asistente/chat`, `GET /api/asistente/recomendaciones` | `primer-parcial/ia/asistente.page.ts` | — | `primer_parcial/test_cu07_asistente.py` (12 pruebas: reglas, IA con doble en memoria, stock, contexto, recomendaciones, plan, aislamiento) |
 
 ## Esquema de la Fase A (migración 0003)
 
@@ -160,6 +165,21 @@ Flujo de una devolución o cambio:
 | 4 | Reembolso en el mismo medio del pago: efectivo en caja; tarjeta por la pasarela (Stripe de prueba o simulada), repartiendo los centavos para que la suma sea exacta. Si la pasarela falla, nada se registra | `_reembolsar` / `pasarela.reembolsar` |
 | 4b | Cambio que vale más: la diferencia se paga en efectivo (con cambio) o con tarjeta: se inicia el cobro (`POST /diferencia`), la pasarela autoriza, se registra el cambio y recién entonces se captura; si falta stock se anula la autorización | `iniciar_diferencia`, `_autorizar_tarjeta`, `_anular_cobro` |
 | 5 | Se emite la nota en PDF y CU-27 resta lo devuelto en las ventas netas y en el efectivo de caja | `nota.py`, CU-27 `devoluciones()` |
+
+## Esquema de la Fase G (migración 0009)
+
+Tablas nuevas: `reportes_generados` (cada reporte generativo: petición, especificación interpretada, resultado y si lo interpretó la IA o las reglas) y `uso_ia` (cada consulta a una
+función de IA, que CU-36 muestra como consumo del plan). Los reportes (CU-21, CU-22) no tienen tablas propias: leen pedidos, pagos, devoluciones, reservas e inventario por los `publico.py`.
+
+Planes (RN07): CU-21 y CU-22 exigen `reportes_convencionales`; CU-23, CU-42 y CU-07 exigen `reportes_ia` (plan Profesional). En el seed EMP-A es Básico y EMP-B es Profesional.
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | El Administrador escribe o dicta («ventas del último mes y el producto más vendido») | web `reporte-generativo.page.ts` (Web Speech API del navegador) |
+| 2 | La petición se interpreta: con `ANTHROPIC_API_KEY` la IA devuelve la especificación en JSON y se **valida**; sin clave, o si falla o propone algo inválido, se usan las reglas locales | CU-23 `interprete.py` / `core/ia.py` |
+| 3 | Con la especificación se consultan los datos con las mismas consultas del CU-21 (ventas netas de devoluciones, ranking, reservas, pagos, inventario) | `ReportesBase`, `ReportesRepository` |
+| 4 | Se redacta el reporte, se guarda en `reportes_generados` y se anota el uso de IA | CU-23 `ReporteGenerativoService.generar` |
+| 5 | CU-42: KMeans clasifica la rotación de cada producto y una regresión lineal pronostica 4 semanas de demanda; compara con el stock y recomienda reponer o promocionar | CU-42 `AnaliticaMLService` |
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

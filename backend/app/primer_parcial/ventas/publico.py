@@ -10,3 +10,17 @@ from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import Tarjeta, ob
 from app.primer_parcial.ventas.cu32_pago_electronico.schemas import TarjetaIn  # noqa: F401
 from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoRechazado, PasarelaNoDisponible  # noqa: F401
 from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem  # noqa: F401  (entidades de solo lectura para los reportes)
+
+
+def _ventas_del_mes(db, empresa_id: int) -> int:
+    from sqlalchemy import func, select
+
+    from app.core.tiempo import ahora
+
+    inicio = ahora().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return db.scalar(select(func.count(Pedido.id)).where(Pedido.empresa_id == empresa_id, Pedido.estado == "PAGADO", Pedido.pagado_en >= inicio)) or 0
+
+
+from app.modules.plataforma.publico import registrar_medidor  # noqa: E402
+
+registrar_medidor("ventas_mes", "Ventas del mes", _ventas_del_mes)

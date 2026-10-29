@@ -92,6 +92,10 @@ temporal de la ficha CU-30, agregue `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.
 **Devoluciones y cambios (CU-41):** `cajero@tienda.com` o `encargado@tienda.com` entran a **Devoluciones y cambios**, escriben el N.° de comprobante de una venta (por ejemplo el que
 muestra el ticket de **Caja**), eligen las prendas y registran la devolución o el cambio (si la prenda nueva cuesta más, el cliente paga la diferencia en efectivo o con tarjeta de prueba); la prenda vuelve al inventario de su sucursal y se imprime la nota. El Administrador
 fija el plazo (15 días por defecto) y consulta todas las notas en **Devoluciones y cambios**. El seed deja una devolución de ejemplo por empresa.
+**Reportes, IA y plan (Fase G):** el seed deja 10 semanas de ventas de demostración. EMP-A (`admin@modaurbana.com`) tiene el plan **Básico**: ve **Reportes**, **Indicadores** y **Mi plan**, y
+**Reportes con IA**, **Analítica con ML** y el **Asistente** del cliente salen bloqueados (🔒). EMP-B (`admin@estiloandino.com`, plan **Profesional**) tiene todo: pida un reporte escrito o dictado con el micrófono
+(Chrome o Edge), vea el pronóstico de demanda y, como `cliente@emp-b.com`, pruebe el **Asistente de compras**. Sin clave de IA todo funciona con reglas de respaldo; para usar Claude agregue
+`ANTHROPIC_API_KEY=` en `backend/.env` (la clave nunca va en el código ni se sube a git) y reinicie el backend.
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.

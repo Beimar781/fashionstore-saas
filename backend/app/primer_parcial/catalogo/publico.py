@@ -12,3 +12,14 @@ from app.primer_parcial.catalogo.models import (  # noqa: F401  (entidades de so
 
 def asignar_proveedor_a_coleccion(db, empresa_id: int, coleccion_id: int, proveedor_id: int | None):
     return TemporadaService(db, empresa_id).asignar_proveedor(coleccion_id, proveedor_id)
+
+
+def _productos_activos(db, empresa_id: int) -> int:
+    from sqlalchemy import func, select
+
+    return db.scalar(select(func.count(Producto.id)).where(Producto.empresa_id == empresa_id, Producto.activo.is_(True))) or 0
+
+
+from app.modules.plataforma.publico import registrar_medidor  # noqa: E402
+
+registrar_medidor("productos", "Productos activos", _productos_activos)

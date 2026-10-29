@@ -5,6 +5,7 @@ import os
 # Las pruebas nunca llaman a Stripe: aunque el .env tenga claves, aquí se fuerza el pago simulado.
 os.environ["STRIPE_SECRET_KEY"] = ""
 os.environ["STRIPE_PUBLISHABLE_KEY"] = ""
+os.environ["ANTHROPIC_API_KEY"] = ""
 from datetime import date, timedelta
 
 import pytest
