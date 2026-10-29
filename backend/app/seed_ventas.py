@@ -26,6 +26,7 @@ from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import PasarelaSim
 from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoService
 from app.core.tiempo import ahora
 from app.primer_parcial.catalogo.publico import Producto, Variante
+from app.primer_parcial.ia.models import InteraccionCliente
 from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem
 
 
@@ -131,3 +132,23 @@ def cargar_historial(db: Session, empresa) -> None:
                 estado="APROBADO", monto=total, creado_en=momento, referencia_externa=None if canal == "PRESENCIAL" else f"sim_hist_{empresa.id}_{numero}",
                 tarjeta_marca="" if canal == "PRESENCIAL" else "Visa", tarjeta_ultimos4="" if canal == "PRESENCIAL" else "4242", mensaje="Pago aprobado.",
             ))
+
+
+def cargar_perfil_cliente(db: Session, empresa) -> None:
+    """Fase G: el cliente demo ya buscó y miró prendas, para que el recomendador muestre recomendaciones personalizadas desde el primer día."""
+    cliente = db.scalar(select(Usuario).where(Usuario.empresa_id == empresa.id, Usuario.email == f"cliente@{empresa.codigo.lower()}.com"))
+    if cliente is None or db.scalar(select(InteraccionCliente.id).where(InteraccionCliente.empresa_id == empresa.id).limit(1)):
+        return
+    filas = db.execute(
+        select(Variante, Producto).join(Producto, Producto.id == Variante.producto_id).where(Variante.empresa_id == empresa.id).order_by(Producto.id, Variante.id)
+    ).all()
+    por_producto: dict[int, tuple] = {}
+    for variante, producto in filas:
+        por_producto.setdefault(producto.id, (variante, producto))
+    elegidos = list(por_producto.values())[:2]
+    if not elegidos:
+        return
+    variante, producto = elegidos[0]
+    db.add(InteraccionCliente(empresa_id=empresa.id, cliente_id=cliente.id, tipo="BUSQUEDA", texto=producto.nombre.lower()[:120], categoria_id=producto.categoria_id, color_id=variante.color_id))
+    for _, otro in elegidos:
+        db.add(InteraccionCliente(empresa_id=empresa.id, cliente_id=cliente.id, tipo="VISTA", producto_id=otro.id, categoria_id=otro.categoria_id))

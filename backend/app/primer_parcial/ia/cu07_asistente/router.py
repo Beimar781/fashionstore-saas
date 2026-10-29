@@ -22,3 +22,30 @@ def conversar_con_el_asistente(datos: schemas.ChatIn, ctx: Contexto = Depends(cl
 def recomendar_prendas(sucursal_id: int | None = None, limite: int = Query(6, ge=1, le=12), ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
     """Prendas parecidas a lo que el cliente ya compró; si aún no compró, lo más vendido."""
     return AsistenteService(db, ctx).recomendaciones(sucursal_id, limite)
+
+
+@router.get("/outfit", response_model=schemas.OutfitOut)
+def armar_outfit(producto_id: int | None = None, sucursal_id: int | None = None, ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
+    """Un outfit con prendas de otras categorías que combinan con la prenda indicada (o con la que mejor encaja con sus gustos)."""
+    return AsistenteService(db, ctx).outfit(producto_id, sucursal_id)
+
+
+@router.post("/interacciones", response_model=schemas.InteraccionOut, status_code=201)
+def registrar_busqueda_o_prenda_vista(datos: schemas.InteraccionIn, ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
+    """La web avisa lo que el cliente busca o mira; con eso el sistema aprende sus gustos (si no apagó la personalización)."""
+    return AsistenteService(db, ctx).registrar_interaccion(datos)
+
+
+@router.get("/privacidad", response_model=schemas.PrivacidadOut)
+def consultar_personalizacion(ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
+    return AsistenteService(db, ctx).privacidad()
+
+
+@router.put("/privacidad", response_model=schemas.PrivacidadOut)
+def activar_o_apagar_personalizacion(datos: schemas.PrivacidadIn, ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
+    return AsistenteService(db, ctx).fijar_privacidad(datos.personalizar)
+
+
+@router.delete("/historial", response_model=schemas.PrivacidadOut)
+def borrar_lo_que_el_sistema_aprendio(ctx: Contexto = Depends(cliente), db: Session = Depends(get_db)):
+    return AsistenteService(db, ctx).borrar_historial()

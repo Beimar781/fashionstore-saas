@@ -18,7 +18,7 @@ from app.modules.sucursales.models import Ciudad, Sucursal
 from app.seed_abastecimiento import cargar as cargar_abastecimiento
 from app.seed_catalogo import cargar as cargar_catalogo
 from app.seed_reservas import cargar as cargar_reservas
-from app.seed_ventas import cargar as cargar_ventas, cargar_caja, cargar_devoluciones, cargar_historial
+from app.seed_ventas import cargar as cargar_ventas, cargar_caja, cargar_devoluciones, cargar_historial, cargar_perfil_cliente
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
 CLAVE = "Demo2026*"
@@ -110,6 +110,8 @@ def ejecutar(db: Session) -> None:
         cargar_devoluciones(db, empresa)
         db.flush()
         cargar_historial(db, empresa)
+        db.flush()
+        cargar_perfil_cliente(db, empresa)
     db.commit()
 
 

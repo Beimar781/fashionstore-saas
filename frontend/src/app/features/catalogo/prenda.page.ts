@@ -1,3 +1,4 @@
+import { AprendizajeService } from '../../core/ia/aprendizaje.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -117,6 +118,7 @@ export class PrendaPage implements OnInit {
   private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private aprendizaje = inject(AprendizajeService);
   readonly borrador = inject(ReservaBorradorService);
   private compras = inject(ComprasApi);
   readonly carrito = inject(CarritoEstadoService);
@@ -151,6 +153,7 @@ export class PrendaPage implements OnInit {
       const s = this.ruta.snapshot.queryParamMap.get('sucursal');
       this.sucursalId.set(s ? Number(s) : null);
       this.colorId.set(null); this.tallaCodigo.set(null); this.fotoElegida.set(null);
+      this.aprendizaje.vista(this.id);
       this.cargar();
     });
   }

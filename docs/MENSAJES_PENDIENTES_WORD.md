@@ -303,10 +303,20 @@ CU-41 **no tiene ficha ni prueba en el Word** (solo aparece en la tabla 2.5.5 y 
   catálogo (CU-04) y solo ofrece prendas con stock (de la sucursal elegida, si la hay). Si no hay resultados suelta filtros en orden (precio, talla, color, estilo) y lo avisa. El recomendador usa la categoría y el color
   que el cliente más compró y no repite lo que ya compró; si aún no compró, muestra lo más vendido.
 
+- **CU-07 · perfil de gustos y privacidad.** El sistema aprende de lo que el cliente **compra** (peso 3), **busca** en el catálogo o le pide al asistente (2) y **mira** (1); lo reciente pesa más. Con ese perfil puntúa las
+  prendas con stock (categoría, color, talla, precio, oferta) y recomienda con un motivo por prenda, muestra las ofertas que le convienen y arma outfits (prendas de otras categorías que combinan en tono). Con IA externa,
+  la IA elige y explica; el servidor solo acepta prendas candidatas reales. Es un dato personal: el cliente puede **apagar** la personalización (se borra lo aprendido y deja de usarse incluso lo comprado) y **borrar** su historial
+  en cualquier momento; se recuerdan solo las últimas 200 acciones.
+
 ### Mensajes nuevos
 
 | CU | Situación | Mensaje | Código HTTP | Estado |
 |---|---|---|---|---|
+| CU-07 | Registrar una vista sin indicar la prenda | «Indique la prenda que miró.» | 422 | Pendiente |
+| CU-07 | Prenda inexistente o de otra empresa | «Prenda no encontrada.» | 404 | Pendiente |
+| CU-07 | Búsqueda sin ningún dato | «La búsqueda no tiene datos de los que aprender.» | 422 | Pendiente |
+| CU-07 | Outfit con una prenda inexistente, sin stock o de otra empresa | «Prenda no encontrada o sin stock.» | 404 | Pendiente |
+| CU-07 | «Recomiéndame algo» sin historial | «Todavía no conozco sus gustos, así que le muestro lo más vendido. Busque o mire prendas y aprenderé qué le gusta.» | 200 (respuesta del asistente) | Pendiente |
 | CU-21 / CU-22 / CU-23 / CU-42 / CU-07 | El plan no incluye la funcionalidad | «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» | 403 | Ya existe (RN07) |
 | CU-21 / CU-22 / CU-42 | Sucursal inexistente o de otra empresa | «Sucursal no encontrada.» | 404 | Pendiente |
 | CU-21 | Fecha inicial posterior a la final | «La fecha inicial no puede ser posterior a la final.» | 422 | Pendiente |

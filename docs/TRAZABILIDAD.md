@@ -61,7 +61,7 @@ pruebas en `backend/tests/primer_parcial/`.
 | ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
 | reportes (P10) | CU-27 Ventas de la sucursal | `reportes/cu27_ventas_sucursal` | `GET /api/reportes/sucursal/resumen`, `GET …/ventas`, `GET …/ventas/{id}` | `primer-parcial/reportes/ventas-sucursal.page.ts` (Encargado) | — | `primer_parcial/test_cu27_ventas_sucursal.py` (5 pasos + 4) |
 | ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
-| ia (P9) | CU-07 Asistente y recomendador | `ia/cu07_asistente` (usa la búsqueda del CU-04 vía `modules/catalogo/publico.py`) | `POST /api/asistente/chat`, `GET /api/asistente/recomendaciones` | `primer-parcial/ia/asistente.page.ts` | — | `primer_parcial/test_cu07_asistente.py` (12 pruebas: reglas, IA con doble en memoria, stock, contexto, recomendaciones, plan, aislamiento) |
+| ia (P9) | CU-07 Asistente y recomendador | `ia/cu07_asistente` (usa la búsqueda del CU-04 vía `modules/catalogo/publico.py`) | `POST /api/asistente/chat`, `GET /api/asistente/recomendaciones`, `GET …/outfit`, `POST …/interacciones`, `GET/PUT …/privacidad`, `DELETE …/historial` | `primer-parcial/ia/asistente.page.ts`, `core/ia/aprendizaje.service.ts` (avisa lo que el cliente busca y mira desde `catalogo.page.ts` y `prenda.page.ts`) | — | `primer_parcial/test_cu07_asistente.py` (12 pruebas: reglas, IA con doble en memoria, stock, contexto, plan, aislamiento), `test_cu07_perfil.py` (13: perfil de gustos, motivos, ofertas, outfits, IA que elige y se valida, privacidad) |
 
 ## Esquema de la Fase A (migración 0003)
 
@@ -180,6 +180,18 @@ Planes (RN07): CU-21 y CU-22 exigen `reportes_convencionales`; CU-23, CU-42 y CU
 | 3 | Con la especificación se consultan los datos con las mismas consultas del CU-21 (ventas netas de devoluciones, ranking, reservas, pagos, inventario) | `ReportesBase`, `ReportesRepository` |
 | 4 | Se redacta el reporte, se guarda en `reportes_generados` y se anota el uso de IA | CU-23 `ReporteGenerativoService.generar` |
 | 5 | CU-42: KMeans clasifica la rotación de cada producto y una regresión lineal pronostica 4 semanas de demanda; compara con el stock y recomienda reponer o promocionar | CU-42 `AnaliticaMLService` |
+
+## Perfil de gustos del cliente (ajuste de la Fase G, migración 0010)
+
+Tablas: `interacciones_cliente` (búsquedas, prendas vistas y pedidos al asistente; se conservan las últimas 200) y `preferencias_cliente` (si el cliente permite que el sistema aprenda; por defecto, sí).
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | La web avisa lo que el cliente busca en el catálogo y las prendas que mira; el asistente anota lo que le pide. Si apagó la personalización, no se registra nada | `AprendizajeService`, `POST /asistente/interacciones`, `AsistenteService._recordar_pedido` |
+| 2 | Se arma el perfil: compras (peso 3), búsquedas y pedidos al asistente (2), prendas vistas (1); lo reciente pesa más (la mitad cada 30 días). Da categorías, colores, tallas y rango de precio | `perfil.py::construir_perfil` |
+| 3 | Se puntúan las prendas con stock contra el perfil (categoría, color, talla, precio, oferta, ya la miró) y se descartan las que ya compró | `perfil.py::puntuar`, `Recomendador._puntuadas` |
+| 4 | Con IA (si hay clave) la IA elige entre las mejores y explica cada una; el servidor valida que solo elija candidatas reales. Sin IA, el motivo se redacta con reglas | `recomendador.py::elegir_con_ia` |
+| 5 | Ofertas: las promociones que encajan con el perfil. Outfits: prendas de otras categorías que combinan en tono con una prenda base | `Recomendador.recomendar` / `outfit` |
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

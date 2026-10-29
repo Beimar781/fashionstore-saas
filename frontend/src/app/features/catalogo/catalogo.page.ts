@@ -1,3 +1,4 @@
+import { AprendizajeService } from '../../core/ia/aprendizaje.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -75,6 +76,7 @@ export class CatalogoPage implements OnInit {
   private catalogo = inject(CatalogoApi);
   private lecturas = inject(CatalogoAdminApi); // las listas de categorías, marcas, colores y tallas son de lectura para todos los roles
   private toast = inject(ToastService);
+  private aprendizaje = inject(AprendizajeService);
 
   readonly media = MEDIA_URL;
   readonly generos = GENEROS;
@@ -97,7 +99,7 @@ export class CatalogoPage implements OnInit {
     this.buscar();
   }
 
-  buscar() { this.irA(1); }
+  buscar() { this.aprendizaje.busqueda(this.f); this.irA(1); }
   irA(pagina: number) {
     this.cargando.set(true);
     this.catalogo.buscar({ ...this.f, q: this.f.q?.trim(), pagina }).subscribe({

@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { API_URL } from '../api.config';
-import { Analitica, FiltroReporte, Indicadores, MensajeChat, MiPlan, PagosReporte, Recomendaciones, ReporteGenerativo, ReservasReporte, RespuestaChat, VentasReporte } from '../reportes.models';
+import { Analitica, FiltroReporte, Indicadores, InteraccionCliente, MensajeChat, MiPlan, Outfit, PagosReporte, Privacidad, Recomendaciones, ReporteGenerativo, ReservasReporte, RespuestaChat, VentasReporte } from '../reportes.models';
 
 function parametros(f: object) {
   let params = new HttpParams();
@@ -31,5 +31,10 @@ export class ReportesApi {
   chat(mensajes: MensajeChat[], sucursalId: number | null) {
     return this.http.post<RespuestaChat>(`${API_URL}/asistente/chat`, { mensajes: mensajes.map((m) => ({ rol: m.rol, texto: m.texto })), sucursal_id: sucursalId });
   }
+  outfit(productoId: number | null, sucursalId: number | null) { return this.http.get<Outfit>(`${API_URL}/asistente/outfit`, { params: parametros({ producto_id: productoId, sucursal_id: sucursalId }) }); }
+  interaccion(body: InteraccionCliente) { return this.http.post<{ registrada: boolean }>(`${API_URL}/asistente/interacciones`, body); }
+  privacidad() { return this.http.get<Privacidad>(`${API_URL}/asistente/privacidad`); }
+  fijarPrivacidad(personalizar: boolean) { return this.http.put<Privacidad>(`${API_URL}/asistente/privacidad`, { personalizar }); }
+  borrarHistorial() { return this.http.delete<Privacidad>(`${API_URL}/asistente/historial`); }
   recomendaciones(sucursalId: number | null) { return this.http.get<Recomendaciones>(`${API_URL}/asistente/recomendaciones`, { params: parametros({ sucursal_id: sucursalId, limite: 6 }) }); }
 }
