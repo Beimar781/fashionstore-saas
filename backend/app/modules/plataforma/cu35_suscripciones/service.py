@@ -73,7 +73,8 @@ class SuscripcionService:
         if empresa.estado != EMPRESA_ACTIVA:
             raise Conflicto("La empresa está suspendida o cancelada. Reactívela antes de asignar un plan.")
         plan = self._plan_contratable(datos.plan_id)
-        vencimiento = resolver_vigencia(datos.fecha_inicio, datos.fecha_vencimiento, datos.duracion_meses)
+        vencimiento = self.vigencia_de(plan, datos.fecha_inicio, datos.fecha_vencimiento, datos.duracion_meses)
+        self.verificar_prueba(empresa_id, plan)
         self.verificar_cobertura_plan(empresa_id, plan)  # RN08
 
         anterior = self.repo.vigente(empresa_id)
@@ -84,6 +85,17 @@ class SuscripcionService:
         self.repo.marcar_vencidas(empresa_id)  # si las fechas ya pasaron, queda Vencida (RN05)
         self.db.commit()
         return schemas.SuscripcionOut.model_validate(nueva)
+
+    MSG_PRUEBA_USADA = "La empresa ya usó su mes de prueba."
+
+    def vigencia_de(self, plan: Plan, inicio: date, vencimiento: date | None, duracion_meses: int | None) -> date:
+        """La prueba gratuita siempre dura 1 mes desde el inicio, sin que se indique; los demás planes, lo que indique el SuperAdministrador."""
+        return sumar_meses(inicio, 1) if plan.es_prueba else resolver_vigencia(inicio, vencimiento, duracion_meses)
+
+    def verificar_prueba(self, empresa_id: int, plan: Plan) -> None:
+        """Cada empresa puede usar su mes de prueba una sola vez."""
+        if plan.es_prueba and self.repo.uso_su_prueba(empresa_id):
+            raise Conflicto(self.MSG_PRUEBA_USADA)
 
     def crear_registro(
         self, empresa_id: int, plan: Plan, inicio: date, vencimiento: date, forma_pago: str | None

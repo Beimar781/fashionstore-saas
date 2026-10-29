@@ -30,6 +30,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
   int? _sucursalId;
   String? _clienteEmail;
   DateTime? _visita;
+  String _modo = 'RESERVA'; // el cliente reserva o compra
   String? _error;
 
   @override
@@ -88,7 +89,14 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     if (_sucursalId == null) return setState(() => _error = 'Elija una sucursal.');
     final items = [for (final l in _lineas) {'variante_id': l.prenda.variante.id, 'cantidad': l.cantidad}];
     final detalle = _lineas.map((l) => '${l.cantidad}× ${l.prenda.texto}').join(', ');
-    if (c.esCliente) {
+    if (c.esCliente && _modo == 'COMPRA') {
+      await c.registrar(
+        tipo: 'COMPRA',
+        payload: {'sucursal_id': _sucursalId, 'items': items},
+        sucursalId: _sucursalId!,
+        resumen: 'Compra: $detalle',
+      );
+    } else if (c.esCliente) {
       if (_visita == null) return setState(() => _error = 'Indique la fecha y hora de su visita.');
       await c.registrar(
         tipo: 'RESERVA',
@@ -126,15 +134,27 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     }
     final cambio = (double.tryParse(_recibido.text.replaceAll(',', '.')) ?? 0) - _total;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Text(c.esCliente ? 'Reservar sin conexión' : 'Venta de contado sin conexión', style: Theme.of(context).textTheme.titleMedium),
+      Text(!c.esCliente ? 'Venta de contado sin conexión' : (_modo == 'COMPRA' ? 'Comprar sin conexión' : 'Reservar sin conexión'), style: Theme.of(context).textTheme.titleMedium),
       Text(
         c.esCliente
-            ? 'La reserva se confirma cuando el dispositivo recupere la conexión.'
+            ? (_modo == 'COMPRA'
+                ? 'La compra queda registrada en el dispositivo. Al recuperar la conexión verificamos que la prenda siga disponible y le avisamos para que la pague con tarjeta en «Mis compras»; no se cobra nada sin conexión.'
+                : 'La reserva se confirma cuando el dispositivo recupere la conexión.')
             : 'Las ventas sin conexión son de contado. Recibir el efectivo aquí no significa que el servidor ya la aceptó: se confirma al sincronizar.',
         style: Theme.of(context).textTheme.bodySmall,
       ),
       const SizedBox(height: 8),
       if (c.esCliente) ...[
+        DropdownButtonFormField<String>(
+          initialValue: _modo,
+          decoration: const InputDecoration(labelText: '¿Qué desea hacer?'),
+          items: const [
+            DropdownMenuItem(value: 'RESERVA', child: Text('Reservar para probarme')),
+            DropdownMenuItem(value: 'COMPRA', child: Text('Comprar (pago con tarjeta al sincronizar)')),
+          ],
+          onChanged: (v) => setState(() => _modo = v ?? 'RESERVA'),
+        ),
+        const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           initialValue: _sucursales.any((s) => s.id == _sucursalId) ? _sucursalId : null,
           decoration: const InputDecoration(labelText: 'Sucursal'),
@@ -145,7 +165,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           }),
         ),
         const SizedBox(height: 8),
-        OutlinedButton.icon(
+        if (_modo == 'RESERVA') OutlinedButton.icon(
           onPressed: _elegirVisita,
           icon: const Icon(Icons.event),
           label: Text(_visita == null ? 'Elegir fecha y hora de visita' : 'Visita: ${_visita!.day}/${_visita!.month}/${_visita!.year} ${_visita!.hour.toString().padLeft(2, '0')}:${_visita!.minute.toString().padLeft(2, '0')}'),
@@ -176,7 +196,9 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         const Divider(),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)), Text('Bs ${_total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))]),
         const SizedBox(height: 8),
-        if (c.esCliente)
+        if (c.esCliente && _modo == 'COMPRA')
+          const Text('Si cuando sincronice la prenda ya se agotó, le avisaremos y no se le cobrará nada.')
+        else if (c.esCliente)
           TextField(controller: _notas, decoration: const InputDecoration(labelText: 'Notas (opcional)'))
         else ...[
           TextField(controller: _recibido, keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Efectivo recibido (Bs)')),
@@ -194,7 +216,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         ],
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: Colors.red))),
         const SizedBox(height: 12),
-        FilledButton(onPressed: _registrar, child: Text(c.esCliente ? 'Registrar reserva en el dispositivo' : 'Registrar venta en el dispositivo')),
+        FilledButton(onPressed: _registrar, child: Text(!c.esCliente ? 'Registrar venta en el dispositivo' : (_modo == 'COMPRA' ? 'Registrar compra en el dispositivo' : 'Registrar reserva en el dispositivo'))),
       ],
     ]);
   }

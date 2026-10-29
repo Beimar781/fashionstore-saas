@@ -65,10 +65,12 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <label class="full">Plan
                 <select name="plan" [(ngModel)]="form.plan_id" required>
                   <option [ngValue]="null" disabled>Seleccione…</option>
-                  @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales · Bs {{ p.precio }}</option> }
+                  @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales · Bs {{ p.precio }}{{ p.es_prueba ? ' · 1 mes, una sola vez' : '' }}</option> }
                 </select></label>
               <label>Inicio<input name="fi" type="date" [(ngModel)]="form.fecha_inicio" required /></label>
+              @if (esPrueba()) { <div class="full small muted">La prueba gratuita dura 1 mes y la empresa puede usarla una sola vez.</div> } @else {
               <label>Duración<select name="d" [(ngModel)]="form.duracion_meses"><option [ngValue]="1">1 mes</option><option [ngValue]="3">3 meses</option><option [ngValue]="6">6 meses</option><option [ngValue]="12">12 meses</option></select></label>
+              }
               <label class="full">Forma de pago <span class="hint">Registro simulado, sin cobro real</span>
                 <select name="fp" [(ngModel)]="form.forma_pago"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="QR">QR</option></select></label>
             </div>
@@ -87,6 +89,7 @@ export class SuscripcionPage implements OnInit {
   readonly detalle = signal<SuscripcionDetalle | null>(null);
   readonly empresa = signal<Empresa | null>(null);
   readonly planes = signal<Plan[]>([]);
+  esPrueba() { return !!this.planes().find((p) => p.id === this.form.plan_id)?.es_prueba; }
   readonly modal = signal(false);
   readonly guardando = signal(false);
   readonly error = signal('');

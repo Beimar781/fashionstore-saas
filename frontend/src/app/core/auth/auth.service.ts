@@ -5,6 +5,7 @@ import { Observable, finalize, shareReplay, tap } from 'rxjs';
 import { API_URL } from '../api.config';
 import { LoginBody, ROL, Rol, Sesion, TokenResponse } from '../models';
 import { LocalDbService } from '../offline/local-db.service';
+import { PushService } from '../push/push.service';
 
 const K_ACCESS = 'fs.access', K_REFRESH = 'fs.refresh', K_SESION = 'fs.sesion';
 
@@ -15,6 +16,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private local = inject(LocalDbService);
+  private push = inject(PushService);
 
   readonly sesion = signal<Sesion | null>(this.leer());
   readonly autenticado = computed(() => this.sesion() !== null);
@@ -67,7 +69,10 @@ export class AuthService {
 
   cerrarSesion(): void {
     // se avisa al servidor para que quede en la bitácora; si no hay conexión, igual se cierra la sesión local
-    if (this.sesion()) this.http.post(`${API_URL}/auth/logout`, {}).subscribe({ error: () => undefined });
+    if (this.sesion()) {
+      void this.push.baja();  // este navegador deja de recibir los avisos de la cuenta que se cierra (antes de borrar el token)
+      this.http.post(`${API_URL}/auth/logout`, {}).subscribe({ error: () => undefined });
+    }
     localStorage.removeItem(K_ACCESS); localStorage.removeItem(K_REFRESH); localStorage.removeItem(K_SESION);
     this.sesion.set(null);
     void this.local.borrarSesion();

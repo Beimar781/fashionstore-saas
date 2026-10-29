@@ -35,13 +35,13 @@ class VentaPresencialService:
         self.reservas = ReservaService(db, ctx.empresa_id)
 
     # ---- pasos 1 a 4: armar la venta ----
-    def crear(self, datos: schemas.VentaIn, commit: bool = True) -> PedidoOut:
+    def crear(self, datos: schemas.VentaIn, commit: bool = True, verificar_stock: bool = True) -> PedidoOut:
         reserva = self._reserva_para_cobrar(datos.reserva_codigo) if datos.reserva_codigo else None
         pedidas = self._pedidas(datos, reserva)
         variantes = self.variantes.con_producto(set(pedidas)) if reserva else self.variantes.vendibles(set(pedidas))
         if len(variantes) != len(pedidas):
             raise DatosInvalidos(MSG_NO_DISPONIBLE)  # también si la prenda es de otra empresa
-        if reserva is None:
+        if reserva is None and verificar_stock:
             self._verificar_stock(pedidas, variantes)  # una reserva ya tiene su stock apartado
 
         descuentos = descuentos_vigentes(self.db, self.empresa_id)

@@ -18,7 +18,7 @@ export interface LoginBody { codigo_empresa: string | null; email: string; passw
 
 export interface Plan {
   id: number; nombre: string; descripcion: string | null; precio: string | number; periodicidad: string; max_sucursales: number;
-  reportes_ia: boolean; offline: boolean; reportes_convencionales: boolean; activo: boolean; empresas_suscritas: number;
+  reportes_ia: boolean; offline: boolean; reportes_convencionales: boolean; es_prueba: boolean; activo: boolean; empresas_suscritas: number;
 }
 export interface EmpresaExcedida { empresa_id: number; codigo: string; sucursales_activas: number; limite: number; }
 export interface PlanGuardado { plan: Plan; advertencias: EmpresaExcedida[]; }

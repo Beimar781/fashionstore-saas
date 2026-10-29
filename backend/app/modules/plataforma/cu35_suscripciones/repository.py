@@ -4,7 +4,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.constantes import SUS_ACTIVA, SUS_VENCIDA
-from app.modules.plataforma.models import Suscripcion
+from app.modules.plataforma.models import Plan, Suscripcion
 
 
 class SuscripcionRepository:
@@ -32,6 +32,12 @@ class SuscripcionRepository:
             .order_by((Suscripcion.estado == SUS_ACTIVA).desc(), Suscripcion.id.desc())
             .limit(1)
         )
+
+    def uso_su_prueba(self, empresa_id: int) -> bool:
+        """¿La empresa ya tuvo, en algún momento, una suscripción de prueba gratuita?"""
+        return self.db.scalar(
+            select(Suscripcion.id).join(Plan, Plan.id == Suscripcion.plan_id).where(Suscripcion.empresa_id == empresa_id, Plan.es_prueba.is_(True)).limit(1)
+        ) is not None
 
     def historial(self, empresa_id: int) -> list[Suscripcion]:
         return list(

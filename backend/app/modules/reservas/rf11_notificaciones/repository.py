@@ -1,7 +1,21 @@
 from sqlalchemy import and_, func, or_, select, update
 
 from app.core.tenant import TenantRepository
-from app.modules.reservas.models import Notificacion
+from app.modules.reservas.models import Dispositivo, Notificacion, PushEnvio
+
+
+class DispositivoRepository(TenantRepository[Dispositivo]):
+    model = Dispositivo
+
+    def activos_de(self, usuario_id: int) -> list[Dispositivo]:
+        return list(self.db.scalars(self._consulta().where(Dispositivo.usuario_id == usuario_id, Dispositivo.activo.is_(True)).order_by(Dispositivo.id)))
+
+    def por_token(self, usuario_id: int, canal: str, token: str) -> Dispositivo | None:
+        return self.db.scalar(self._consulta().where(Dispositivo.usuario_id == usuario_id, Dispositivo.canal == canal, Dispositivo.token == token))
+
+
+class PushEnvioRepository(TenantRepository[PushEnvio]):
+    model = PushEnvio
 
 
 class NotificacionRepository(TenantRepository[Notificacion]):

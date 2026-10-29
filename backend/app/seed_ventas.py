@@ -13,7 +13,7 @@ from app.modules.inventario.models import Existencia
 from app.modules.sucursales.models import Sucursal
 from app.modules.offline.cu38_sincronizar.service import SincronizacionService
 from app.modules.offline.schemas import OperacionIn, SincronizarIn
-from app.modules.ventas.cu41_devoluciones.schemas import DevolucionIn, ItemDevueltoIn
+from app.modules.ventas.cu41_devoluciones.schemas import CondicionIn, DevolucionIn, ItemDevueltoIn
 from app.modules.ventas.cu41_devoluciones.service import DevolucionService
 from app.modules.ventas.publico import Devolucion
 from app.modules.ventas.cu29_venta_presencial.schemas import LineaIn, VentaIn
@@ -88,6 +88,7 @@ def cargar_devoluciones(db: Session, empresa) -> None:
     ctx = Contexto(cajero, CAJERO, empresa.id, cajero.sucursal_id)
     DevolucionService(db, ctx).registrar(DevolucionIn(
         comprobante=venta.comprobante_numero, motivo="Le quedó pequeña", items=[ItemDevueltoIn(pedido_item_id=venta.items[0].id, cantidad=1)],
+        condicion=CondicionIn(sin_danos=True, sin_desgaste=True, con_etiquetas=True),
     ))
 
 

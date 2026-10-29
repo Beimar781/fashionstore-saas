@@ -417,3 +417,83 @@ La bitácora **no es un caso de uso**: es una función transversal, como el aisl
 ### Para el Word
 
 Agregar la tabla `bitacora` al modelo de datos (con su disparador de inmutabilidad), la función transversal a la arquitectura y a la tabla de trazabilidad (sin CU), y la regla de que la bitácora la ve cada Administrador solo de su empresa (RN02) y el SuperAdministrador de todas.
+
+---
+
+# Fase K · Ajustes de la clase del 29/10
+
+## K1 · Tercer plan «Prueba gratuita» (RN06)
+
+### Reglas y decisiones
+
+- **RN06 (planes).** El catálogo pasa de dos a **tres planes**: Básico, Profesional y **Prueba gratuita** (precio 0, 1 sucursal activa, reportes convencionales y operación offline, **sin IA**). La prueba se reconoce por el campo `es_prueba` del plan, no por su nombre.
+- **Un mes, una sola vez.** La prueba dura siempre **1 mes** desde su inicio (el SuperAdministrador no indica la duración) y cada empresa la usa **una sola vez**: ni renovándola mientras está vigente ni volviendo a ella después de contratar otro plan.
+- **Al vencer** la empresa queda en modo restringido (RN05: solo puede consultar su plan) y el SuperAdministrador le asigna Básico o Profesional con CU-35; la prueba y el plan anterior quedan en el historial de suscripciones.
+- RN08 (cambio de plan vs. sucursales activas) se aplica igual: no se asigna la prueba a una empresa con más de 1 sucursal activa.
+- La IA (CU-23 y CU-42) queda bloqueada con el mismo mensaje de siempre (RN07); los reportes convencionales (CU-21, CU-22), el offline y CU-36 funcionan.
+
+### Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Asignar la prueba a una empresa que ya la usó | «La empresa ya usó su mes de prueba.» | 409 | Pendiente |
+
+### Para el Word
+
+Actualizar el CU-34 (planes: campo «prueba gratuita»), el CU-35 (la prueba dura 1 mes y se asigna una sola vez), la regla RN06 (tres planes) y el diagrama de estados de la suscripción.
+
+## K2 · Avisos push (RF11, regla 17)
+
+### Reglas y decisiones
+
+- **Qué es.** Servicio reutilizable (`rf11_notificaciones/push.py`, exportado por `reservas/publico.py` como `avisar_cliente`) para avisar algo importante a un usuario: deja el aviso en su **campana** (RF11) y lo envía por **push** a sus dispositivos activos.
+  Primer uso: el cliente recibe un aviso cuando se registra una devolución o un cambio de su compra (CU-41), con el reembolso si lo hay; una venta de mostrador sin cuenta de cliente no avisa a nadie.
+- **Dos canales.** Web Push con claves VAPID (navegador, vía el service worker de la PWA) y Firebase Cloud Messaging (móvil). Sin claves en `backend/.env` quedan en **modo simulado**: el envío se anota como SIMULADO y el aviso sigue en la campana (web) o se muestra al abrir la app (móvil). Las claves nunca van en el código (regla 12).
+- **Un fallo del push nunca deshace la operación** (la devolución ya está confirmada): el error se anota en `push_envios` y se sigue. Un dispositivo que rechaza el aviso (404 o 410) se desactiva y no se vuelve a intentar.
+- **Dispositivos.** Cada usuario registra su navegador o móvil (`POST /notificaciones/dispositivos`) y lo da de baja al cerrar sesión o al desactivar los avisos (`POST /notificaciones/dispositivos/baja`); un mismo dispositivo no se duplica. El push solo llega a los dispositivos de ese cliente de esa empresa (RN02).
+- **Bitácora (regla 16).** Registrar o quitar un dispositivo queda en la bitácora **sin guardar el token ni la suscripción**.
+- **Tablas nuevas:** `dispositivos` (usuario, canal WEB o MOVIL, token, activo) y `push_envios` (resultado de cada intento: ENVIADO, SIMULADO o FALLIDO).
+
+### Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Suscripción del navegador mal formada | «La suscripción del navegador no es válida.» | 422 | Pendiente |
+| Identificador del dispositivo vacío o demasiado largo | «El identificador del dispositivo no es válido.» | 422 | Pendiente |
+| Aviso al cliente por devolución | «Devolución registrada» / «Cambio registrado» + «Su devolución NDV-… fue registrada. Reembolso: Bs … por tarjeta (o efectivo).» o «Su cambio NDV-… fue registrado.» | (aviso, no error) | Pendiente |
+
+### Para el Word
+
+Agregar a RF11 el envío de avisos push (campana + push), las tablas `dispositivos` y `push_envios`, y el aviso al cliente en el flujo del CU-41 (paso posterior a confirmar la devolución).
+
+## K3 · Compra sin conexión que ya no se puede cumplir (CU-38, CU-40, CU-41, CU-32)
+
+### Reglas y decisiones
+
+- **Operación COMPRA del Cliente.** Además de VENTA_CONTADO (personal) y RESERVA (cliente), el cliente puede **comprar sin conexión desde la web o el móvil** (nunca en caja). La compra se arma con el catálogo descargado y queda `REGISTRADA_LOCAL`
+  (UUID del dispositivo, sin datos de tarjeta). **La tarjeta no se puede cobrar sin internet:** al sincronizar, el servidor verifica las existencias y, si alcanzan, crea el pedido **por pagar** (el mismo del checkout, CU-11, entrega EN_TIENDA); la operación queda `CONFIRMADA`
+  y el cliente paga con tarjeta en «Mis compras» (CU-32), que es cuando se descuenta el stock.
+- **Si no alcanza (RN14):** la operación queda `EN_CONFLICTO` sin crear pedido, sin descontar ni cobrar nada. Se conserva el aviso al personal (`CONFLICTO_SYNC`) y se agrega el del cliente. El Encargado puede **reintentar** (si llegó mercadería, la compra queda lista para pagar) o **descartar**.
+  Esto vale también para la RESERVA sin conexión y para la venta de caja con cliente identificado.
+- **El cliente siempre se entera** (campana + push de la regla 17 + mensaje emergente en la web y el móvil): cuando su compra queda lista para pagar, cuando la prenda se agotó antes de sincronizar, cuando el Encargado la descarta o la reintenta, y cuando la prenda se agota
+  **mientras paga con tarjeta** (CU-32: la autorización se anula, no se cobra nada y se le avisa).
+- **Venta de contado ya cobrada (descartar y devolver el dinero, CU-40).** Si el efectivo ya se recibió en caja, el Encargado (o el Administrador) descarta la operación con «devolver dinero»: se registra la venta sin descontar existencias y enseguida su devolución con **CU-41**
+  (nota NDV, reembolso en efectivo). La devolución **tiene movimiento de inventario con su talla y color**: la prenda vuelve (`DEVOLUCION`) y se anota la salida de la venta que nunca quedó registrada (`VENTA`), de modo que el inventario queda igual que antes. Solo aplica a ventas de contado.
+- **Condición de la prenda (RN15, CU-41).** Toda devolución o cambio exige que quien recibe la prenda confirme que **no tiene daños, no tiene desgaste y conserva sus etiquetas**; si falta alguna, no se recibe. La revisión queda guardada en la nota. El plazo en días desde la compra (15 por defecto, configurable por la empresa) ya existía y se mantiene.
+- **Tipo de operación y base local.** La tabla `operaciones_offline` admite el tipo `COMPRA` (regla 14) y la base SQLite del móvil pasa a la versión 3 conservando lo pendiente de sincronizar.
+
+### Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Devolución o cambio con la prenda dañada, usada o sin etiquetas (o sin revisar) | «La prenda no cumple las condiciones de devolución: debe estar sin daños, sin desgaste y conservar sus etiquetas.» | 422 | Pendiente |
+| Descartar devolviendo dinero una operación que no es venta de contado | «Solo una venta de contado ya cobrada se descarta devolviendo el dinero.» | 422 | Pendiente |
+| Aviso: compra registrada sin conexión con stock | «Su compra {pedido} se registró y hay stock. Pague con tarjeta en «Mis compras» para confirmarla.» | (aviso) | Pendiente |
+| Aviso: la prenda se agotó antes de sincronizar | «Su compra {COM-xxxxxxxx} no se pudo realizar porque la prenda se agotó.» (igual para «reserva» y «VTA-» en una venta de caja con cliente) | (aviso) | Pendiente |
+| Aviso: el Encargado descarta la operación | «Su compra {código} no se pudo realizar porque la prenda se agotó ({motivo}). No se le cobró nada.» o «… Se le devolvieron Bs {monto} en efectivo (nota {NDV-…}).» | (aviso) | Pendiente |
+| Aviso: la prenda se agotó mientras pagaba | «Su compra {pedido} no se pudo completar porque la prenda se agotó. No se le cobró nada.» | (aviso) | Pendiente |
+
+### Para el Word
+
+Agregar la operación COMPRA al CU-37/38 (tipos de operación offline) y su flujo alternativo «sin existencias» (conflicto + aviso al cliente); en el CU-40, la opción «descartar y devolver el dinero» que invoca CU-41; en el CU-41, el paso «revisar la prenda (sin daños, sin desgaste, con etiquetas)» antes del plazo y del inventario;
+y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.

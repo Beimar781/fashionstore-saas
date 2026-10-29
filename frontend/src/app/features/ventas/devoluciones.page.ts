@@ -66,6 +66,12 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <label style="max-width:220px">Operación<select name="t" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)"><option value="DEVOLUCION">Devolución</option><option value="CAMBIO">Cambio por otra prenda</option></select></label>
               <label style="flex:1;min-width:240px">Motivo<input name="m" [(ngModel)]="motivo" placeholder="Le quedó pequeña, falla de fábrica…" maxlength="200" /></label>
             </div>
+            <fieldset class="stack" style="border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem">
+              <legend class="small"><strong>Revisión de la prenda que vuelve</strong></legend>
+              <label class="check"><input type="checkbox" name="cd" [(ngModel)]="condicion.sin_danos" /> Sin daños (rotos, manchas ni costuras abiertas)</label>
+              <label class="check"><input type="checkbox" name="cg" [(ngModel)]="condicion.sin_desgaste" /> Sin desgaste ni señales de uso o lavado</label>
+              <label class="check"><input type="checkbox" name="ce" [(ngModel)]="condicion.con_etiquetas" /> Conserva sus etiquetas</label>
+            </fieldset>
 
             @if (tipo() === 'CAMBIO') {
               <form class="row" (ngSubmit)="buscarNueva()">
@@ -109,7 +115,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               }
               <div class="row"><button class="btn ghost" (click)="nueva()">Cancelar</button></div>
             } @else {
-            <div class="row"><button class="btn primary" [disabled]="enviando() || !v.dentro_del_plazo || !hayPrendas()" (click)="registrar()">{{ enviando() ? 'Registrando…' : tipo() === 'CAMBIO' ? 'Registrar cambio' : 'Registrar devolución' }}</button><button class="btn ghost" (click)="nueva()">Cancelar</button></div>
+            <div class="row"><button class="btn primary" [disabled]="enviando() || !v.dentro_del_plazo || !hayPrendas() || !condicionCompleta()" (click)="registrar()">{{ enviando() ? 'Registrando…' : tipo() === 'CAMBIO' ? 'Registrar cambio' : 'Registrar devolución' }}</button><button class="btn ghost" (click)="nueva()">Cancelar</button></div>
             }
           </section>
         </div>
@@ -145,6 +151,8 @@ export class DevolucionesPage implements OnInit {
   readonly error = signal('');
   readonly enviando = signal(false);
   comprobante = ''; motivo = ''; consulta = ''; montoRecibido: number | null = null;
+  condicion = { sin_danos: false, sin_desgaste: false, con_etiquetas: false };  // RN15: quien recibe la prenda la revisa
+  condicionCompleta() { const c = this.condicion; return c.sin_danos && c.sin_desgaste && c.con_etiquetas; }
 
   readonly devuelto = computed(() => (this.venta()?.items ?? []).reduce((t, i) => t + (this.cantidades()[i.pedido_item_id] ?? 0) * Number(i.precio_final), 0));
   readonly nuevo = computed(() => this.tipo() === 'CAMBIO' ? this.nuevas().reduce((t, n) => t + n.cantidad * n.precio_final, 0) : 0);
@@ -161,7 +169,7 @@ export class DevolucionesPage implements OnInit {
   buscar() {
     this.errorBusqueda.set('');
     this.api.venta(this.comprobante.trim()).subscribe({
-      next: (v) => { this.venta.set(v); this.cantidades.set({}); this.nuevas.set([]); this.resultados.set([]); this.tipo.set('DEVOLUCION'); this.metodoCobro.set('EFECTIVO'); this.motivo = ''; this.error.set(''); },
+      next: (v) => { this.venta.set(v); this.cantidades.set({}); this.nuevas.set([]); this.resultados.set([]); this.tipo.set('DEVOLUCION'); this.metodoCobro.set('EFECTIVO'); this.motivo = ''; this.condicion = { sin_danos: false, sin_desgaste: false, con_etiquetas: false }; this.error.set(''); },
       error: (e) => this.errorBusqueda.set(mensajeError(e)),
     });
   }
@@ -186,7 +194,7 @@ export class DevolucionesPage implements OnInit {
   private cuerpo(): Record<string, unknown> {
     const v = this.venta()!;
     return {
-      comprobante: v.pedido.comprobante_numero, tipo: this.tipo(), motivo: this.motivo,
+      comprobante: v.pedido.comprobante_numero, tipo: this.tipo(), motivo: this.motivo, condicion: { ...this.condicion },
       items: v.items.filter((i) => (this.cantidades()[i.pedido_item_id] ?? 0) > 0).map((i) => ({ pedido_item_id: i.pedido_item_id, cantidad: this.cantidades()[i.pedido_item_id] })),
       nuevos: this.tipo() === 'CAMBIO' ? this.nuevas().map((n) => ({ variante_id: n.variante_id, cantidad: n.cantidad })) : [],
     };

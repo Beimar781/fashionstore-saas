@@ -5,12 +5,12 @@ import 'package:sqflite/sqflite.dart';
 ///
 /// - `sesion`: contexto de sesión (CU-02, paso 8: guardar la sesión para operar sin conexión).
 /// - `sucursales_autorizadas`, `productos_locales`, `clientes_locales` y `meta`: el catálogo descargado (CU-37) y de cuándo es (RN16).
-/// - `operaciones_pendientes`: la cola de operaciones sin conexión con su estado (CU-38, CU-39). Llevan siempre empresa, sucursal y usuario (RN11).
+/// - `operaciones_pendientes`: la cola de operaciones sin conexión (venta de contado, reserva y compra del cliente) con su estado (CU-38, CU-39). Llevan siempre empresa, sucursal y usuario (RN11).
 class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const version = 2;
+  static const version = 3;
 
   Database? _db;
   String? _rutaPrueba;
@@ -48,6 +48,13 @@ class LocalDatabase {
             await db.execute('DROP TABLE IF EXISTS $t');
           }
           await _crearTablasOffline(db);
+        } else if (anterior < 3) {
+          // la versión 3 admite la operación COMPRA del cliente: SQLite no cambia un CHECK, así que la tabla se rehace SIN perder lo pendiente de sincronizar
+          await db.execute('ALTER TABLE operaciones_pendientes RENAME TO operaciones_pendientes_v2');
+          await db.execute('DROP INDEX IF EXISTS ix_operaciones_estado');
+          await _crearOperaciones(db);
+          await db.execute('INSERT INTO operaciones_pendientes SELECT * FROM operaciones_pendientes_v2');
+          await db.execute('DROP TABLE operaciones_pendientes_v2');
         }
       },
     );
@@ -82,13 +89,17 @@ class LocalDatabase {
         email TEXT NOT NULL
       )''');
     await db.execute('CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
+    await _crearOperaciones(db);
+  }
+
+  Future<void> _crearOperaciones(Database db) async {
     await db.execute('''
       CREATE TABLE operaciones_pendientes (
         id TEXT PRIMARY KEY,
         empresa_id INTEGER NOT NULL,
         sucursal_id INTEGER,
         usuario_id INTEGER NOT NULL,
-        tipo TEXT NOT NULL CHECK (tipo IN ('VENTA_CONTADO','RESERVA')),
+        tipo TEXT NOT NULL CHECK (tipo IN ('VENTA_CONTADO','RESERVA','COMPRA')),
         payload_json TEXT NOT NULL,
         estado TEXT NOT NULL CHECK (estado IN
           ('REGISTRADA_LOCAL','ENVIADA','CONFIRMADA','RECHAZADA','EN_CONFLICTO')),

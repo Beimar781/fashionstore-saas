@@ -192,6 +192,35 @@ void main() {
     expect(o.detalle, isNull);
   });
 
+  Future<OperacionLocal> compra() => repo.registrar(
+        tipo: 'COMPRA',
+        payload: {'sucursal_id': 1, 'items': [{'variante_id': 100, 'cantidad': 1}]},
+        sucursalId: 1,
+        resumen: 'Compra: 1× Camisa Oxford',
+        usuarioId: 5,
+        empresaId: 1,
+      );
+
+  test('Fase K: la compra del cliente sin conexión queda REGISTRADA_LOCAL sin datos de tarjeta y, si ya no alcanza, se le avisa que no se cobró nada', () async {
+    final op = await compra();
+    expect(op.estado, Estado.registradaLocal);
+    expect(op.payload.keys, unorderedEquals(['sucursal_id', 'items'])); // nada de tarjeta: el pago se hace en línea
+    api.alSincronizar = (c) => {'resultados': [_resultado(op.id, 'EN_CONFLICTO', detalle: {'faltantes': []})], 'sincronizado_en': '2026-10-29T11:00:00Z'};
+    final r = await repo.sincronizar(5, 1);
+    expect(r.enConflicto, 1);
+    expect(r.avisos, ['Su compra no se pudo realizar porque la prenda se agotó. No se le cobró nada.']);
+  });
+
+  test('Fase K: con stock, la compra queda confirmada y se avisa al cliente que ya puede pagarla con tarjeta', () async {
+    final op = await compra();
+    api.alSincronizar = (c) => {'resultados': [_resultado(op.id, 'CONFIRMADA', referencia: 'PED-77', mensaje: 'Operación confirmada.')], 'sincronizado_en': '2026-10-29T11:00:00Z'};
+    final r = await repo.sincronizar(5, 1);
+    expect(r.avisos, ['Su compra PED-77 está lista: págela con tarjeta en «Mis compras».']);
+    final v = await venta();
+    api.alSincronizar = (c) => {'resultados': [_resultado(v.id, 'EN_CONFLICTO', detalle: {'faltantes': []})], 'sincronizado_en': '2026-10-29T11:00:00Z'};
+    expect((await repo.sincronizar(5, 1)).avisos, isEmpty); // la venta de caja la resuelve el personal, no es un aviso del cliente
+  });
+
   test('RN12: solo se quitan del dispositivo las operaciones que el servidor ya confirmó o rechazó', () async {
     final pendiente = await venta();
     final confirmada = await venta();

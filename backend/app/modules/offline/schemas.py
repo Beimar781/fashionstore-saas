@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-TIPOS = ("VENTA_CONTADO", "RESERVA")
+TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA")
 
 
 class LineaOfflineIn(BaseModel):
@@ -24,9 +24,18 @@ class VentaOfflineIn(BaseModel):
     razon_social: str = Field(default="Sin nombre", max_length=120)
 
 
+class CompraOfflineIn(BaseModel):
+    """Compra del cliente armada sin conexión: un pedido por pagar; la tarjeta se cobra en línea cuando sincroniza (no se guardan datos de tarjeta)."""
+
+    sucursal_id: int
+    items: list[LineaOfflineIn] = Field(min_length=1, max_length=60)
+    nit_ci: str = Field(default="0", max_length=20)
+    razon_social: str = Field(default="Sin nombre", max_length=120)
+
+
 class OperacionIn(BaseModel):
     id: uuid.UUID  # RN11: lo genera el cliente al registrar la operación
-    tipo: Literal["VENTA_CONTADO", "RESERVA"]
+    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA"]
     creada_en: datetime  # cuándo se registró en el dispositivo
     sucursal_id: int | None = None
     payload: dict

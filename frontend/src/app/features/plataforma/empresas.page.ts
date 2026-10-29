@@ -84,13 +84,15 @@ const hoy = () => new Date().toISOString().slice(0, 10);
                   <label>Plan
                     <select name="plan" [(ngModel)]="form.plan_id" required>
                       <option [ngValue]="null" disabled>Seleccione…</option>
-                      @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales</option> }
+                      @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales{{ p.es_prueba ? ' · 1 mes' : '' }}</option> }
                     </select></label>
                   <label>Inicio<input name="fi" type="date" [(ngModel)]="form.fecha_inicio" required /></label>
+                  @if (esPrueba()) { <div class="small muted">La prueba gratuita dura 1 mes.</div> } @else {
                   <label>Duración
                     <select name="dur" [(ngModel)]="form.duracion_meses">
                       <option [ngValue]="1">1 mes</option><option [ngValue]="3">3 meses</option><option [ngValue]="6">6 meses</option><option [ngValue]="12">12 meses</option>
                     </select></label>
+                  }
                   <label>Forma de pago <span class="hint">Registro simulado</span>
                     <select name="fp" [(ngModel)]="form.forma_pago"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="QR">QR</option></select></label>
                 </div>
@@ -126,6 +128,7 @@ export class EmpresasPage implements OnInit {
 
   readonly empresas = signal<Empresa[]>([]);
   readonly planes = signal<Plan[]>([]);
+  esPrueba() { return !!this.planes().find((p) => p.id === this.form.plan_id)?.es_prueba; }
   readonly cargando = signal(true);
   readonly modal = signal<'nueva' | 'editar' | null>(null);
   readonly guardando = signal(false);

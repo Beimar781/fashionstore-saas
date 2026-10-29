@@ -61,3 +61,34 @@ class Notificacion(Base):
     referencia_id: Mapped[int | None] = mapped_column(BigInteger)
     leida: Mapped[bool] = mapped_column(Boolean, default=False)
     creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Dispositivo(Base):
+    """Navegador (suscripción Web Push) o móvil (token de FCM) donde un usuario recibe avisos push."""
+
+    __tablename__ = "dispositivos"
+    __table_args__ = (UniqueConstraint("usuario_id", "canal", "token"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
+    usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id", ondelete="CASCADE"))
+    canal: Mapped[str] = mapped_column(String(5))  # WEB | MOVIL
+    token: Mapped[str] = mapped_column(Text)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PushEnvio(Base):
+    """Resultado de cada intento de push; un fallo se anota aquí y nunca deshace la operación que lo originó."""
+
+    __tablename__ = "push_envios"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
+    usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id", ondelete="CASCADE"))
+    dispositivo_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("dispositivos.id", ondelete="SET NULL"))
+    canal: Mapped[str] = mapped_column(String(5))
+    estado: Mapped[str] = mapped_column(String(10))  # ENVIADO | SIMULADO | FALLIDO
+    titulo: Mapped[str] = mapped_column(String(200))
+    error: Mapped[str | None] = mapped_column(String(300))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

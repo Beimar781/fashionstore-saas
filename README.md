@@ -102,6 +102,12 @@ registre una venta de contado (o una reserva, como cliente) y vuelva a conectar:
 **Bitácora (Fase J):** el Administrador (`admin@modaurbana.com`) entra a **Bitácora** y ve solo lo de su empresa; el SuperAdministrador (`superadmin@fashionstore.com`) ve la de todas las empresas con la columna **Empresa**
 y las operaciones de la plataforma. Cada inicio y cierre de sesión, cada intento fallido y cada alta, cambio, cobro o devolución queda registrado con quién, qué, cuándo y la IP; las consultas no. Se puede filtrar y buscar, y no se puede
 editar ni borrar. El seed deja unas 40 filas de ejemplo.
+**Plan de prueba y avisos push (Fase K):** el SuperAdministrador ve tres planes; **Prueba gratuita** dura 1 mes, una sola vez por empresa, sin IA. Los avisos push funcionan en modo simulado sin claves: como cliente, abra la campana 🔔 y
+pulse **Activar avisos**; cuando el Cajero registre una devolución o cambio de una venta vinculada a su correo, le llega el aviso (campana y registro en `push_envios`). Para Web Push de verdad ejecute `python scripts/generar_vapid.py`
+(agrega las claves VAPID a `backend/.env` sin imprimirlas) y reinicie el backend; para el móvil real se necesita una cuenta de servicio de Firebase (`FCM_CREDENCIALES` y `FCM_PROYECTO` en `backend/.env`).
+**Compra sin conexión (Fase K):** como cliente, en **Modo sin conexión** elija «Comprar», descargue el catálogo, apague la red y registre la compra; al volver la conexión se verifica el stock: si alcanza, queda un pedido por pagar (avisa la campana, el push y un mensaje emergente) y se paga con
+tarjeta en **Mis compras**; si la prenda se agotó, el aviso dice que no se cobró nada. Para ver el conflicto: deje una sola unidad, compre esa prenda con otro cliente y sincronice la compra sin conexión del primero; el Encargado la ve en **Conflictos de sincronización**
+y, si fue una venta de contado ya cobrada en caja, puede **descartarla devolviendo el dinero** (se revisa la prenda y la devolución pasa por el inventario con su talla y color). En **Devoluciones y cambios** el Cajero ahora marca la revisión de la prenda (sin daños, sin desgaste, con etiquetas).
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.

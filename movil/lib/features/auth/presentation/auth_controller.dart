@@ -6,9 +6,12 @@ import '../data/sesion.dart';
 
 /// Estado de autenticación de la app (CU-02) para la capa de presentación.
 class AuthController extends ChangeNotifier {
-  AuthController(this._repo);
+  AuthController(this._repo, {this.antesDeCerrarSesion});
 
   final AuthRepository _repo;
+
+  /// Se ejecuta con el token todavía vigente (por ejemplo, para dar de baja el dispositivo de los avisos push).
+  final Future<void> Function()? antesDeCerrarSesion;
 
   Sesion? sesion;
   bool iniciando = true;
@@ -65,6 +68,9 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> cerrarSesion() async {
+    try {
+      await antesDeCerrarSesion?.call().timeout(const Duration(seconds: 3));
+    } catch (_) {}
     await _repo.cerrarSesion();
     sesion = null;
     error = null;

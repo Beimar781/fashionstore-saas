@@ -14,7 +14,7 @@ export class OfflineApi {
   }
   mias() { return this.http.get<OperacionServidor[]>(`${API_URL}/offline/operaciones`); }
   conflictos() { return this.http.get<OperacionServidor[]>(`${API_URL}/offline/conflictos`); }
-  resolver(id: string, accion: 'REINTENTAR' | 'DESCARTAR', motivo?: string) {
-    return this.http.post<OperacionServidor>(`${API_URL}/offline/conflictos/${id}/resolver`, { accion, motivo: motivo ?? null });
+  resolver(id: string, accion: 'REINTENTAR' | 'DESCARTAR', motivo?: string, devolucion?: { sin_danos: boolean; sin_desgaste: boolean; con_etiquetas: boolean }) {
+    return this.http.post<OperacionServidor>(`${API_URL}/offline/conflictos/${id}/resolver`, { accion, motivo: motivo ?? null, ...(devolucion ? { devolver_dinero: true, condicion: devolucion } : {}) });
   }
 }

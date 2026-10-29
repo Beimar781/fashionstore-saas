@@ -21,6 +21,7 @@ class Plan(Base):
     reportes_ia: Mapped[bool] = mapped_column(Boolean, default=False)
     offline: Mapped[bool] = mapped_column(Boolean, default=True)
     reportes_convencionales: Mapped[bool] = mapped_column(Boolean, default=True)
+    es_prueba: Mapped[bool] = mapped_column(Boolean, default=False)  # «Prueba gratuita»: un mes, una sola vez por empresa
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 

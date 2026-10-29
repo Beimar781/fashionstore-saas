@@ -14,14 +14,17 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
   imports: [FormsModule],
   template: `
     <section class="card pad stack">
-      <h2>{{ esCliente ? 'Reservar sin conexión' : 'Venta de contado sin conexión' }}</h2>
-      <p class="small muted">{{ esCliente ? 'La reserva se confirma cuando el dispositivo recupere la conexión.' : 'Las ventas sin conexión son de contado. Recibir el efectivo aquí no significa que el servidor ya la aceptó: se confirma al sincronizar.' }}</p>
+      <h2>{{ !esCliente ? 'Venta de contado sin conexión' : modo === 'COMPRA' ? 'Comprar sin conexión' : 'Reservar sin conexión' }}</h2>
+      @if (esCliente) {
+        <div class="row"><label style="max-width:240px">¿Qué desea hacer?<select name="modo" [(ngModel)]="modo"><option value="RESERVA">Reservar para probarme</option><option value="COMPRA">Comprar (pago con tarjeta al sincronizar)</option></select></label></div>
+      }
+      <p class="small muted">{{ esCliente ? (modo === 'COMPRA' ? 'La compra queda registrada en el dispositivo. Al recuperar la conexión verificamos que la prenda siga disponible y le avisamos para que la pague con tarjeta en «Mis compras»; no se cobra nada sin conexión.' : 'La reserva se confirma cuando el dispositivo recupere la conexión.') : 'Las ventas sin conexión son de contado. Recibir el efectivo aquí no significa que el servidor ya la aceptó: se confirma al sincronizar.' }}</p>
       @if (!local.hayCatalogo()) { <div class="alert warn" role="status">Primero descargue el catálogo (pestaña «Catálogo»).</div> }
       @else {
         @if (esCliente) {
           <div class="row">
             <label style="min-width:220px">Sucursal<select name="s" [(ngModel)]="sucursalId">@for (s of local.meta()?.sucursales ?? []; track s.id) { <option [ngValue]="s.id">{{ s.nombre }} · {{ s.ciudad }}</option> }</select></label>
-            <label>Fecha y hora de visita<input name="f" type="datetime-local" [(ngModel)]="visita" /></label>
+            @if (modo === 'RESERVA') { <label>Fecha y hora de visita<input name="f" type="datetime-local" [(ngModel)]="visita" /></label> }
           </div>
         }
         <label>Buscar prenda<input name="q" [ngModel]="texto()" (ngModelChange)="texto.set($event)" placeholder="Nombre, SKU o código de barras" autocomplete="off" /></label>
@@ -36,7 +39,8 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
         }
         @if (lineas().length) {
           <div class="row between total"><strong>Total</strong><strong>Bs {{ total().toFixed(2) }}</strong></div>
-          @if (esCliente) { <label>Notas (opcional)<input name="n" [(ngModel)]="notas" maxlength="300" /></label> }
+          @if (esCliente && modo === 'RESERVA') { <label>Notas (opcional)<input name="n" [(ngModel)]="notas" maxlength="300" /></label> }
+          @else if (esCliente) { <div class="alert warn" role="status">Si cuando sincronice la prenda ya se agotó, le avisaremos y no se le cobrará nada.</div> }
           @else {
             <div class="row">
               <label style="max-width:200px">Efectivo recibido (Bs)<input name="r" type="number" min="0" step="0.01" [(ngModel)]="recibido" /></label>
@@ -45,7 +49,7 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
             </div>
           }
           @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
-          <div><button class="btn primary" (click)="registrar()" [disabled]="guardando()">{{ esCliente ? 'Registrar reserva en el dispositivo' : 'Registrar venta en el dispositivo' }}</button></div>
+          <div><button class="btn primary" (click)="registrar()" [disabled]="guardando()">{{ !esCliente ? 'Registrar venta en el dispositivo' : modo === 'COMPRA' ? 'Registrar compra en el dispositivo' : 'Registrar reserva en el dispositivo' }}</button></div>
         }
       }
     </section>`,
@@ -65,6 +69,7 @@ export class RegistrarOfflineComponent {
   readonly error = signal('');
   readonly guardando = signal(false);
   sucursalId: number | null = this.auth.sesion()?.usuario.sucursal_id ?? this.local.meta()?.sucursales[0]?.id ?? null;
+  modo: 'RESERVA' | 'COMPRA' = 'RESERVA';
   visita = '';
   notas = '';
   recibido: number | null = null;
@@ -88,7 +93,10 @@ export class RegistrarOfflineComponent {
     if (this.sucursalId === null) { this.error.set('Elija una sucursal.'); return; }
     const items = this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad }));
     const resumen = this.lineas().map((l) => `${l.cantidad}× ${l.texto}`).join(', ');
-    if (this.esCliente) {
+    if (this.esCliente && this.modo === 'COMPRA') {
+      this.guardando.set(true);
+      await this.cola.registrar('COMPRA', { sucursal_id: this.sucursalId, items }, this.sucursalId, `Compra: ${resumen}`);
+    } else if (this.esCliente) {
       if (!this.visita) { this.error.set('Indique la fecha y hora de su visita.'); return; }
       this.guardando.set(true);
       await this.cola.registrar('RESERVA', { sucursal_id: this.sucursalId, programada_para: this.visita, notas: this.notas, items }, this.sucursalId, `Reserva: ${resumen}`);

@@ -14,9 +14,10 @@ from app.core.errors import AppError, Conflicto, DatosInvalidos, NoEncontrado
 from app.core.tiempo import ahora
 from app.modules.acceso.dependencias import Contexto
 from app.modules.acceso.publico import contexto_de_usuario
-from app.modules.offline import schemas
+from app.modules.offline import avisos, schemas
 from app.modules.offline.cu38_sincronizar.service import MSG_CONFIRMADA, MSG_CONFLICTO, MSG_FORMATO
 from app.modules.offline.cu40_conflictos import schemas as esquemas
+from app.modules.offline.descarte import devolver_venta_descartada
 from app.modules.offline.ejecucion import Ejecutor, es_falta_de_stock
 from app.modules.offline.mapeo import operaciones_out
 from app.modules.offline.models import OperacionOffline
@@ -25,6 +26,7 @@ from app.modules.offline.repository import OperacionRepository
 MSG_NO_ENCONTRADA = "Operación no encontrada."
 MSG_YA_RESUELTA = "La operación ya no está en conflicto."
 MSG_MOTIVO = "Indique el motivo del descarte."
+MSG_SOLO_VENTA = "Solo una venta de contado ya cobrada se descarta devolviendo el dinero."
 MSG_USUARIO_INACTIVO = "El usuario que registró la operación ya no está activo: descártela."
 
 
@@ -42,20 +44,41 @@ class ConflictosService:
         fila = self._propia(operacion_id)
         if fila.estado != "EN_CONFLICTO":
             raise Conflicto(MSG_YA_RESUELTA)
+        devuelto = None
         if datos.accion == "DESCARTAR":
-            self._descartar(fila, (datos.motivo or "").strip())
+            devuelto = self._descartar(fila, (datos.motivo or "").strip(), datos)
         else:
             self._reintentar(fila)
         self.db.commit()
+        if datos.accion == "DESCARTAR":  # regla 17: el cliente se entera con la operación ya resuelta
+            avisos.avisar_descartada(self.db, self.empresa_id, fila, fila.motivo_resolucion, *(devuelto or ()))
+        elif fila.estado == "CONFIRMADA":
+            avisos.avisar_confirmada(self.db, self.empresa_id, fila)
         return operaciones_out(self.db, self.empresa_id, [fila])[0]
 
     # ---- acciones ----
-    def _descartar(self, fila: OperacionOffline, motivo: str) -> None:
+    def _descartar(self, fila: OperacionOffline, motivo: str, datos: esquemas.ResolverIn) -> tuple[str, str] | None:
+        """Devuelve (monto, nota) si se registró la devolución del dinero de una venta ya cobrada."""
         if not motivo:
             raise DatosInvalidos(MSG_MOTIVO)
+        devuelto = None
+        if datos.devolver_dinero:
+            if fila.tipo != "VENTA_CONTADO":
+                raise DatosInvalidos(MSG_SOLO_VENTA)
+            autor = contexto_de_usuario(self.db, self.empresa_id, fila.usuario_id)
+            if autor is None:
+                raise Conflicto(MSG_USUARIO_INACTIVO)
+            devolucion, pedido_id = devolver_venta_descartada(self.db, self.ctx, autor, fila, datos.condicion, motivo)  # CU-41: la prenda vuelve al inventario y se emite la nota
+            fila.pedido_id = pedido_id
+            devuelto = (str(devolucion.reembolso), devolucion.numero)
         fila.estado, fila.resolucion, fila.motivo_resolucion = "RECHAZADA", "DESCARTADA", motivo[:200]
         fila.resuelta_por, fila.resuelta_en = self.ctx.usuario.id, ahora()
-        fila.mensaje = f"Descartada por {self.ctx.usuario.nombre}: {motivo}." + (" Devuelva el efectivo recibido al cliente." if fila.tipo == "VENTA_CONTADO" else "")
+        fila.mensaje = f"Descartada por {self.ctx.usuario.nombre}: {motivo}."
+        if devuelto:
+            fila.mensaje += f" Se devolvieron Bs {devuelto[0]} en efectivo al cliente (nota {devuelto[1]})."
+        elif fila.tipo == "VENTA_CONTADO":
+            fila.mensaje += " Devuelva el efectivo recibido al cliente."
+        return devuelto
 
     def _reintentar(self, fila: OperacionOffline) -> None:
         autor = contexto_de_usuario(self.db, self.empresa_id, fila.usuario_id)
@@ -63,7 +86,7 @@ class ConflictosService:
             raise Conflicto(MSG_USUARIO_INACTIVO)
         id_fila, tipo, payload, sucursal_id = fila.id, fila.tipo, fila.payload, fila.sucursal_id
         try:
-            r = Ejecutor(self.db, autor).ejecutar(tipo, payload)
+            r = Ejecutor(self.db, autor).ejecutar(tipo, {**payload, "sucursal_id": sucursal_id} if tipo == "COMPRA" else payload)
             fila.estado, fila.mensaje, fila.detalle = "CONFIRMADA", MSG_CONFIRMADA + " Resuelta por reintento.", None
             fila.referencia, fila.comprobante, fila.pedido_id, fila.reserva_id = r.referencia, r.comprobante, r.pedido_id, r.reserva_id
         except Exception as e:  # noqa: BLE001

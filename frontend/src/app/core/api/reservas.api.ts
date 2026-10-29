@@ -33,5 +33,8 @@ export class ReservasApi {
   notificaciones(soloNoLeidas = false) { return this.http.get<Notificacion[]>(`${API_URL}/notificaciones`, { params: parametros({ solo_no_leidas: soloNoLeidas || '' , limite: 30 }) }); }
   sinLeer() { return this.http.get<{ no_leidas: number }>(`${API_URL}/notificaciones/resumen`); }
   leer(id: number) { return this.http.post<Notificacion>(`${API_URL}/notificaciones/${id}/leer`, {}); }
+  configPush() { return this.http.get<{ vapid_public_key: string; web_real: boolean; movil_real: boolean }>(`${API_URL}/notificaciones/push/config`); }
+  registrarDispositivo(canal: 'WEB' | 'MOVIL', token: string) { return this.http.post<{ id: number; canal: string; activo: boolean }>(`${API_URL}/notificaciones/dispositivos`, { canal, token }); }
+  quitarDispositivo(canal: 'WEB' | 'MOVIL', token: string) { return this.http.post<void>(`${API_URL}/notificaciones/dispositivos/baja`, { canal, token }); }
   leerTodas() { return this.http.post<{ no_leidas: number }>(`${API_URL}/notificaciones/leer-todas`, {}); }
 }

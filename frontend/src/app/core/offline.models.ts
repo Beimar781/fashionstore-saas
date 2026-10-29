@@ -1,6 +1,6 @@
 /** Fase H · operación offline: lo que se guarda en el dispositivo (IndexedDB) y lo que viaja a la API. */
 export type EstadoLocal = 'REGISTRADA_LOCAL' | 'ENVIADA' | 'CONFIRMADA' | 'RECHAZADA' | 'EN_CONFLICTO';  // RN11
-export type TipoOperacion = 'VENTA_CONTADO' | 'RESERVA';
+export type TipoOperacion = 'VENTA_CONTADO' | 'RESERVA' | 'COMPRA';
 
 export interface VarianteLocal {
   id: number; sku: string; codigo_barras: string | null; talla: string; color: string; precio: string; precio_final: string; promocion: string | null; stock: Record<string, number>;

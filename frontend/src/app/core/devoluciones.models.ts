@@ -8,7 +8,7 @@ export interface Devolucion {
   id: number; numero: string; tipo: 'DEVOLUCION' | 'CAMBIO'; motivo: string; comprobante: string | null; pedido_codigo: string; sucursal_id: number; sucursal: string;
   fecha: string; monto_devuelto: string; monto_nuevo: string; reembolso: string; cobro_adicional: string; medio_reembolso: string | null;
   referencia_reembolso: string | null; medio_cobro: string | null; monto_recibido: string | null; cambio_entregado: string | null; tarjeta_cobro: string | null;
-  registrada_por: string | null; items: ItemDevolucion[];
+  registrada_por: string | null; sin_danos: boolean; sin_desgaste: boolean; con_etiquetas: boolean; items: ItemDevolucion[];
 }
 export interface ItemDevolvible {
   pedido_item_id: number; variante_id: number; sku: string; producto: string; talla: string; color: string; precio_final: string;

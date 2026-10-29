@@ -14,7 +14,7 @@ from app.core.constantes import CAJERO, CLIENTE, ENCARGADO
 from app.core.errors import AppError
 from app.core.tiempo import a_local, ahora
 from app.modules.acceso.dependencias import Contexto
-from app.modules.offline import schemas
+from app.modules.offline import avisos, schemas
 from app.modules.offline.ejecucion import Ejecutor, Resultado, es_falta_de_stock
 from app.modules.offline.mapeo import resultado_de
 from app.modules.offline.models import OperacionOffline
@@ -31,7 +31,8 @@ MSG_SUCURSAL = "Sucursal no encontrada."
 MSG_CONFLICTO = "No hay existencias suficientes para esta operación. No se descontó nada del inventario; el Encargado debe resolverla."
 MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el dispositivo y se reintentará."
 MSG_CONFIRMADA = "Operación confirmada."
-PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,)}
+NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra"}
+PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,)}
 
 
 class SincronizacionService:
@@ -61,12 +62,13 @@ class SincronizacionService:
         if sucursal_id == -1:
             return self._sin_guardar(op, "RECHAZADA", MSG_OTRA_SUCURSAL)
         try:
-            resultado = Ejecutor(self.db, self.ctx).ejecutar(op.tipo, op.payload)
+            resultado = Ejecutor(self.db, self.ctx).ejecutar(op.tipo, {**op.payload, "sucursal_id": sucursal_id} if op.tipo == "COMPRA" else op.payload)
             fila = self._guardar(op, sucursal_id, "CONFIRMADA", MSG_CONFIRMADA, resultado)
             self.db.commit()  # la operación y todos sus efectos, en una sola transacción (RNF04)
         except Exception as e:  # noqa: BLE001
             self.db.rollback()
             return self._fallida(op, sucursal_id, e)
+        avisos.avisar_confirmada(self.db, self.empresa_id, fila)  # regla 17: con la operación ya confirmada
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
 
@@ -84,7 +86,7 @@ class SincronizacionService:
             self.db.flush()
             notificar(
                 self.db, self.empresa_id, "CONFLICTO_SYNC", "Operación offline en conflicto",
-                f"Una {'venta de contado' if op.tipo == 'VENTA_CONTADO' else 'reserva'} registrada sin conexión por {self.ctx.usuario.nombre} no se pudo aplicar por falta de existencias. Resuélvala en «Conflictos de sincronización».",
+                f"Una {NOMBRE_TIPO[op.tipo]} registrada sin conexión por {self.ctx.usuario.nombre} no se pudo aplicar por falta de existencias. Resuélvala en «Conflictos de sincronización».",
                 sucursal_id=sucursal_id, referencia_tipo="OPERACION_OFFLINE", referencia_id=fila.id,
             )
         elif isinstance(e, ValidationError):
@@ -95,6 +97,8 @@ class SincronizacionService:
             logger.exception("sync operacion=%s falló", op.id)
             return self._sin_guardar(op, "ERROR", MSG_ERROR)
         self.db.commit()
+        if fila.estado == "EN_CONFLICTO":
+            avisos.avisar_conflicto(self.db, self.empresa_id, fila)  # regla 17: el cliente se entera, además del personal de la sucursal
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
 

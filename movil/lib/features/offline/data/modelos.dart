@@ -127,7 +127,7 @@ class OperacionLocal {
   final int empresaId;
   final int? sucursalId;
   final int usuarioId;
-  final String tipo; // VENTA_CONTADO | RESERVA
+  final String tipo; // VENTA_CONTADO | RESERVA | COMPRA
   final Map<String, dynamic> payload;
   String estado;
   int intentos;
@@ -183,4 +183,7 @@ class ResumenSync {
   int enviadas, confirmadas, rechazadas, enConflicto, reintentar;
   bool sinConexion;
   String? error;
+
+  /// Mensajes emergentes para el cliente cuando el servidor resuelve su compra o su reserva.
+  final List<String> avisos = [];
 }

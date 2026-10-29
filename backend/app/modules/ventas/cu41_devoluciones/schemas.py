@@ -41,6 +41,14 @@ class DiferenciaOut(BaseModel):
     tarjeta_guardada: None = None
 
 
+class CondicionIn(BaseModel):
+    """RN15: quien recibe la prenda comprueba que no tenga daños ni desgaste y que conserve sus etiquetas."""
+
+    sin_danos: bool = False
+    sin_desgaste: bool = False
+    con_etiquetas: bool = False
+
+
 class DevolucionIn(BaseModel):
     comprobante: str = Field(default="", max_length=30)  # RN15: se requiere el comprobante de la venta; las faltas se avisan con el mensaje de la regla
     tipo: Literal["DEVOLUCION", "CAMBIO"] = "DEVOLUCION"
@@ -48,6 +56,7 @@ class DevolucionIn(BaseModel):
     items: list[ItemDevueltoIn] = Field(default=[], max_length=60)
     nuevos: list[ItemNuevoIn] = Field(default=[], max_length=60)  # solo en un cambio
     cobro: CobroDiferenciaIn | None = None
+    condicion: CondicionIn = CondicionIn()
 
 
 class ItemDevolucionOut(BaseModel):
@@ -82,6 +91,9 @@ class DevolucionOut(BaseModel):
     cambio_entregado: Dinero | None
     tarjeta_cobro: str | None  # «Visa ****4242» cuando la diferencia se pagó con tarjeta
     registrada_por: str | None
+    sin_danos: bool = True
+    sin_desgaste: bool = True
+    con_etiquetas: bool = True
     items: list[ItemDevolucionOut]
 
 

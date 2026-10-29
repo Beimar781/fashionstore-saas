@@ -87,6 +87,9 @@ class OfflineController extends ChangeNotifier {
   }
 
   /// CU-38: envía lo pendiente. No hace nada si ya hay una sincronización en curso.
+  /// Quién muestra el mensaje emergente al cliente (lo conecta la app con su ScaffoldMessenger).
+  void Function(String)? alAvisar;
+
   Future<ResumenSync?> sincronizar() async {
     final s = _sesion;
     if (s == null || s.empresaId == null || sincronizando) return null;
@@ -97,6 +100,9 @@ class OfflineController extends ChangeNotifier {
     error = resumen.error;
     sincronizando = false;
     await recargar();
+    for (final aviso in resumen.avisos) {
+      alAvisar?.call(aviso);
+    }
     return resumen;
   }
 

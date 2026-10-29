@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { OfflineApi } from '../api/offline.api';
 import { AuthService } from '../auth/auth.service';
 import { OperacionLocal, OperacionServidor, TipoOperacion } from '../offline.models';
+import { ToastService } from '../ui/toast.service';
 import { ConnectivityService } from './connectivity.service';
 import { LocalDbService } from './local-db.service';
 
@@ -19,6 +20,7 @@ export class ColaOperacionesService {
   private db = inject(LocalDbService);
   private auth = inject(AuthService);
   private red = inject(ConnectivityService);
+  private toast = inject(ToastService);
 
   readonly operaciones = signal<OperacionLocal[]>([]);
   readonly sincronizando = signal(false);
@@ -72,6 +74,7 @@ export class ColaOperacionesService {
         else { o.estado = res.estado; o.referencia = res.referencia; o.comprobante = res.comprobante; o.detalle = res.detalle; }
         o.mensaje = res.mensaje;
         await this.db.guardarOperacion(o);
+        this.avisarAlCliente(o);
       }
       await this.db.marcarSincronizacion();
       this.ultimaSync.set(r.sincronizado_en);
@@ -83,6 +86,15 @@ export class ColaOperacionesService {
     this.operaciones.update((l) => [...l]);
     this.sincronizando.set(false);
     await this.refrescarEstados();
+  }
+
+  /** Mensaje emergente para el cliente cuando el servidor resuelve su compra o su reserva (además del aviso push y de la campana). */
+  private avisarAlCliente(o: OperacionLocal) {
+    if (o.tipo === 'VENTA_CONTADO') return;
+    const nombre = o.tipo === 'COMPRA' ? 'compra' : 'reserva';
+    if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar porque la prenda se agotó. No se le cobró nada.`);
+    else if (o.estado === 'RECHAZADA') this.toast.error(`Su ${nombre} no se pudo realizar: ${o.mensaje}`);
+    else if (o.estado === 'CONFIRMADA' && o.tipo === 'COMPRA') this.toast.ok(`Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».`);
   }
 
   /** CU-39: una operación que quedó en conflicto y el Encargado resolvió cambia de estado también en este dispositivo. */

@@ -35,6 +35,9 @@ Prohibido: Shopify/Magento/PrestaShop/WooCommerce. No usar Django/Celery/Redis (
   etiquetas (`plataforma/bitacora/etiquetas.py`, con su detalle en español) y hay una prueba que falla si falta alguna. Nunca se guardan contraseñas, tokens ni datos de tarjeta, y la bitácora no se edita ni se borra
   (la bitácora de inventario `movimientos_inventario` es otra cosa y no se toca).
 
+- **Avisos push (regla 17):** un aviso importante al cliente (devolución o cambio, compra offline en conflicto) se envía con `avisar_cliente` de `reservas/publico.py` (campana RF11 + push a sus dispositivos).
+  Va **después** de confirmar la operación y un fallo del push solo se registra en `push_envios`, nunca la deshace. Sin claves VAPID/FCM en `backend/.env` funciona en modo simulado; `python scripts/generar_vapid.py` crea las claves VAPID.
+
 ## Pruebas
 `cd backend && python -m pytest -q` — una prueba por paso de las tablas 5.2.1/5.3.1 del documento (`tests/test_cuNN_*.py`).
 Al agregar un caso de uso, agregar su archivo de pruebas con el mismo formato.

@@ -2,7 +2,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, BigInteger, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -53,6 +53,9 @@ class Devolucion(Base):
     proveedor_cobro: Mapped[str | None] = mapped_column(String(10))
     cobro_tarjeta_marca: Mapped[str | None] = mapped_column(String(20))
     cobro_tarjeta_ultimos4: Mapped[str | None] = mapped_column(String(4))
+    sin_danos: Mapped[bool] = mapped_column(Boolean, default=True)  # RN15: condición de la prenda verificada al recibirla
+    sin_desgaste: Mapped[bool] = mapped_column(Boolean, default=True)
+    con_etiquetas: Mapped[bool] = mapped_column(Boolean, default=True)
     registrada_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
     creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

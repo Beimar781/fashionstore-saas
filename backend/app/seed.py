@@ -29,6 +29,8 @@ PLANES = [
          precio=150, periodicidad="mensual", max_sucursales=2, reportes_ia=False),
     dict(nombre="Profesional", descripcion="Hasta 10 sucursales activas, reportes generativos con IA y analítica ML.",
          precio=350, periodicidad="mensual", max_sucursales=10, reportes_ia=True),
+    dict(nombre="Prueba gratuita", descripcion="Un mes gratis, una sola vez: 1 sucursal activa, reportes convencionales y operación offline (sin IA).",
+         precio=0, periodicidad="mensual", max_sucursales=1, reportes_ia=False, offline=True, reportes_convencionales=True, es_prueba=True),
 ]
 
 EMPRESAS = [

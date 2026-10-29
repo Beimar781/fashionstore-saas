@@ -16,6 +16,7 @@ from app.modules.acceso.dependencias import Contexto
 from app.modules.acceso.publico import nombres_de_usuarios
 from app.modules.inventario.publico import aplicar_movimientos, disponible_por_variante
 from app.modules.plataforma.publico import datos_de_empresa
+from app.modules.reservas.publico import avisar_cliente
 from app.modules.sucursales.publico import datos_de_sucursal, nombres_de_sucursales
 from app.modules.ventas.cu29_venta_presencial.repository import VarianteVentaRepository
 from app.modules.ventas.cu41_devoluciones import schemas
@@ -32,6 +33,7 @@ MSG_SIN_COMPROBANTE = "Para devolver o cambiar una prenda se requiere el comprob
 MSG_NO_ENCONTRADA = "No se encontró una venta con ese comprobante en su sucursal."
 MSG_MOTIVO = "Indique el motivo de la devolución."
 MSG_SIN_PRENDAS = "Seleccione al menos una prenda a devolver."
+MSG_CONDICION = "La prenda no cumple las condiciones de devolución: debe estar sin daños, sin desgaste y conservar sus etiquetas."  # RN15
 MSG_AJENA = "La prenda indicada no pertenece a esa venta."
 MSG_CAMBIO_SIN_NUEVAS = "Un cambio requiere al menos una prenda nueva."
 MSG_DEVOLUCION_CON_NUEVAS = "Una devolución no lleva prendas nuevas; registre un cambio."
@@ -78,12 +80,13 @@ class DevolucionService:
         )
 
     # ---- pasos 2 a 5: registrar la devolución o el cambio ----
-    def registrar(self, datos: schemas.DevolucionIn) -> schemas.DevolucionOut:
+    def registrar(self, datos: schemas.DevolucionIn, *, confirmar: bool = True, venta_descartada: bool = False) -> schemas.DevolucionOut:
+        """`venta_descartada`: devolución de una venta sin conexión que no se pudo aplicar (CU-40); `confirmar=False` deja el commit a quien llama."""
         pedido, devueltas, nuevas, devuelto, entregado, reembolso, adicional = self._preparar(datos)
         recibido, vuelto = self._cobro_adicional(datos, adicional)
         tarjeta = self._autorizar_tarjeta(pedido, datos.cobro, adicional) if adicional and datos.cobro.metodo == "TARJETA" else None
         try:
-            devolucion = self._guardar(datos, pedido, devueltas, nuevas, (devuelto, entregado, reembolso, adicional), (recibido, vuelto), tarjeta)
+            devolucion = self._guardar(datos, pedido, devueltas, nuevas, (devuelto, entregado, reembolso, adicional), (recibido, vuelto), tarjeta, venta_descartada)
             if tarjeta:
                 tarjeta[1].capturar(tarjeta[0].referencia)  # recién con el cambio ya registrado se cobra la diferencia
         except Exception as e:
@@ -93,8 +96,22 @@ class DevolucionService:
             if isinstance(e, AppError):
                 raise
             raise PasarelaNoDisponible(MSG_PASARELA) from e
+        if not confirmar:
+            self.db.flush()
+            return self._salida([devolucion])[0]
         self.db.commit()
+        self._avisar_al_cliente(pedido, devolucion)
         return self._salida([devolucion])[0]
+
+    def _avisar_al_cliente(self, pedido, devolucion: Devolucion) -> None:
+        """Push y campana al cliente de la venta (regla 17): se envía con la operación ya confirmada y un fallo no la deshace."""
+        cambio = devolucion.tipo == "CAMBIO"
+        mensaje = f"Su cambio {devolucion.numero} fue registrado." if cambio else f"Su devolución {devolucion.numero} fue registrada."
+        if devolucion.reembolso > 0:
+            mensaje += f" Reembolso: Bs {devolucion.reembolso} por {'tarjeta' if devolucion.medio_reembolso == 'TARJETA' else 'efectivo'}."
+        avisar_cliente(
+            self.db, self.empresa_id, pedido.cliente_id, "DEVOLUCION", "Cambio registrado" if cambio else "Devolución registrada", mensaje, "DEVOLUCION", devolucion.id,
+        )
 
     # ---- cobro con tarjeta de la diferencia de un cambio: primero se inicia, luego se confirma al registrar el cambio ----
     def iniciar_diferencia(self, datos: schemas.DevolucionIn) -> schemas.DiferenciaOut:
@@ -131,6 +148,9 @@ class DevolucionService:
             raise DatosInvalidos(MSG_MOTIVO)
         if not datos.items:
             raise DatosInvalidos(MSG_SIN_PRENDAS)
+        c = datos.condicion
+        if not (c.sin_danos and c.sin_desgaste and c.con_etiquetas):
+            raise DatosInvalidos(MSG_CONDICION)
         if datos.tipo == "CAMBIO" and not datos.nuevos:
             raise DatosInvalidos(MSG_CAMBIO_SIN_NUEVAS)
         if datos.tipo == "DEVOLUCION" and datos.nuevos:
@@ -142,13 +162,14 @@ class DevolucionService:
         entregado = sum((precio * c for _, precio, c in nuevas), CERO)
         return pedido, devueltas, nuevas, devuelto, entregado, max(devuelto - entregado, CERO), max(entregado - devuelto, CERO)
 
-    def _guardar(self, datos, pedido, devueltas, nuevas, montos, efectivo, tarjeta) -> Devolucion:
+    def _guardar(self, datos, pedido, devueltas, nuevas, montos, efectivo, tarjeta, venta_descartada=False) -> Devolucion:
         devuelto, entregado, reembolso, adicional = montos
         recibido, vuelto = efectivo
         devolucion = self.devoluciones.agregar(Devolucion(
             numero=self.devoluciones.siguiente_numero(pedido.sucursal_id), pedido_id=pedido.id, sucursal_id=pedido.sucursal_id, tipo=datos.tipo,
             motivo=datos.motivo.strip(), monto_devuelto=devuelto, monto_nuevo=entregado, reembolso=reembolso, cobro_adicional=adicional,
             medio_cobro=datos.cobro.metodo if adicional else None, monto_recibido=recibido, cambio_entregado=vuelto, registrada_por=self.ctx.usuario.id,
+            sin_danos=datos.condicion.sin_danos, sin_desgaste=datos.condicion.sin_desgaste, con_etiquetas=datos.condicion.con_etiquetas,
         ))
         for item, cantidad in devueltas:
             devolucion.items.append(DevolucionItem(
@@ -161,7 +182,7 @@ class DevolucionService:
                 talla=variante.talla.codigo, color=variante.color.nombre, cantidad=cantidad, precio_final=precio, subtotal=precio * cantidad,
             ))
         self.db.flush()
-        self._mover_inventario(pedido, devolucion, devueltas, nuevas)
+        self._mover_inventario(pedido, devolucion, devueltas, nuevas, venta_descartada)
         if reembolso > 0:
             self._reembolsar(pedido, devolucion, reembolso)
         if tarjeta:
@@ -295,13 +316,15 @@ class DevolucionService:
         if confirmar:
             self.db.commit()
 
-    def _mover_inventario(self, pedido: Pedido, devolucion: Devolucion, devueltas: list[tuple], nuevas: list[tuple]) -> None:
+    def _mover_inventario(self, pedido: Pedido, devolucion: Devolucion, devueltas: list[tuple], nuevas: list[tuple], venta_descartada: bool = False) -> None:
         """Lo devuelto vuelve a disponible de la sucursal (DEVOLUCION); lo entregado en un cambio se descuenta (VENTA). Todo con referencia DEVOLUCION."""
         nota = f"Nota {devolucion.numero}: {devolucion.motivo}"[:200]
         lineas = {}
         for item, cantidad in devueltas:
             lineas[item.variante_id] = lineas.get(item.variante_id, 0) + cantidad
         aplicar_movimientos(self.db, self.empresa_id, pedido.sucursal_id, list(lineas.items()), "DEVOLUCION", "DEVOLUCION", devolucion.id, self.ctx.usuario.id, nota)
+        if venta_descartada:  # la prenda salió con el cliente sin que la venta sin conexión quedara registrada: se anota su salida y el inventario queda igual
+            aplicar_movimientos(self.db, self.empresa_id, pedido.sucursal_id, list(lineas.items()), "VENTA", "DEVOLUCION", devolucion.id, self.ctx.usuario.id, f"Venta sin conexión descartada {devolucion.numero}")
         if nuevas:
             pedidas = {v.id: c for v, _, c in nuevas}
             disponibles = disponible_por_variante(self.db, self.empresa_id, pedidas, pedido.sucursal_id)  # ya incluye lo que acaba de volver
@@ -350,6 +373,7 @@ class DevolucionService:
                 reembolso=d.reembolso, cobro_adicional=d.cobro_adicional, medio_reembolso=d.medio_reembolso, referencia_reembolso=d.referencia_reembolso,
                 medio_cobro=d.medio_cobro, monto_recibido=d.monto_recibido, cambio_entregado=d.cambio_entregado,
                 tarjeta_cobro=f"{d.cobro_tarjeta_marca} ****{d.cobro_tarjeta_ultimos4}" if d.cobro_tarjeta_ultimos4 else None, registrada_por=autores.get(d.registrada_por),
+                sin_danos=d.sin_danos, sin_desgaste=d.sin_desgaste, con_etiquetas=d.con_etiquetas,
                 items=[schemas.ItemDevolucionOut.model_validate(i, from_attributes=True) for i in d.items],
             )
             for d in devoluciones

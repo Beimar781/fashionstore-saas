@@ -100,8 +100,8 @@ class Datos:
         self.db, self.client = db, client
         self._rol = {r.nombre: r.id for r in db.query(Rol)}
 
-    def plan(self, nombre="Básico", max_sucursales=2, ia=False, activo=True, precio=100):
-        p = Plan(nombre=nombre, precio=precio, max_sucursales=max_sucursales, reportes_ia=ia, activo=activo)
+    def plan(self, nombre="Básico", max_sucursales=2, ia=False, activo=True, precio=100, es_prueba=False):
+        p = Plan(nombre=nombre, precio=precio, max_sucursales=max_sucursales, reportes_ia=ia, activo=activo, es_prueba=es_prueba)
         self.db.add(p); self.db.commit()
         return p
 

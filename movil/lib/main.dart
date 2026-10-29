@@ -7,7 +7,11 @@ import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/offline/data/offline_repository.dart';
+import 'features/notificaciones/data/push_repository.dart';
+import 'features/notificaciones/presentation/push_controller.dart';
 import 'features/offline/presentation/offline_controller.dart';
+
+final _mensajero = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,14 +28,20 @@ class FashionStoreApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AuthRepository>.value(value: authRepo),
-        ChangeNotifierProvider(create: (_) => AuthController(authRepo)..iniciar()),
+        ChangeNotifierProvider(create: (_) => AuthController(authRepo, antesDeCerrarSesion: PushRepository(authRepo.api).quitarDispositivo)..iniciar()),
         // el modo sin conexión sigue a la sesión: al iniciar sesión sincroniza lo pendiente y reintenta mientras haya operaciones sin enviar
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
-          create: (_) => OfflineController(OfflineRepository(authRepo.api)),
+          create: (_) => OfflineController(OfflineRepository(authRepo.api))..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8))),
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
+        ),
+        // avisos push (modo simulado): el dispositivo se registra al iniciar sesión y los avisos pendientes se muestran en el inicio
+        ChangeNotifierProxyProvider<AuthController, PushController>(
+          create: (_) => PushController(PushRepository(authRepo.api)),
+          update: (_, auth, push) => push!..usarSesion(auth.sesion),
         ),
       ],
       child: MaterialApp(
+        scaffoldMessengerKey: _mensajero,
         title: 'FashionStore',
         debugShowCheckedModeBanner: false,
         theme: Tema.claro(),

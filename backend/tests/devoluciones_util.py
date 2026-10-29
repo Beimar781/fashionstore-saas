@@ -5,17 +5,23 @@ from tests.caja_util import cobrar, stock_listo, vender, venta_ok  # noqa: F401
 from tests.compras_util import existencias, iniciar, tarjeta  # noqa: F401
 
 
+CONDICION_OK = {"sin_danos": True, "sin_desgaste": True, "con_etiquetas": True}
+
+
 def _cuerpo(comprobante, items, tipo, motivo, nuevos):
     """items: pares (línea del pedido, cantidad) con la línea tal como la devuelve la API (`pedido['items'][i]`)."""
     return {
         "comprobante": comprobante, "tipo": tipo, "motivo": motivo,
         "items": [{"pedido_item_id": i["id"], "cantidad": c} for i, c in (items or [])],
         "nuevos": [{"variante_id": v["id"], "cantidad": c} for v, c in (nuevos or [])],
+        "condicion": CONDICION_OK,  # RN15: la prenda se recibió sin daños, sin desgaste y con sus etiquetas
     }
 
 
-def devolver(client, h, comprobante, items=None, tipo="DEVOLUCION", motivo="Le quedó pequeña", nuevos=None, cobro=None):
+def devolver(client, h, comprobante, items=None, tipo="DEVOLUCION", motivo="Le quedó pequeña", nuevos=None, cobro=None, condicion=None):
     cuerpo = _cuerpo(comprobante, items, tipo, motivo, nuevos)
+    if condicion is not None:
+        cuerpo["condicion"] = condicion
     if cobro:
         cuerpo["cobro"] = cobro
     return client.post("/api/devoluciones", json=cuerpo, headers=h)

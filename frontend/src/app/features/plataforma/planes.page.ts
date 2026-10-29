@@ -19,7 +19,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
       <div class="grid cols-3">
         @for (p of planes(); track p.id) {
           <article class="card pad plan" [class.inactivo]="!p.activo">
-            <div class="row between"><h2>{{ p.nombre }}</h2>
+            <div class="row between"><h2>{{ p.nombre }}@if (p.es_prueba) { <span class="badge ok" title="Un mes, una sola vez por empresa">Prueba</span> }</h2>
               @if (!p.activo) { <span class="badge warn">Inactivo</span> } @else { <span class="badge accent">{{ p.empresas_suscritas }} {{ p.empresas_suscritas === 1 ? 'empresa' : 'empresas' }}</span> }
             </div>
             <p class="precio">Bs {{ p.precio }}<small> / {{ p.periodicidad === 'anual' ? 'año' : 'mes' }}</small></p>
@@ -55,6 +55,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <div class="stack">
                 <label class="check"><input type="checkbox" name="rc" [(ngModel)]="form.reportes_convencionales" /> Reportes convencionales</label>
                 <label class="check"><input type="checkbox" name="of" [(ngModel)]="form.offline" /> Operación offline y sincronización</label>
+                <label class="check"><input type="checkbox" name="prueba" [(ngModel)]="form.es_prueba" /> Plan de prueba gratuita (dura 1 mes y cada empresa lo usa una sola vez)</label>
                 <label class="check"><input type="checkbox" name="ia" [(ngModel)]="form.reportes_ia" /> Reportes generativos con IA y analítica ML</label>
               </div>
             </fieldset>
@@ -90,7 +91,7 @@ export class PlanesPage implements OnInit {
   abrirEditar(p: Plan) {
     this.editandoId = p.id; this.error.set('');
     this.form = { nombre: p.nombre, descripcion: p.descripcion ?? '', precio: Number(p.precio), periodicidad: p.periodicidad, max_sucursales: p.max_sucursales,
-      reportes_ia: p.reportes_ia, offline: p.offline, reportes_convencionales: p.reportes_convencionales };
+      reportes_ia: p.reportes_ia, offline: p.offline, reportes_convencionales: p.reportes_convencionales, es_prueba: p.es_prueba };
     this.modal.set(true);
   }
 
@@ -114,6 +115,6 @@ export class PlanesPage implements OnInit {
   }
 
   private vacio() {
-    return { nombre: '', descripcion: '', precio: 0, periodicidad: 'mensual', max_sucursales: 2, reportes_ia: false, offline: true, reportes_convencionales: true };
+    return { nombre: '', descripcion: '', precio: 0, periodicidad: 'mensual', max_sucursales: 2, reportes_ia: false, offline: true, reportes_convencionales: true, es_prueba: false };
   }
 }

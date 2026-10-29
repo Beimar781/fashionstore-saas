@@ -193,6 +193,7 @@ class OfflineRepository {
           if (estado == Estado.confirmada) resumen.confirmadas++;
           if (estado == Estado.rechazada) resumen.rechazadas++;
           if (estado == Estado.enConflicto) resumen.enConflicto++;
+          _avisarAlCliente(resumen, o, res['mensaje'] as String);
         }
         o.mensaje = res['mensaje'] as String;
         await _guardar(o);
@@ -209,6 +210,19 @@ class OfflineRepository {
     }
     await refrescarEstados(usuarioId, empresaId);
     return resumen;
+  }
+
+  /// Mensaje emergente para el cliente (además del push y de la campana): su compra o reserva no alcanzó, o su compra quedó lista para pagar.
+  void _avisarAlCliente(ResumenSync resumen, OperacionLocal o, String mensaje) {
+    if (o.tipo == 'VENTA_CONTADO') return;
+    final nombre = o.tipo == 'COMPRA' ? 'compra' : 'reserva';
+    if (o.estado == Estado.enConflicto) {
+      resumen.avisos.add('Su $nombre no se pudo realizar porque la prenda se agotó. No se le cobró nada.');
+    } else if (o.estado == Estado.rechazada) {
+      resumen.avisos.add('Su $nombre no se pudo realizar: $mensaje');
+    } else if (o.estado == Estado.confirmada && o.tipo == 'COMPRA') {
+      resumen.avisos.add('Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».');
+    }
   }
 
   /// CU-39: una operación que quedó en conflicto y el Encargado resolvió cambia de estado también aquí.

@@ -6,6 +6,7 @@ import '../../../primer_parcial/reservas/presentation/carrito_screen.dart';
 import '../../../primer_parcial/reservas/presentation/reservas_screen.dart';
 import '../../../primer_parcial/ventas/presentation/pedidos_screen.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../notificaciones/presentation/push_controller.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
 
@@ -27,6 +28,7 @@ class HomeScreen extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final s = auth.sesion!;
     final offline = context.watch<OfflineController>();
+    final push = context.watch<PushController>();
     final esquema = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -55,6 +57,16 @@ class HomeScreen extends StatelessWidget {
                 leading: Icon(Icons.lock, color: esquema.onErrorContainer),
                 title: const Text('La suscripción de su empresa no está vigente.'),
                 subtitle: const Text('Solo puede consultar su plan.'),
+              ),
+            ),
+          for (final aviso in push.avisos)
+            Card(
+              color: esquema.primaryContainer,
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active),
+                title: Text(aviso.titulo),
+                subtitle: Text(aviso.mensaje),
+                trailing: IconButton(tooltip: 'Marcar como leído', icon: const Icon(Icons.check), onPressed: () => push.leer(aviso)),
               ),
             ),
           if (offline.habilitado && offline.pendientes.isNotEmpty)

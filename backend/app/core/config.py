@@ -35,9 +35,25 @@ class Settings(BaseSettings):
     ia_modelo: str = "claude-haiku-5-5"
     tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
 
+    # Avisos push (regla 17): sin claves VAPID / sin cuenta de servicio de Firebase quedan en modo simulado. Las claves van en .env, nunca en el código.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:soporte@fashionstore.com"
+    fcm_credenciales: str = ""  # ruta al JSON de la cuenta de servicio de Firebase
+    fcm_proyecto: str = ""
+
     @property
     def stripe_activo(self) -> bool:
         return bool(self.stripe_secret_key and self.stripe_publishable_key)
+
+    @property
+    def vapid_activo(self) -> bool:
+        return bool(self.vapid_public_key and self.vapid_private_key)
+
+    @property
+    def fcm_activo(self) -> bool:
+        return bool(self.fcm_credenciales and self.fcm_proyecto)
+
     brevo_sender_email: str = "no-reply@fashionstore.com"
     brevo_sender_name: str = "FashionStore"
 

@@ -31,12 +31,12 @@ class CobroCajaService:
         self.sucursal_id = sucursal_de_caja(ctx)
         self.compras = CompraService(db, ctx, impuestos)
 
-    def cobrar(self, pedido_id: int, datos: schemas.CobroIn, commit: bool = True) -> schemas.CobroOut:
+    def cobrar(self, pedido_id: int, datos: schemas.CobroIn, commit: bool = True, descontar: bool = True) -> schemas.CobroOut:
         pedido = self.compras.venta_de_caja(pedido_id, self.sucursal_id)
         if pedido.estado != "PENDIENTE_PAGO":
             raise Conflicto("La venta no está pendiente de cobro.")
         recibido, cambio = self._importes(pedido, datos)
-        self.compras.finalizar(pedido)  # descuenta el stock; si se agotó lanza SinStock y no se registra ningún cobro
+        self.compras.finalizar(pedido, descontar)  # descuenta el stock; si se agotó lanza SinStock y no se registra ningún cobro
         pago = Pago(
             empresa_id=pedido.empresa_id, pedido_id=pedido.id, metodo=datos.metodo, proveedor="CAJA", estado="APROBADO", monto=pedido.total,
             moneda=pedido.moneda, monto_recibido=recibido, cambio=cambio, mensaje="Pago aprobado.", usuario_id=self.ctx.usuario.id,

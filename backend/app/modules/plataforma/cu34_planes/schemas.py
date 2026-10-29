@@ -18,6 +18,7 @@ class PlanCreate(BaseModel):
     reportes_ia: bool = False
     offline: bool = True
     reportes_convencionales: bool = True
+    es_prueba: bool = False
 
     _v = field_validator("max_sucursales")(_limite_positivo)
 
@@ -31,6 +32,7 @@ class PlanUpdate(BaseModel):
     reportes_ia: bool | None = None
     offline: bool | None = None
     reportes_convencionales: bool | None = None
+    es_prueba: bool | None = None
 
     _v = field_validator("max_sucursales")(_limite_positivo)
 
@@ -47,6 +49,7 @@ class PlanOut(BaseModel):
     reportes_ia: bool
     offline: bool
     reportes_convencionales: bool
+    es_prueba: bool
     activo: bool
     empresas_suscritas: int = 0
 

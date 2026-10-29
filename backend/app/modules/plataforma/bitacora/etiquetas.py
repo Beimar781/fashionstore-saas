@@ -109,6 +109,8 @@ ETIQUETAS: list[Etiqueta] = [
     E("POST", "/atencion-reservas/{reserva_id}/completar", "ATENDER", "reserva", "Completó la reserva[ {codigo}]"),
     E("POST", "/notificaciones/leer-todas", None, "notificación", ""),
     E("POST", "/notificaciones/{notificacion_id}/leer", None, "notificación", ""),
+    E("POST", "/notificaciones/dispositivos", "CREAR", "notificación", "Activó los avisos push en un dispositivo[ ({canal})]"),
+    E("POST", "/notificaciones/dispositivos/baja", "DESACTIVAR", "notificación", "Desactivó los avisos push en un dispositivo[ ({canal})]"),
     # ---- carrito, compra y pagos ----
     E("POST", "/carrito/items", "CREAR", "carrito", "Agregó una prenda al carrito"),
     E("PUT", "/carrito/items/{item_id}", "MODIFICAR", "carrito", "Cambió la cantidad de una prenda del carrito"),

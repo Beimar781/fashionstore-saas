@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.constantes import CLIENTE
 from app.core.errors import AppError, Conflicto, NoEncontrado
 from app.modules.acceso.dependencias import Contexto
+from app.modules.reservas.publico import avisar_cliente
 from app.primer_parcial.ventas.cu11_compra_digital.schemas import PagoResumenOut
 from app.primer_parcial.ventas.cu11_compra_digital.service import MSG_RECHAZO, CompraService, SinStock
 from app.primer_parcial.ventas.cu32_pago_electronico import schemas
@@ -174,6 +175,10 @@ class PagoService:
             pago.estado, pago.motivo, pago.mensaje = "CANCELADO", "Sin stock al cobrar", str(e)
             self.compras.cancelar(pedido, "Sin stock al momento del pago.")
             self.db.commit()
+            avisar_cliente(  # regla 17: la prenda se agotó mientras pagaba; la autorización se anuló y no se cobró nada
+                self.db, pedido.empresa_id, pedido.cliente_id, "PAGO_SIN_STOCK", "No se pudo completar su compra",
+                f"Su compra {pedido.codigo} no se pudo completar porque la prenda se agotó. No se le cobró nada.", "PEDIDO", pedido.id,
+            )
             raise
         except Exception:  # no se pudo cobrar: nada se descuenta y queda por conciliar
             logger.exception("No se pudo completar el cobro del pago %s", pago_id)

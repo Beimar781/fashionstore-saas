@@ -46,9 +46,9 @@ class EmpresaService:
             raise NoEncontrado("Plan no encontrado.")
         if not plan.activo:
             raise Conflicto("El plan no está disponible para nuevas contrataciones.")
-        vencimiento = resolver_vigencia(
-            datos.suscripcion.fecha_inicio, datos.suscripcion.fecha_vencimiento, datos.suscripcion.duracion_meses
-        )
+        vencimiento = SuscripcionService(self.db).vigencia_de(
+            plan, datos.suscripcion.fecha_inicio, datos.suscripcion.fecha_vencimiento, datos.suscripcion.duracion_meses
+        )  # la prueba gratuita dura 1 mes sin indicarlo
         rol_admin = RolRepository(self.db).por_nombre(ADMIN)
         try:
             empresa = self.repo.agregar(

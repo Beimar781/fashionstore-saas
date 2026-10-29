@@ -95,10 +95,12 @@ class CompraService:
         return pedido
 
     # ---- paso 5: tras el pago aprobado (lo llama CU-32 o CU-30, que confirman la transacción) ----
-    def finalizar(self, pedido: Pedido) -> None:
+    def finalizar(self, pedido: Pedido, descontar: bool = True) -> None:
         """Descuenta el stock de la sucursal, numera el comprobante, marca el pedido como pagado y lo deja listo para entregar.
         Si ya no hay stock lanza SinStock sin haber cambiado nada: quien llama debe anular el cobro."""
-        if pedido.reserva_id is not None:
+        if not descontar:  # venta sin conexión descartada (CU-40): el dinero se devuelve y el inventario no se toca aquí
+            pass
+        elif pedido.reserva_id is not None:
             self._descontar_de_la_reserva(pedido)
         else:
             self._descontar_del_stock(pedido)
