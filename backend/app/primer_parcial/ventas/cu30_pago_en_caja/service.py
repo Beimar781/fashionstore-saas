@@ -31,7 +31,7 @@ class CobroCajaService:
         self.sucursal_id = sucursal_de_caja(ctx)
         self.compras = CompraService(db, ctx, impuestos)
 
-    def cobrar(self, pedido_id: int, datos: schemas.CobroIn) -> schemas.CobroOut:
+    def cobrar(self, pedido_id: int, datos: schemas.CobroIn, commit: bool = True) -> schemas.CobroOut:
         pedido = self.compras.venta_de_caja(pedido_id, self.sucursal_id)
         if pedido.estado != "PENDIENTE_PAGO":
             raise Conflicto("La venta no está pendiente de cobro.")
@@ -42,7 +42,7 @@ class CobroCajaService:
             moneda=pedido.moneda, monto_recibido=recibido, cambio=cambio, mensaje="Pago aprobado.", usuario_id=self.ctx.usuario.id,
         )
         self.db.add(pago)
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         salida = self.compras.salida([pedido])[0]
         return schemas.CobroOut(pedido=salida, pago=PagoResumenOut.model_validate(pago, from_attributes=True), cambio=cambio, aviso=salida.comprobante_aviso)
 

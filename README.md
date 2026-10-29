@@ -96,6 +96,9 @@ fija el plazo (15 días por defecto) y consulta todas las notas en **Devolucione
 **Reportes con IA**, **Analítica con ML** y el **Asistente** del cliente salen bloqueados (🔒). EMP-B (`admin@estiloandino.com`, plan **Profesional**) tiene todo: pida un reporte escrito o dictado con el micrófono
 (Chrome o Edge), vea el pronóstico de demanda y, como `cliente@emp-b.com`, pruebe el **Asistente de compras**. El asistente aprende de lo que el cliente compra, busca y mira (el seed ya deja búsquedas y prendas vistas del cliente demo), y el cliente puede apagarlo o borrarlo en **Mi privacidad**. Sin clave de IA todo funciona con reglas de respaldo; para usar Claude agregue
 `ANTHROPIC_API_KEY=` en `backend/.env` (la clave nunca va en el código ni se sube a git) y reinicie el backend.
+**Modo sin conexión (Fase H):** el Cajero (`cajero@tienda.com`), el Encargado y el Cliente tienen **Modo sin conexión**: descargue el catálogo con Internet, apague la red (en Chrome: F12 → Network → Offline),
+registre una venta de contado (o una reserva, como cliente) y vuelva a conectar: se envía sola y pasa de «Registrada» a «Confirmada». El seed deja una venta que no alcanzó en el inventario: el Encargado la ve en
+**Conflictos de sincronización** y la reintenta o la descarta. En el móvil (`flutter run`) es la misma pantalla «Modo sin conexión»; el catálogo descargado también se usa si no hay Internet.
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.

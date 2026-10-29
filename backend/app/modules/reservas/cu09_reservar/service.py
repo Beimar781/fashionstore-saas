@@ -51,7 +51,7 @@ class ReservaService:
         self.variantes = VarianteReservaRepository(db, empresa_id)
 
     # ---- CU-09: reservar ----
-    def crear(self, ctx: Contexto, datos: schemas.ReservaIn) -> schemas.ReservaOut:
+    def crear(self, ctx: Contexto, datos: schemas.ReservaIn, commit: bool = True) -> schemas.ReservaOut:
         if not datos.items:
             raise DatosInvalidos(MSG_SIN_PRENDAS)
         sucursal = datos_de_sucursal_activa(self.db, self.empresa_id, datos.sucursal_id)
@@ -91,7 +91,7 @@ class ReservaService:
             f"Su reserva en {sucursal['nombre']} quedó registrada para el {cuando}. Presente el código {reserva.codigo} en el mostrador.",
             usuario_id=ctx.usuario.id, referencia_tipo="RESERVA", referencia_id=reserva.id,
         )
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return self.salida([reserva])[0]
 
     # ---- consultas para la sucursal (CU-24 y CU-25, por publico.py) ----

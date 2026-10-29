@@ -14,6 +14,9 @@ class AuthRepository {
 
   late final ApiClient _api;
 
+  /// Cliente HTTP con el token de la sesión: lo usan también los demás paquetes (catálogo, reservas, offline).
+  ApiClient get api => _api;
+
   Future<Database> get _db => LocalDatabase.instance.database;
 
   /// CU-02: inicia sesión en el servidor y guarda el contexto localmente.

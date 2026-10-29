@@ -28,13 +28,24 @@ class ApiClient {
   final Future<String?> Function() obtenerToken;
   final Future<bool> Function() renovarToken;
 
-  Future<Map<String, dynamic>> get(String ruta) => _enviar('GET', ruta);
+  Future<Map<String, dynamic>> get(String ruta) async => _mapa(await _enviar('GET', ruta));
 
-  Future<Map<String, dynamic>> post(String ruta, Map<String, dynamic> cuerpo,
-          {bool autenticado = true}) =>
-      _enviar('POST', ruta, cuerpo: cuerpo, autenticado: autenticado);
+  /// GET que devuelve una lista JSON (por ejemplo, las operaciones del usuario).
+  Future<List<dynamic>> getLista(String ruta) async {
+    final datos = await _enviar('GET', ruta);
+    return datos is List ? datos : <dynamic>[];
+  }
 
-  Future<Map<String, dynamic>> _enviar(String metodo, String ruta,
+  Future<Map<String, dynamic>> post(String ruta, Map<String, dynamic> cuerpo, {bool autenticado = true}) async =>
+      _mapa(await _enviar('POST', ruta, cuerpo: cuerpo, autenticado: autenticado));
+
+  Future<Map<String, dynamic>> put(String ruta, Map<String, dynamic> cuerpo) async => _mapa(await _enviar('PUT', ruta, cuerpo: cuerpo));
+
+  Future<Map<String, dynamic>> delete(String ruta) async => _mapa(await _enviar('DELETE', ruta));
+
+  Map<String, dynamic> _mapa(dynamic datos) => datos is Map<String, dynamic> ? datos : <String, dynamic>{};
+
+  Future<dynamic> _enviar(String metodo, String ruta,
       {Map<String, dynamic>? cuerpo, bool autenticado = true, bool reintento = false}) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$ruta');
     final cabeceras = <String, String>{'Content-Type': 'application/json'};
@@ -43,20 +54,24 @@ class ApiClient {
       if (token != null) cabeceras['Authorization'] = 'Bearer $token';
     }
     try {
-      final respuesta = metodo == 'GET'
-          ? await http.get(uri, headers: cabeceras).timeout(const Duration(seconds: 12))
-          : await http
-              .post(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {}))
-              .timeout(const Duration(seconds: 12));
+      final http.Response respuesta;
+      switch (metodo) {
+        case 'GET':
+          respuesta = await http.get(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
+        case 'DELETE':
+          respuesta = await http.delete(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
+        case 'PUT':
+          respuesta = await http.put(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
+        default:
+          respuesta = await http.post(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
+      }
 
       if (respuesta.statusCode == 401 && autenticado && !reintento && await renovarToken()) {
-        return _enviar(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: true);
+        return await _enviar(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: true);
       }
-      final datos = respuesta.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
+      final datos = respuesta.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(respuesta.bodyBytes));
       if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) return datos;
-      final detalle = datos['detail'];
+      final detalle = datos is Map ? datos['detail'] : null;
       throw ApiException(
         detalle is String ? detalle : 'No se pudo completar la operación.',
         statusCode: respuesta.statusCode,

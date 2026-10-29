@@ -4,13 +4,13 @@ El Lote 1 (núcleo multitenant) está implementado y probado. El resto del docum
 **toda tabla nueva lleva `empresa_id`, todo repositorio nuevo hereda de `TenantRepository`, y toda ruta de empresa usa `contexto_operativo(...)`.**
 
 ## Lote 2 — Operación comercial por empresa y offline
-~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), ~~CU-05~~ (hecho en la Fase B), ~~CU-09~~ (hecho en la Fase C), ~~CU-29~~ (hecho en la Fase E), ~~CU-36~~ (hecho en la Fase G), CU-37, CU-38, CU-39 → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
+~~CU-01, CU-03, CU-04~~ (hechos en la Fase A), ~~CU-05~~ (hecho en la Fase B), ~~CU-09~~ (hecho en la Fase C), ~~CU-29~~ (hecho en la Fase E), ~~CU-36~~ (hecho en la Fase G), ~~CU-37, CU-38, CU-39~~ (hechos en la Fase H) → paquetes P4 catálogo, P5 inventario, P6 reservas, P7 ventas, P8 offline/sincronización.
 - Web: IndexedDB ya tiene los almacenes `catalogo`, `operaciones` y `cache_meta` (`core/offline/local-db.service.ts`).
 - Móvil: SQLite ya tiene las tablas `productos_locales` y `operaciones_pendientes` con los estados de RN11 (`lib/core/db/local_database.dart`).
 - Gancho de CU-14 (desactivar con pendientes): ya cubre las reservas; la cola offline (CU-38) debe registrar el suyo con `sucursales/publico.py::registrar_verificador_de_pendientes`.
 
 ## Lote 3 — Gestión avanzada
-~~CU-10~~, ~~CU-20~~, ~~CU-21~~, ~~CU-22~~, ~~CU-23~~, ~~CU-26~~ (hechos en la Fase B), ~~CU-41~~ (hecho en la Fase F), CU-40, ~~CU-42~~ (hecho en la Fase G) → P7 devoluciones, P9 IA/analítica, P10 reportes.
+~~CU-10~~, ~~CU-20~~, ~~CU-21~~, ~~CU-22~~, ~~CU-23~~, ~~CU-26~~ (hechos en la Fase B), ~~CU-41~~ (hecho en la Fase F), ~~CU-40~~ (hecho en la Fase H), ~~CU-42~~ (hecho en la Fase G) → P7 devoluciones, P9 IA/analítica, P10 reportes.
 - RN07 ya está resuelta: proteger los endpoints de IA con `Depends(exigir_funcionalidad("reportes_ia"))`.
 
 ## Casos de uso conservados del primer parcial (deben funcionar dentro de cada empresa)

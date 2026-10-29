@@ -29,13 +29,17 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | CU-23 Reportes generativos por prompt y por voz | `ia/cu23_reportes_generativos` (`interprete.py`: IA externa o reglas; `core/ia.py`: adaptador de Claude) | `POST /api/ia/reportes`, `GET /api/ia/reportes`, `GET …/{id}` | `ia/reporte-generativo.page.ts` (voz con la Web Speech API) | — | `test_cu23_reportes_generativos.py` (12 pruebas: reglas, IA con doble en memoria, respaldo, validación, historial, plan, aislamiento) |
 | CU-36 Plan, límites y uso de la empresa | `plataforma/cu36_plan_y_uso` (+ registro de medidores en `plataforma/publico.py`) | `GET /api/mi-plan` | `administracion/mi-plan.page.ts` | — | `test_cu36_plan_y_uso.py` (6 pruebas: plan, límite de sucursales, consumo, vencimiento, suscripción vencida, aislamiento) |
 | CU-42 Dashboard analítico con Machine Learning | `ia/cu42_analitica_ml` (scikit-learn: KMeans y regresión lineal) | `GET /api/ia/analitica?sucursal=` | `ia/analitica.page.ts` | — | `test_cu42_analitica_ml.py` (8 pruebas: rotación, pronóstico, recomendación, sin datos, plan, aislamiento) |
+| CU-37 Descargar catálogo para uso offline | `offline/cu37_catalogo_offline` | `GET /api/offline/catalogo` | `offline/catalogo-local.component.ts`, `core/offline/catalogo-local.service.ts` (IndexedDB) | `features/offline/data/offline_repository.dart`, `presentation/modo_offline_screen.dart` (SQLite) | `test_cu37_cu39_cu40_offline.py` (5 pruebas); móvil: `test/offline_test.dart` |
+| CU-38 Sincronizar operaciones pendientes | `offline/cu38_sincronizar` (+ `ejecucion.py`, que reutiliza la venta de caja CU-29/CU-30 y la reserva CU-09 en una sola transacción) | `POST /api/offline/sincronizar` | `offline/operaciones.component.ts`, `core/offline/cola-operaciones.service.ts` | `OfflineRepository.sincronizar`, `OfflineController` | `test_cu38_sincronizar.py` (11 pruebas: idempotencia, conflicto, rechazos, orden, fallos, plan, aislamiento); móvil: 14 pruebas |
+| CU-39 Consultar operaciones locales y su estado | `offline/cu39_operaciones` | `GET /api/offline/operaciones` | `offline/operaciones.component.ts` | `modo_offline_screen.dart` (pestaña Operaciones) | `test_cu37_cu39_cu40_offline.py` (1 prueba) y móvil |
+| CU-40 Gestionar conflictos de sincronización | `offline/cu40_conflictos` | `GET /api/offline/conflictos`, `POST /api/offline/conflictos/{uuid}/resolver` (REINTENTAR o DESCARTAR) | `offline/conflictos.page.ts` (Encargado y Administrador) | — (es de la web, según el documento) | `test_cu37_cu39_cu40_offline.py` (5 pruebas) |
 | CU-33 Empresas (tenants) | `plataforma/cu33_empresas` | `GET/POST /api/plataforma/empresas`, `PUT …/{id}`, `POST …/suspender`, `…/reactivar` (+ `DELETE` rechazado) | `plataforma/empresas.page.ts` | — | `test_cu33_empresas.py` (6 pasos) |
 | CU-34 Planes | `plataforma/cu34_planes` | `GET/POST /api/plataforma/planes`, `PUT …/{id}`, `POST …/inactivar` | `plataforma/planes.page.ts` | — | `test_cu34_planes.py` (5 pasos) |
 | CU-35 Suscripciones | `plataforma/cu35_suscripciones` | `GET …/empresas/{id}/suscripcion`, `POST …/suscripciones`, `POST …/suscripcion/suspender` | `plataforma/suscripcion.page.ts` | — | `test_cu35_suscripciones.py` (6 pasos) |
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-CU-37 a CU-40 (H).
+ninguno: solo falta el vestidor virtual (CU-06, fase I, primer parcial).
 
 ## Primer parcial (Anexo B)
 
@@ -192,6 +196,20 @@ Tablas: `interacciones_cliente` (búsquedas, prendas vistas y pedidos al asisten
 | 3 | Se puntúan las prendas con stock contra el perfil (categoría, color, talla, precio, oferta, ya la miró) y se descartan las que ya compró | `perfil.py::puntuar`, `Recomendador._puntuadas` |
 | 4 | Con IA (si hay clave) la IA elige entre las mejores y explica cada una; el servidor valida que solo elija candidatas reales. Sin IA, el motivo se redacta con reglas | `recomendador.py::elegir_con_ia` |
 | 5 | Ofertas: las promociones que encajan con el perfil. Outfits: prendas de otras categorías que combinan en tono con una prenda base | `Recomendador.recomendar` / `outfit` |
+
+## Esquema de la Fase H (migración 0011)
+
+Tabla nueva: `operaciones_offline` (una por operación que llegó al servidor: UUID del cliente, usuario, sucursal, tipo, estado CONFIRMADA / RECHAZADA / EN_CONFLICTO, payload, mensaje, referencia, detalle de faltantes y resolución).
+`UNIQUE (empresa_id, operacion_id)` es lo que hace idempotente el reenvío (RN12, RNF05). REGISTRADA_LOCAL y ENVIADA existen solo en el dispositivo (IndexedDB en la web, SQLite en el móvil).
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | Con conexión se descarga el catálogo (productos, variantes, precio con promoción, stock y, para el personal, clientes) de las sucursales autorizadas y se guarda su fecha (RN16) | CU-37 |
+| 2 | Sin conexión se registra una venta de contado (personal) o una reserva (cliente): recibe un UUID del dispositivo, queda REGISTRADA_LOCAL y se descuenta del stock local | `ColaOperacionesService` / `OfflineRepository.registrar` |
+| 3 | Al volver la conexión (o cada 30 s mientras haya pendientes) se envía por lote, en orden cronológico; cada operación pasa a ENVIADA y **no se borra** hasta que el servidor responda (RN12). Si no hay respuesta, vuelve a REGISTRADA_LOCAL (RNF06) | CU-38 |
+| 4 | El servidor procesa cada operación en su propia transacción con los casos de uso de siempre: venta + cobro + stock + comprobante, o reserva. Reenviada, devuelve el resultado original | `SincronizacionService._una`, `Ejecutor` |
+| 5 | Si no alcanzan las existencias: nada se descuenta, queda EN_CONFLICTO con las prendas que faltan y se avisa a la sucursal (RN14) | CU-38 → CU-40 |
+| 6 | El Encargado reintenta (con las existencias de ahora) o descarta con motivo; el dispositivo se entera al consultar el estado | CU-40, CU-39 |
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

@@ -39,6 +39,11 @@ from app.modules.reportes.cu22_indicadores.router import router as cu22_indicado
 from app.modules.ia.cu23_reportes_generativos.router import router as cu23_reportes_generativos
 from app.modules.ia.cu42_analitica_ml.router import router as cu42_analitica
 from app.primer_parcial.ia.cu07_asistente.router import router as cu07_asistente
+from app.modules.offline.cu37_catalogo_offline.router import router as cu37_catalogo_offline
+from app.modules.offline.cu38_sincronizar.router import router as cu38_sincronizar
+from app.modules.offline.cu39_operaciones.router import router as cu39_operaciones
+from app.modules.offline.cu40_conflictos.router import router as cu40_conflictos
+import app.modules.offline.publico  # noqa: F401,E402  (registra su verificador de pendientes de sucursal)
 # Los medidores del consumo del plan (CU-36) se anotan al cargar estos paquetes
 import app.modules.acceso.publico  # noqa: F401,E402
 import app.modules.ia.publico  # noqa: F401,E402
@@ -108,3 +113,8 @@ api_router.include_router(cu22_indicadores)
 api_router.include_router(cu23_reportes_generativos)
 api_router.include_router(cu42_analitica)
 api_router.include_router(cu07_asistente)
+# P8 · Operación offline y sincronización (CU-37 a CU-40)
+api_router.include_router(cu37_catalogo_offline)
+api_router.include_router(cu38_sincronizar)
+api_router.include_router(cu39_operaciones)
+api_router.include_router(cu40_conflictos)

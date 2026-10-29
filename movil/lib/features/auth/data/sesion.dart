@@ -9,6 +9,8 @@ class Sesion {
   Map<String, dynamic>? get _suscripcion => datos['suscripcion'] as Map<String, dynamic>?;
 
   int get usuarioId => _usuario['id'] as int;
+  int? get sucursalId => _usuario['sucursal_id'] as int?;
+  int? get empresaId => _empresa?['id'] as int?;
   String get nombreCompleto => '${_usuario['nombre']} ${_usuario['apellidos']}'.trim();
   String get email => _usuario['email'] as String;
   String get rol => _usuario['rol'] as String;
@@ -21,6 +23,12 @@ class Sesion {
   String? get suscripcionEstado => _suscripcion?['estado'] as String?;
   String? get vencimiento => _suscripcion?['fecha_vencimiento'] as String?;
   int? get maxSucursales => (_suscripcion?['plan'] as Map<String, dynamic>?)?['max_sucursales'] as int?;
+
+  /// ¿El plan de la empresa incluye la operación offline? (RN07: está en ambos planes)
+  bool get offlineHabilitado => ((_suscripcion?['plan'] as Map<String, dynamic>?)?['offline'] as bool?) ?? true;
+
+  /// ¿El plan incluye las funciones de IA (asistente y recomendaciones)?
+  bool get iaHabilitada => ((_suscripcion?['plan'] as Map<String, dynamic>?)?['reportes_ia'] as bool?) ?? false;
 
   /// Administrador con suscripción no vigente: solo puede consultar su plan (RN05).
   bool get restringido => datos['restringido'] as bool? ?? false;

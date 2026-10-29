@@ -332,3 +332,54 @@ CU-41 **no tiene ficha ni prueba en el Word** (solo aparece en la tabla 2.5.5 y 
 ### Configuración nueva
 
 `ANTHROPIC_API_KEY=` y, opcionalmente, `IA_MODELO=` en `backend/.env`: activan la interpretación con IA externa de CU-07 y CU-23. Sin ellas se usa el modo de respaldo con reglas locales. Nueva librería: `scikit-learn` (con `numpy`) en `requirements.txt`.
+
+## Fase H
+
+**CU-37, CU-38, CU-39 y CU-40 no tienen ficha ni prueba en el Word**; solo están sus reglas (RN11 a RN16), los requisitos RF18 a RF22 y los RNF03 a RNF06 y RNF10. Falta redactar las cuatro fichas. Las decisiones de abajo salen del código.
+
+### Decisiones de diseño que conviene reflejar en las fichas
+
+- **Qué se puede hacer sin conexión (RF19, RN13).** El personal de tienda (Cajero y Encargado) registra **ventas de contado** y el Cliente registra **reservas**. No hay ventas con tarjeta sin conexión: la pasarela necesita Internet.
+  El efectivo recibido y el cambio se calculan en el dispositivo, pero eso no implica que el servidor haya aceptado la venta: se confirma al sincronizar.
+- **Estados (RN11).** `REGISTRADA_LOCAL` y `ENVIADA` existen solo en el dispositivo; el servidor fija `CONFIRMADA`, `RECHAZADA` o `EN_CONFLICTO`. Una operación enviada **no se borra del dispositivo** hasta que el servidor
+  la confirme o rechace (RN12); si no hay respuesta, vuelve a `REGISTRADA_LOCAL` y se reintenta (al volver la conexión y cada 30 segundos). Una operación en conflicto tampoco se borra.
+- **Idempotencia (RN12, RNF05).** El identificador (UUID) lo genera el dispositivo. El servidor guarda (empresa, identificador) como único: reenviar una operación ya procesada devuelve su resultado original sin duplicarla,
+  también si llegan dos envíos a la vez o el mismo identificador dos veces en un lote. Un identificador ya usado por otro usuario se rechaza sin tocar la operación original.
+- **Una sola transacción (RNF04).** La operación y todos sus efectos (venta, cobro, descuento de inventario, comprobante o reserva) se confirman juntos o no se confirma nada. Si el servidor falla por un problema pasajero, la operación
+  **no se guarda** y el dispositivo la reintenta (RNF06).
+- **Orden.** Las operaciones de un lote se aplican en el orden en que ocurrieron en el dispositivo; si queda una sola unidad, es de la operación más antigua.
+- **Conflictos (RN14, RF22).** Si al sincronizar no alcanzan las existencias, no se descuenta nada (ni de las prendas que sí alcanzaban) y la operación queda `EN_CONFLICTO` con las prendas que faltan (pedidas y disponibles hoy);
+  se avisa a la sucursal (RF11). El Encargado (de su sucursal) o el Administrador la resuelve: **reintentar** (con las existencias de ahora; si ya alcanzan, queda confirmada) o **descartar** con un motivo (en una venta de contado se indica
+  devolver el efectivo al cliente). Una sucursal con conflictos sin resolver no se puede desactivar (CU-14, excepción 5).
+- **Rechazos.** Se rechaza, con el mensaje de la regla, lo que ya no se puede aplicar por otro motivo: monto recibido menor al total (los precios pudieron cambiar), prenda que ya no está en el catálogo, reserva con horario ya pasado,
+  formato inválido, sucursal ajena (RN10) o un rol que no puede registrar ese tipo de operación.
+- **Catálogo offline (RF18, RN16).** La descarga trae productos activos con variantes, precio con promoción vigente y stock; el personal recibe solo el stock de su sucursal (RN10) y los datos mínimos de los clientes (nombre y correo);
+  el cliente recibe el stock de todas las sucursales activas (para elegir dónde reservar) y ningún dato de otros clientes. Siempre se muestra la fecha de la descarga y se avisa que puede estar desactualizada (más de un día o sin conexión).
+- **Plan y suscripción.** La sincronización y la descarga exigen que el plan incluya la operación offline (ambos planes, RN07) y que la suscripción esté vigente (RN05). El Administrador no registra operaciones offline: solo gestiona conflictos.
+- **Observabilidad (RNF10).** Cada operación procesada deja un registro con su identificador, tipo, estado, empresa y sucursal; no se escriben los datos de la venta ni de los clientes en el registro de diagnóstico.
+- **Móvil.** Flutter con SQLite (`sesion`, `sucursales_autorizadas`, `productos_locales`, `clientes_locales`, `operaciones_pendientes` y `meta`). Si no hay conexión, el catálogo del cliente usa el catálogo descargado. El pago con tarjeta de la compra digital
+  en el móvil solo está disponible con la pasarela de pruebas; con Stripe se termina en la web.
+
+### Mensajes nuevos
+
+| CU | Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|---|
+| CU-38 | Operación confirmada | «Operación confirmada.» | 200 (estado CONFIRMADA) | Pendiente |
+| CU-38 | Rol que no puede registrar ese tipo de operación | «No tiene permisos para registrar este tipo de operación sin conexión.» | 200 (estado RECHAZADA) | Pendiente |
+| CU-38 | Operación de otra sucursal (RN10) | «La operación corresponde a otra sucursal.» | 200 (estado RECHAZADA) | Pendiente |
+| CU-38 | Sucursal inexistente o de otra empresa | «Sucursal no encontrada.» | 200 (estado RECHAZADA) | Pendiente |
+| CU-38 | Identificador usado por otro usuario | «Este identificador de operación ya fue utilizado por otro usuario.» | 200 (estado RECHAZADA) | Pendiente |
+| CU-38 | Operación con formato inválido | «La operación no tiene el formato esperado.» | 200 (estado RECHAZADA) | Pendiente |
+| CU-38 | Faltan existencias (RN14) | «No hay existencias suficientes para esta operación. No se descontó nada del inventario; el Encargado debe resolverla.» | 200 (estado EN_CONFLICTO) | Pendiente |
+| CU-38 | Falla pasajera del servidor | «El servidor no pudo procesar la operación ahora. Se conserva en el dispositivo y se reintentará.» | 200 (estado ERROR; el dispositivo la reintenta) | Pendiente |
+| CU-38 | Monto recibido menor al total / prenda no disponible / horario inválido | Los mismos de CU-30, CU-29 y CU-09 | 200 (estado RECHAZADA) | Ya están en CU-09, CU-29 y CU-30 |
+| CU-40 | Operación inexistente, de otra sucursal u otra empresa | «Operación no encontrada.» | 404 | Pendiente |
+| CU-40 | La operación ya no está en conflicto | «La operación ya no está en conflicto.» | 409 | Pendiente |
+| CU-40 | Descartar sin motivo | «Indique el motivo del descarte.» | 422 | Pendiente |
+| CU-40 | Reintentar y todavía no alcanzan | «Todavía no hay existencias suficientes: {prenda} ({talla}, {color}): solicitadas {n}, disponibles {d}.» | 409 | Pendiente |
+| CU-40 | Reintentar una operación de un usuario que ya no está activo | «El usuario que registró la operación ya no está activo: descártela.» | 409 | Pendiente |
+| CU-37 / CU-38 / CU-39 / CU-40 | El plan no incluye la operación offline | «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» | 403 | Ya existe (RN07) |
+
+### Reglas de la sucursal
+
+CU-14 ya decía que no se puede desactivar una sucursal con «operaciones sin sincronizar»: ahora lo cumplen las operaciones en conflicto (mensaje existente: «La sucursal tiene reservas pendientes u operaciones sin sincronizar. Resuélvalas antes de desactivarla.»).

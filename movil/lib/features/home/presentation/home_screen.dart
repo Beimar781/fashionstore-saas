@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../primer_parcial/catalogo/presentation/catalogo_screen.dart';
+import '../../../primer_parcial/reservas/presentation/carrito_screen.dart';
+import '../../../primer_parcial/reservas/presentation/reservas_screen.dart';
+import '../../../primer_parcial/ventas/presentation/pedidos_screen.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../offline/presentation/modo_offline_screen.dart';
+import '../../offline/presentation/offline_controller.dart';
 
-/// Pantalla inicial tras el inicio de sesión. Muestra el contexto de la sesión (empresa, rol, sucursal
-/// y plan). Los paneles de catálogo, reservas y ventas se agregan en el Lote 2 sobre este contexto.
+/// Pantalla inicial tras el inicio de sesión. Muestra el contexto de la sesión (empresa, rol, sucursal y plan) y los accesos del rol:
+/// el cliente ve catálogo, carrito, compras y reservas; el personal de tienda opera sin conexión (ventas de contado); todos sincronizan.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -20,6 +26,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final s = auth.sesion!;
+    final offline = context.watch<OfflineController>();
     final esquema = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -50,6 +57,26 @@ class HomeScreen extends StatelessWidget {
                 subtitle: const Text('Solo puede consultar su plan.'),
               ),
             ),
+          if (offline.habilitado && offline.pendientes.isNotEmpty)
+            Card(
+              color: const Color(0xFFFBEFD9),
+              child: ListTile(
+                leading: const Icon(Icons.sync_problem),
+                title: Text('${offline.pendientes.length} operación(es) pendiente(s) de sincronizar'),
+                subtitle: const Text('Se enviarán solas al recuperar la conexión.'),
+                onTap: () => _abrir(context, const ModoOfflineScreen()),
+              ),
+            ),
+          if (offline.enConflicto.isNotEmpty)
+            Card(
+              color: esquema.errorContainer,
+              child: ListTile(
+                leading: Icon(Icons.warning_amber, color: esquema.onErrorContainer),
+                title: Text('${offline.enConflicto.length} operación(es) en conflicto'),
+                subtitle: const Text('No alcanzaron las existencias; el Encargado de la sucursal las resuelve.'),
+                onTap: () => _abrir(context, const ModoOfflineScreen()),
+              ),
+            ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -75,10 +102,25 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          if (s.rol == 'Cliente' && !s.restringido) ...[
+            _acceso(context, Icons.storefront, 'Catálogo', 'Busque prendas; sin conexión usa el catálogo descargado', const CatalogoScreen()),
+            _acceso(context, Icons.shopping_cart, 'Mi carrito', 'Prendas elegidas y pago con tarjeta de prueba', const CarritoScreen()),
+            _acceso(context, Icons.receipt_long, 'Mis compras', 'Historial y comprobantes', const PedidosScreen()),
+            _acceso(context, Icons.event, 'Mis reservas', 'Consulte y cancele sus reservas', const ReservasScreen()),
+          ],
+          if (offline.habilitado && !s.restringido)
+            _acceso(context, Icons.cloud_off, 'Modo sin conexión', s.rol == 'Cliente' ? 'Descargue el catálogo y reserve sin Internet' : 'Descargue el catálogo y registre ventas de contado sin Internet', const ModoOfflineScreen()),
         ],
       ),
     );
   }
+
+  void _abrir(BuildContext context, Widget pantalla) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => pantalla));
+
+  Widget _acceso(BuildContext context, IconData icono, String titulo, String detalle, Widget pantalla) => Card(
+        child: ListTile(leading: Icon(icono), title: Text(titulo), subtitle: Text(detalle), trailing: const Icon(Icons.chevron_right), onTap: () => _abrir(context, pantalla)),
+      );
 
   Widget _fila(String etiqueta, String valor) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),

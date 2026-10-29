@@ -2,13 +2,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { ROL } from '../core/models';
+import { ColaOperacionesService } from '../core/offline/cola-operaciones.service';
 import { ConnectivityService } from '../core/offline/connectivity.service';
 import { CarritoEstadoService } from '../core/carrito/carrito-estado.service';
 import { ReservaBorradorService } from '../core/reservas/reserva-borrador.service';
 import { ConfirmarSalidaComponent } from '../core/ui/confirmar-salida.component';
 import { NotificacionesComponent } from '../core/ui/notificaciones.component';
 
-interface Item { ruta: string; texto: string; icono: string; operativo?: boolean; plan?: 'reportes_ia' | 'reportes_convencionales'; }
+interface Item { ruta: string; texto: string; icono: string; operativo?: boolean; plan?: 'reportes_ia' | 'reportes_convencionales' | 'offline'; }
 
 const NAV_PLATAFORMA: Item[] = [
   { ruta: '/plataforma/empresas', texto: 'Empresas', icono: '🏢' },
@@ -26,6 +27,7 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
   { ruta: '/empresa/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️', operativo: true },
+  { ruta: '/empresa/conflictos', texto: 'Conflictos de sincronización', icono: '⚠️', operativo: true, plan: 'offline' },
   { ruta: '/empresa/reportes', texto: 'Reportes', icono: '📑', operativo: true, plan: 'reportes_convencionales' },
   { ruta: '/empresa/indicadores', texto: 'Indicadores', icono: '📈', operativo: true, plan: 'reportes_convencionales' },
   { ruta: '/empresa/ia/reportes', texto: 'Reportes con IA', icono: '🤖', operativo: true, plan: 'reportes_ia' },
@@ -34,10 +36,13 @@ const NAV_EMPRESA: Item[] = [
 const NAV_CAJERO: Item[] = [
   { ruta: '/pos/caja', texto: 'Caja', icono: '🧾' },
   { ruta: '/pos/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
+  { ruta: '/pos/offline', texto: 'Modo sin conexión', icono: '📡', plan: 'offline' },
 ];
 const NAV_ENCARGADO: Item[] = [
   { ruta: '/sucursal/caja', texto: 'Caja', icono: '🧾' },
   { ruta: '/sucursal/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
+  { ruta: '/sucursal/offline', texto: 'Modo sin conexión', icono: '📡', plan: 'offline' },
+  { ruta: '/sucursal/conflictos', texto: 'Conflictos de sincronización', icono: '⚠️', plan: 'offline' },
   { ruta: '/sucursal/ventas', texto: 'Ventas de la sucursal', icono: '📈' },
   { ruta: '/sucursal/reservas', texto: 'Reservas', icono: '📅' },
   { ruta: '/sucursal/atencion', texto: 'Atención en mostrador', icono: '🛎️' },
@@ -53,6 +58,7 @@ const NAV_CLIENTE: Item[] = [
   { ruta: '/tienda/carrito', texto: 'Mi carrito', icono: '🛒' },
   { ruta: '/tienda/compras', texto: 'Mis compras', icono: '🧾' },
   { ruta: '/tienda/asistente', texto: 'Asistente de compras', icono: '✨', plan: 'reportes_ia' },
+  { ruta: '/tienda/offline', texto: 'Modo sin conexión', icono: '📡', plan: 'offline' },
   { ruta: '/tienda/reservar', texto: 'Mi reserva', icono: '🧺' },
   { ruta: '/tienda/reservas', texto: 'Mis reservas', icono: '📅' },
 ];
@@ -76,7 +82,7 @@ const porRol: Record<string, Item[]> = {
             } @else if (it.plan && !incluye(it.plan)) {
               <span class="link disabled" title="Su plan no incluye esta funcionalidad"><i>{{ it.icono }}</i>{{ it.texto }}<em>🔒</em></span>
             } @else {
-              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }@if (it.ruta === '/tienda/carrito' && carrito.total() > 0) { <em class="cuenta">{{ carrito.total() }}</em> }</a>
+              <a class="link" [routerLink]="it.ruta" routerLinkActive="activo"><i>{{ it.icono }}</i>{{ it.texto }}@if (it.ruta === '/tienda/reservar' && borrador.total() > 0) { <em class="cuenta">{{ borrador.total() }}</em> }@if (it.ruta === '/tienda/carrito' && carrito.total() > 0) { <em class="cuenta">{{ carrito.total() }}</em> }@if (it.ruta.endsWith('/offline') && cola.pendientes().length) { <em class="cuenta" title="Operaciones pendientes de sincronizar">{{ cola.pendientes().length }}</em> }</a>
             }
           }
         </nav>
@@ -139,10 +145,11 @@ export class ShellComponent {
   readonly net = inject(ConnectivityService);
   readonly borrador = inject(ReservaBorradorService);
   readonly carrito = inject(CarritoEstadoService);
+  readonly cola = inject(ColaOperacionesService);  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }
   /** ¿El plan de la empresa incluye la funcionalidad? (Cliente y Administrador la ven en su menú bloqueada si no.) */
-  incluye(clave: 'reportes_ia' | 'reportes_convencionales') { return !!this.s()?.suscripcion?.plan?.[clave]; }
+  incluye(clave: 'reportes_ia' | 'reportes_convencionales' | 'offline') { return !!this.s()?.suscripcion?.plan?.[clave]; }
   readonly items = computed<Item[]>(() => porRol[this.auth.rol() as string] ?? NAV_EMPRESA);
 }

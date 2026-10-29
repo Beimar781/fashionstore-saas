@@ -35,7 +35,7 @@ class VentaPresencialService:
         self.reservas = ReservaService(db, ctx.empresa_id)
 
     # ---- pasos 1 a 4: armar la venta ----
-    def crear(self, datos: schemas.VentaIn) -> PedidoOut:
+    def crear(self, datos: schemas.VentaIn, commit: bool = True) -> PedidoOut:
         reserva = self._reserva_para_cobrar(datos.reserva_codigo) if datos.reserva_codigo else None
         pedidas = self._pedidas(datos, reserva)
         variantes = self.variantes.con_producto(set(pedidas)) if reserva else self.variantes.vendibles(set(pedidas))
@@ -58,7 +58,7 @@ class VentaPresencialService:
             sucursal_id=self.sucursal_id, canal="PRESENCIAL", tipo_entrega="EN_TIENDA", lineas=lineas, cliente_id=self._cliente_id(datos, reserva),
             nit_ci=datos.nit_ci.strip() or "0", razon_social=datos.razon_social.strip() or "Sin nombre", reserva_id=reserva.id if reserva else None,
         )
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()  # la sincronización offline (CU-38) hace un solo commit por operación
         return self.compras.salida([pedido])[0]
 
     # ---- consultas y anulación de la venta en curso ----

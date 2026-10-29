@@ -1,4 +1,5 @@
 """Datos de ejemplo de ventas: compra digital del cliente demo (Fase D), ventas de caja (Fase E) y una devolución (Fase F). Idempotente."""
+import uuid
 from datetime import timedelta
 from decimal import Decimal
 
@@ -10,6 +11,8 @@ from app.modules.acceso.dependencias import Contexto
 from app.modules.acceso.models import Rol, Usuario
 from app.modules.inventario.models import Existencia
 from app.modules.sucursales.models import Sucursal
+from app.modules.offline.cu38_sincronizar.service import SincronizacionService
+from app.modules.offline.schemas import OperacionIn, SincronizarIn
 from app.modules.ventas.cu41_devoluciones.schemas import DevolucionIn, ItemDevueltoIn
 from app.modules.ventas.cu41_devoluciones.service import DevolucionService
 from app.modules.ventas.publico import Devolucion
@@ -152,3 +155,18 @@ def cargar_perfil_cliente(db: Session, empresa) -> None:
     db.add(InteraccionCliente(empresa_id=empresa.id, cliente_id=cliente.id, tipo="BUSQUEDA", texto=producto.nombre.lower()[:120], categoria_id=producto.categoria_id, color_id=variante.color_id))
     for _, otro in elegidos:
         db.add(InteraccionCliente(empresa_id=empresa.id, cliente_id=cliente.id, tipo="VISTA", producto_id=otro.id, categoria_id=otro.categoria_id))
+
+
+def cargar_conflicto_offline(db: Session, empresa) -> None:
+    """Fase H: una venta de contado hecha sin conexión por el Cajero que no alcanzó en el inventario, para que el Encargado la resuelva en «Conflictos de sincronización»."""
+    cajero = db.scalar(select(Usuario).join(Usuario.rol).where(Usuario.empresa_id == empresa.id, Rol.nombre == CAJERO, Usuario.sucursal_id.is_not(None)).order_by(Usuario.id).limit(1))
+    if cajero is None:
+        return
+    existencia = db.scalar(select(Existencia).where(Existencia.empresa_id == empresa.id, Existencia.sucursal_id == cajero.sucursal_id, Existencia.disponible > 0).order_by(Existencia.disponible, Existencia.variante_id).limit(1))
+    if existencia is None or existencia.disponible >= 50:  # el máximo por línea es 50: con tanto stock no habría conflicto
+        return
+    ctx = Contexto(cajero, CAJERO, empresa.id, cajero.sucursal_id)
+    SincronizacionService(db, ctx).sincronizar(SincronizarIn(operaciones=[OperacionIn(
+        id=uuid.uuid5(uuid.NAMESPACE_URL, f"fashionstore-demo-conflicto-{empresa.codigo}"), tipo="VENTA_CONTADO", creada_en=ahora(),
+        payload={"items": [{"variante_id": existencia.variante_id, "cantidad": existencia.disponible + 1}], "monto_recibido": "99999.00"},
+    )]))
