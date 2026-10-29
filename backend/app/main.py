@@ -13,6 +13,7 @@ import app.db_models  # noqa: F401  (registra los modelos)
 from app.api import api_router
 from app.core.config import get_settings
 from app.core.errors import registrar_manejadores
+from app.modules.plataforma.publico import BitacoraMiddleware
 
 
 def create_app() -> FastAPI:
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(BitacoraMiddleware)  # Fase J: registra inicios de sesión y operaciones de escritura
     registrar_manejadores(app)
     carpeta_media = Path(get_settings().media_dir)
     carpeta_media.mkdir(parents=True, exist_ok=True)

@@ -31,6 +31,9 @@ Prohibido: Shopify/Magento/PrestaShop/WooCommerce. No usar Django/Celery/Redis (
 - **Reutilizar lo construido (regla 15):** pedidos (con `canal` DIGITAL o PRESENCIAL y entrega EN_TIENDA), numeración de comprobantes `CMP-<sucursal>-<número>`,
   generador de PDF del comprobante (`cu12_historial_compras/comprobante.py`), pasarela del CU-32 y bitácora de inventario (referencias `VENTA`, `PEDIDO` y
   `DEVOLUCION` ya permitidas) en vez de duplicarlos.
+- **Bitácora (regla 16):** toda operación de escritura nueva (POST, PUT, PATCH, DELETE) queda registrada por el middleware de `plataforma/bitacora`; al crear un endpoint, se agrega su ruta a la tabla de
+  etiquetas (`plataforma/bitacora/etiquetas.py`, con su detalle en español) y hay una prueba que falla si falta alguna. Nunca se guardan contraseñas, tokens ni datos de tarjeta, y la bitácora no se edita ni se borra
+  (la bitácora de inventario `movimientos_inventario` es otra cosa y no se toca).
 
 ## Pruebas
 `cd backend && python -m pytest -q` — una prueba por paso de las tablas 5.2.1/5.3.1 del documento (`tests/test_cuNN_*.py`).

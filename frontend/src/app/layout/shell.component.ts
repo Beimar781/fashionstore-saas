@@ -14,6 +14,7 @@ interface Item { ruta: string; texto: string; icono: string; operativo?: boolean
 const NAV_PLATAFORMA: Item[] = [
   { ruta: '/plataforma/empresas', texto: 'Empresas', icono: '🏢' },
   { ruta: '/plataforma/planes', texto: 'Planes', icono: '🏷️' },
+  { ruta: '/plataforma/bitacora', texto: 'Bitácora', icono: '📜' },
 ];
 const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/plan', texto: 'Mi plan', icono: '📋' },
@@ -27,6 +28,7 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
   { ruta: '/empresa/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️', operativo: true },
+  { ruta: '/empresa/bitacora', texto: 'Bitácora', icono: '📜', operativo: true },
   { ruta: '/empresa/conflictos', texto: 'Conflictos de sincronización', icono: '⚠️', operativo: true, plan: 'offline' },
   { ruta: '/empresa/reportes', texto: 'Reportes', icono: '📑', operativo: true, plan: 'reportes_convencionales' },
   { ruta: '/empresa/indicadores', texto: 'Indicadores', icono: '📈', operativo: true, plan: 'reportes_convencionales' },

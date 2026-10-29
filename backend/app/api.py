@@ -34,6 +34,7 @@ from app.primer_parcial.catalogo.cu17_temporadas_colecciones.router import route
 from app.primer_parcial.catalogo.cu18_productos.router import router as cu18_productos
 from app.primer_parcial.catalogo.cu19_promociones.router import router as cu19_promociones
 from app.modules.plataforma.cu36_plan_y_uso.router import router as cu36_plan_y_uso
+from app.modules.plataforma.bitacora.router import router as bitacora, router_plataforma as bitacora_plataforma
 from app.modules.reportes.cu21_ventas_y_reservas.router import router as cu21_reportes
 from app.modules.reportes.cu22_indicadores.router import router as cu22_indicadores
 from app.modules.ia.cu23_reportes_generativos.router import router as cu23_reportes_generativos
@@ -118,3 +119,6 @@ api_router.include_router(cu37_catalogo_offline)
 api_router.include_router(cu38_sincronizar)
 api_router.include_router(cu39_operaciones)
 api_router.include_router(cu40_conflictos)
+# Bitácora del sistema (función transversal): el Administrador ve la de su empresa y el SuperAdministrador la de todas
+api_router.include_router(bitacora)
+api_router.include_router(bitacora_plataforma)

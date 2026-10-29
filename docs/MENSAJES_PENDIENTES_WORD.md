@@ -383,3 +383,37 @@ CU-41 **no tiene ficha ni prueba en el Word** (solo aparece en la tabla 2.5.5 y 
 ### Reglas de la sucursal
 
 CU-14 ya decía que no se puede desactivar una sucursal con «operaciones sin sincronizar»: ahora lo cumplen las operaciones en conflicto (mensaje existente: «La sucursal tiene reservas pendientes u operaciones sin sincronizar. Resuélvalas antes de desactivarla.»).
+
+## Fase J · Bitácora del sistema
+
+La bitácora **no es un caso de uso**: es una función transversal, como el aislamiento por empresa (RNF02). Conviene mencionarla en la arquitectura y en la trazabilidad, no como CU. Las decisiones salen del código.
+
+### Decisiones de diseño que conviene reflejar en el documento
+
+- **Qué se registra.** Cada inicio y cierre de sesión, cada intento de ingreso fallido (con el correo y la empresa que se intentaron, **sin** la contraseña) y toda operación de escritura (alta, modificación, eliminación, aprobación, cancelación, pago,
+  cobro, devolución, sincronización...) terminada con éxito por un usuario con sesión. Las consultas no se registran. Lo que falla (validaciones, conflictos, errores) tampoco: no es una operación realizada.
+- **Qué se guarda.** Quién (usuario con el nombre que tenía en ese momento, rol y empresa), acción, entidad, un detalle en español legible (por ejemplo «Registró la sucursal Centro») y la IP (con proxy, la de `X-Forwarded-For`).
+  **Nunca** contraseñas, tokens ni datos de tarjeta: el detalle solo usa los campos que nombra la tabla de etiquetas.
+- **Cómo se registra.** Sin tocar cada caso de uso: un middleware lee la sesión y una tabla de etiquetas (ruta → acción y entidad) arma el detalle; una ruta sin etiqueta se registra con un texto genérico. Al agregar un endpoint de escritura se agrega su
+  etiqueta (regla 16) y una prueba falla si falta. Un fallo al registrar nunca deshace ni rompe la operación.
+- **Solo se agrega.** No existe ningún endpoint para editar o borrar, y un disparador de la base de datos impide `UPDATE` y `DELETE` incluso con acceso directo a la tabla. Las operaciones de inventario siguen en su propia bitácora (`movimientos_inventario`).
+- **Quién la ve (RN02, RN04).** El Administrador, solo la de su empresa (el `empresa_id` sale del token); el SuperAdministrador, la de todas las empresas con filtro por empresa y columna Empresa, más sus operaciones de plataforma (planes, empresas).
+  Una operación del SuperAdministrador sobre una empresa (suspenderla, asignarle un plan) se guarda con el `empresa_id` de esa empresa, así el Administrador de la empresa la ve. Encargado, Cajero y Cliente no tienen acceso. Con la suscripción vencida (RN05), el Administrador no ve
+  la bitácora (solo su plan).
+- **Cierre de sesión.** Los tokens no tienen estado en el servidor: al cerrar sesión, la web y el móvil avisan a `POST /auth/logout` (si no hay conexión, igual cierran la sesión local) y queda el registro.
+- **Pantalla.** «Bitácora» con el total de registros, filtros por usuario, entidad, acción, rango de fechas (el «hasta» incluye todo el día) y búsqueda en el detalle o la IP; tabla paginada de la más reciente a la más antigua, con la acción como etiqueta de color
+  (verde: inicio de sesión; gris: cierre; rojo: intentos fallidos, cancelaciones y eliminaciones; azul: altas; ámbar: modificaciones y ajustes; morado: pagos, cobros y devoluciones).
+
+### Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Cierre de sesión | «Sesión cerrada.» | 200 | Pendiente |
+| Página o tamaño de página inválidos en la consulta | «La página y el tamaño deben ser números positivos (tamaño máximo 100).» | 422 | Pendiente |
+| Encargado, Cajero o Cliente consultan la bitácora; el Administrador consulta la general | «No tiene permisos para esta operación.» | 403 | Ya existe |
+| El SuperAdministrador consulta la de una empresa | «Esta operación pertenece a una empresa.» | 403 | Ya existe |
+| Cualquier intento de modificar o borrar un registro | (no existe la ruta) 405; en la base: «La bitácora no se puede modificar ni borrar.» | 405 | Pendiente |
+
+### Para el Word
+
+Agregar la tabla `bitacora` al modelo de datos (con su disparador de inmutabilidad), la función transversal a la arquitectura y a la tabla de trazabilidad (sin CU), y la regla de que la bitácora la ve cada Administrador solo de su empresa (RN02) y el SuperAdministrador de todas.

@@ -9,6 +9,7 @@ export const ADMINISTRACION_ROUTES: Routes = [
   { path: 'catalogo', canActivate: [operativoGuard], loadChildren: () => import('../primer-parcial/catalogo/catalogo-admin.routes').then((m) => m.CATALOGO_ADMIN_ROUTES) },
   { path: '', canActivate: [operativoGuard], loadChildren: () => import('../primer-parcial/proveedores/proveedores.routes').then((m) => m.PROVEEDORES_ADMIN_ROUTES) },
   { path: 'devoluciones', canActivate: [operativoGuard], loadComponent: () => import('../ventas/devoluciones-admin.page').then((m) => m.DevolucionesAdminPage), title: 'Devoluciones · FashionStore' },
+  { path: 'bitacora', canActivate: [operativoGuard], loadComponent: () => import('../plataforma/bitacora.page').then((m) => m.BitacoraPage), title: 'Bitácora · FashionStore' },
   { path: 'conflictos', canActivate: [operativoGuard], loadComponent: () => import('../offline/conflictos.page').then((m) => m.ConflictosPage), title: 'Conflictos de sincronización · FashionStore' },
   { path: 'reportes', canActivate: [operativoGuard], loadComponent: () => import('../reportes/reportes.page').then((m) => m.ReportesPage), title: 'Reportes · FashionStore' },
   { path: 'indicadores', canActivate: [operativoGuard], loadComponent: () => import('../reportes/indicadores.page').then((m) => m.IndicadoresPage), title: 'Indicadores · FashionStore' },

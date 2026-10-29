@@ -4,6 +4,7 @@ Dos zonas: `modules` (SaaS) y `primer_parcial` (casos de uso conservados del Ane
 # SaaS
 from app.modules.acceso import models as _acceso  # noqa: F401
 from app.modules.plataforma import models as _plataforma  # noqa: F401
+from app.modules.plataforma.bitacora import models as _bitacora  # noqa: F401
 from app.modules.sucursales import models as _sucursales  # noqa: F401
 from app.modules.catalogo import models as _catalogo  # noqa: F401
 from app.modules.inventario import models as _inventario  # noqa: F401

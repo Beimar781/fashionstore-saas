@@ -58,6 +58,10 @@ class AuthRepository {
   }
 
   Future<void> cerrarSesion() async {
+    try {
+      // se avisa al servidor para que quede en la bitácora; sin conexión o con error, igual se cierra la sesión local
+      await _api.post('/auth/logout', {}).timeout(const Duration(seconds: 3));
+    } catch (_) {}
     await (await _db).delete('sesion');
   }
 

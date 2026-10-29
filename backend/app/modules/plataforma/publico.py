@@ -82,3 +82,8 @@ def datos_de_empresa(db: Session, empresa_id: int) -> dict:
     """Datos de la empresa para documentos impresos (comprobantes)."""
     e = db.get(Empresa, empresa_id)
     return {"razon_social": e.razon_social, "nit": e.nit, "telefono": e.telefono or "", "email": e.email_contacto or ""}
+
+
+# ---- bitácora (Fase J): función transversal; los demás paquetes solo la usan por aquí ----
+from app.modules.plataforma.bitacora.middleware import BitacoraMiddleware  # noqa: E402,F401
+from app.modules.plataforma.bitacora.service import registrar as registrar_en_bitacora  # noqa: E402,F401

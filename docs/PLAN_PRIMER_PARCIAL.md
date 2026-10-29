@@ -1,7 +1,7 @@
 # Plan: casos de uso del primer parcial dentro del SaaS
 
 Base: el monorepo `fashionstore-saas` (FastAPI + Angular PWA + Flutter), con aislamiento por `empresa_id`. Ya están hechos CU-02, 13, 14, 33, 34 y 35.
-Quedan **16 casos de uso** de los 36 que había al empezar; las fases A a D ya están hechas y subidas.
+Del plan original solo falta **CU-06** (vestidor virtual, fase I). La clase del 29/10 agregó dos fases: **J** (bitácora) y **K** (tres ajustes de la ingeniera).
 
 | Fase | Estado | Commit | CU |
 |---|---|---|---|
@@ -9,10 +9,15 @@ Quedan **16 casos de uso** de los 36 que había al empezar; las fases A a D ya e
 | B Proveedores e inventario | Hecha | `e474c8f` | 05, 15, 20, 26, 31 |
 | C Reservas | Hecha | `6b64a86` | 09, 10, 24, 25 y RF11 |
 | D Compra digital | Hecha | `60831af` | 08, 11, 12, 32 |
-| E Punto de venta | **Siguiente** | | 27, 28, 29, 30 |
-| F, G, H, I | Pendientes | | 41 · 07, 21, 22, 23, 36, 42 · 37 a 40 · 06 |
+| E Punto de venta | Hecha | `039cc45` | 27, 28, 29, 30 |
+| F Devoluciones | Hecha | `b1bc631` | 41 |
+| G Reportes e IA | Hecha | `192228b`, `5a27222` | 07, 21, 22, 23, 36, 42 |
+| H Offline | Hecha | `062d933` | 37, 38, 39, 40 |
+| **J Bitácora** | **Siguiente** | | transversal, sin CU |
+| **K Ajustes de la clase** | Pendiente | | 3 planes (prueba gratuita) · push de devoluciones · compra offline en conflicto |
+| I Vestidor virtual | Pendiente (al final) | | 06 |
 
-Hasta la Fase D: 308 pruebas del backend pasando, la web compila y la última migración es la 0006.
+Hasta la Fase H: 476 pruebas del backend pasando, la web compila y la última migración es la 0011.
 
 Fuentes (todo en `D:\proyectos\1er parcial si2\`):
 - `1er-parcialSI2\backend-ecommerce-si2`: Django (apps catalog, inventory, orders, payments, pos, promotions, reservations, suppliers, reports, ai, notifications).
@@ -67,6 +72,10 @@ Origen: **Portar** (existe en el código viejo y se pasa a FastAPI con `empresa_
 | H Móvil y offline | CU-37 | Descargar catálogo para uso offline | **Nuevo** | no existe |
 | | CU-38, 39 | Sincronizar operaciones pendientes; consultar estado local | **Nuevo** | no existe |
 | | CU-40 | Gestionar conflictos de sincronización | **Nuevo** | no existe |
+| J Bitácora | Transversal | Bitácora de operaciones por empresa (Administrador) y general (SuperAdministrador) | **Nuevo** | proyecto de la clínica (referencia de diseño) |
+| K Ajustes de la clase | CU-34, 35, 36 | Tercer plan: prueba gratuita de un mes | Ampliar | seed y planes |
+| | CU-41, RF11 | Notificación push al devolver prendas | Ampliar | `rf11_notificaciones` |
+| | CU-38, 40 | Compra sin conexión que ya no se puede cumplir: aviso push y devolución del dinero | Ampliar | `offline` |
 | I Vestidor virtual | CU-06 | Vestidor virtual con realidad aumentada | Portar | `infer_service/`, `catalog/` ARAsset, módulo `fitting` del móvil |
 
 ## 3. Cómo se organiza el código
@@ -84,7 +93,7 @@ Dos zonas, igual que el documento: lo que es del **SaaS multitenant** queda a si
 
 | Paquete | CU |
 |---|---|
-| `plataforma` (P1) | 33, 34, 35 (hechos) y **36** |
+| `plataforma` (P1) | 33, 34, 35, 36 (hechos) y la **bitácora** (transversal, no es un CU) |
 | `acceso` (P2) | 02, 13 (hechos) y **01** |
 | `sucursales` (P3) | 14 (hecho) |
 | `catalogo` (P4) | **03, 04** |
@@ -129,7 +138,7 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 1. Un paquete por carpeta y un caso de uso por subcarpeta, en la zona que le toca según la sección 3 (SaaS o `primer_parcial`): `<zona>/<paquete>/cuNN_<nombre>/{router,service,repository,schemas}.py`. Nada de lógica suelta fuera de un CU.
 2. Modelo con `empresa_id` y repositorio que hereda de `TenantRepository`; la empresa sale siempre del token.
 3. Únicos por empresa: `slug`, `sku`, `codigo`, `nombre`. Imágenes en una carpeta por empresa. Stock por sucursal de la empresa.
-4. Una migración Alembic nueva por fase (0003 fue la A; la última es la 0006; la siguiente es la 0007). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
+4. Una migración Alembic nueva por fase (0003 fue la A; la última subida es la 0011; la siguiente es la 0012). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
 5. Textos de error iguales a los de la ficha del CU en el documento (Anexo B para los conservados).
 6. Pruebas en `backend/tests/test_cuNN_*.py`, una por paso de la ficha, más una de aislamiento entre empresas.
 7. Funciones por plan (IA, reportes) con `exigir_funcionalidad(...)`.
@@ -141,11 +150,12 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 13. Librerías nuevas: se agregan a `requirements.txt` o `package.json` y se comprueba con una instalación limpia (`pip install -r requirements.txt`, `npm install`).
 14. Antes de usar un valor nuevo en una columna con `CHECK` (tipos y referencias de inventario, estados), revisar la restricción existente y ampliarla en la migración nueva.
 15. Reutilizar lo ya construido en vez de duplicarlo: pedidos (ya tienen `canal` DIGITAL o PRESENCIAL y entrega EN_TIENDA), numeración de comprobantes `CMP-<sucursal>-<número>`, generador de PDF del comprobante (`cu12_historial_compras/comprobante.py`), pasarela del CU-32 y bitácora de inventario (referencias `VENTA`, `PEDIDO` y `DEVOLUCION` ya permitidas).
+16. **Bitácora** (desde la Fase J): toda operación de escritura nueva queda registrada; al crear un endpoint, se agrega su ruta a la tabla de etiquetas de `plataforma/bitacora`. Nunca se guardan contraseñas, tokens ni datos de tarjeta, y la bitácora no se edita ni se borra. La bitácora de inventario (`movimientos_inventario`) es otra cosa y no se toca.
+17. **Push** (desde la Fase K): los avisos importantes al cliente usan el servicio de push de `rf11_notificaciones`; un fallo del push nunca deshace la operación que lo originó.
 
 ## 6. Orden recomendado
 
-**Ruta mínima para una demo sólida:** A, B, C, D y E. Muestra las cinco figuras (SuperAdmin, Administrador, Encargado, Cajero, Cliente) con datos reales.
-Después, por prioridad de lo que el enunciado exige: F (devoluciones), G (reportes e IA), H (móvil y offline). El vestidor virtual (CU-06) va al final: es lo más riesgoso porque necesita cámara y estimación de pose.
+Las fases A a H están hechas. Lo que sigue: **J** (bitácora), **K** (ajustes de la clase) y al final **I** (vestidor virtual), que es lo más riesgoso porque necesita cámara y estimación de pose. J va antes de K y de I para que lo nuevo ya quede registrado en la bitácora.
 
 ## 7. Prompts para Claude Code
 
@@ -210,7 +220,7 @@ en primer_parcial/ventas. Basándote en orders/ y payments/ del backend viejo. A
 de la sucursal elegida. Mismas reglas.
 ```
 
-**Prompt E (punto de venta)**
+**Prompt E (punto de venta)** — *hecho*
 ```
 Antes de empezar, agrega a CLAUDE.md las reglas 11 a 15 de la sección 5 de docs/PLAN_PRIMER_PARCIAL.md (mensajes pendientes para el
 Word, servicios externos con modo simulado, librerías nuevas, restricciones CHECK y reutilizar lo construido).
@@ -229,7 +239,7 @@ Web: pantalla de caja en features/primer-parcial/ventas. Seed: ventas presencial
 fase en docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas.
 ```
 
-**Prompt F (devoluciones, nuevo)**
+**Prompt F (devoluciones, nuevo)** — *hecho*
 ```
 Implementa la Fase F: CU-41 (devoluciones y cambios de prendas), en modules/ventas (cu41_devoluciones). Es un caso de uso
 NUEVO, no existe en el código viejo. Lee su ficha en el documento y el objetivo 11 del enunciado. El Cajero o Encargado
@@ -242,7 +252,7 @@ los reportes. Pruebas por paso, de aislamiento y de devolución repetida. Termin
 docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas del plan.
 ```
 
-**Prompt G (reportes e IA)**
+**Prompt G (reportes e IA)** — *hecho*
 ```
 Implementa la Fase G. En el SaaS: CU-21 (ventas y reservas) y CU-22 (indicadores empresariales) en modules/reportes; CU-23
 (reportes generativos: el Administrador escribe o dicta por voz una petición y el sistema interpreta y genera el reporte,
@@ -254,7 +264,7 @@ consume por API con clave en .env; sin clave, responde con un modo de respaldo (
 docs/MENSAJES_PENDIENTES_WORD.md. Mismas reglas.
 ```
 
-**Prompt H (móvil y offline)**
+**Prompt H (móvil y offline)** — *hecho*
 ```
 Implementa la Fase H en el paquete offline del SaaS (backend: endpoint de sincronización por lotes; web y móvil: features/offline):
 CU-37 (descargar catálogo para uso offline), CU-38 (sincronizar operaciones pendientes), CU-39 (consultar operaciones locales y su
@@ -264,7 +274,79 @@ Flutter, dentro de movil/lib/primer_parcial, las pantallas del cliente del móvi
 Compila con flutter analyze y flutter test.
 ```
 
-**Prompt I (vestidor virtual, al final)**
+**Prompt J (bitácora)**
+```
+El archivo docs/PLAN_PRIMER_PARCIAL.md está actualizado en mi carpeta y todavía no se subió: inclúyelo en el commit de esta fase (solo git add, no lo modifiques).
+Implementa la bitácora del sistema. No es un caso de uso: es una función transversal, como el aislamiento por empresa; la ingeniera
+la da por sobreentendida en todos los proyectos. Va en backend/app/modules/plataforma/bitacora/ (modelo, repositorio, servicio, router
+y middleware) y se expone a los demás paquetes solo por plataforma/publico.py.
+Qué registra: cada inicio y cierre de sesión (y los intentos fallidos, sin guardar la contraseña) y cada operación de escritura
+(POST, PUT, PATCH, DELETE) terminada con éxito por un usuario con sesión. Por cada una guarda quién (usuario, rol y empresa), la acción
+(inicio de sesión, cierre de sesión, crear, modificar, eliminar, aprobar, cancelar, pagar, devolver, sincronizar...), la entidad
+(usuario, sucursal, producto, reserva, pedido, devolución, plan, suscripción, empresa...), un detalle en español legible («Registró la
+sucursal Centro», no «POST /sucursales») y la IP (usa X-Forwarded-For cuando haya proxy). Sin tocar cada caso de uso: un middleware o
+una dependencia lee la sesión y una tabla de etiquetas (ruta → entidad y acción) arma el detalle; una ruta sin etiqueta se registra con
+un texto genérico. Las consultas (GET) no se registran. Nunca se guardan contraseñas, tokens ni datos de tarjeta. La bitácora solo se
+agrega: no existe ningún endpoint para editarla o borrarla. NO toques movimientos_inventario: es otra cosa y está bien.
+Tabla `bitacora` (migración nueva): id, empresa_id (vacío en operaciones de plataforma), usuario_id, usuario (nombre guardado en ese
+momento), rol, accion, entidad, entidad_id, detalle, ip, creado_en; índice por (empresa_id, creado_en). Las operaciones del SuperAdmin
+sobre una empresa (suspender, asignar plan) se guardan con el empresa_id de esa empresa.
+Quién la ve: el Administrador ve SOLO la bitácora de su empresa (el empresa_id sale del token); el SuperAdministrador ve la de TODAS las
+empresas juntas, con filtro por empresa y una columna Empresa, más sus operaciones de plataforma. Encargado, Cajero y Cliente no tienen
+acceso (403).
+Pantalla web, con este diseño (el de la bitácora del proyecto de la clínica): título «Bitácora» con una etiqueta con el total de
+registros; un panel «Operaciones registradas en el sistema» con los filtros Usuario, Entidad, Acción, Desde, Hasta y «Buscar en el
+detalle o la IP», botones Filtrar y Limpiar; y una tabla paginada, de la más reciente a la más antigua, con Fecha y hora, Usuario,
+Acción (etiqueta de color: verde para inicio de sesión, gris para cierre, y otros colores para crear, modificar y eliminar), Entidad,
+Detalle e IP. Una pantalla para el Administrador (features/plataforma, opción «Bitácora» del menú) y otra para el SuperAdmin con el filtro
+y la columna Empresa.
+Pruebas: inicio y cierre de sesión quedan registrados; un alta cualquiera deja su fila con el detalle; un intento fallido se registra sin
+la contraseña; el Administrador de EMP-A no ve nada de EMP-B; el SuperAdmin ve las dos; Encargado y Cajero reciben 403; no hay forma de
+editar ni borrar; un GET no se registra. Seed: unas 40 filas de ejemplo repartidas entre EMP-A y EMP-B. Agrega la regla 16 del plan a
+CLAUDE.md. Al final, la sección de la fase en docs/MENSAJES_PENDIENTES_WORD.md, con lo que hay que agregar al Word. Mismas reglas.
+```
+
+**Prompt K (ajustes de la clase del 29/10)**
+```
+Implementa tres ajustes que pidió la ingeniera. Una prueba por punto y un solo commit.
+1. Tres planes de suscripción. Hoy solo hay Básico (2 sucursales, sin IA) y Profesional (10, con IA). Agrega el tercero: «Prueba
+   gratuita» (0 Bs, un mes, 1 sucursal, reportes convencionales y offline, sin IA), en el seed. Reglas: al asignarla, la vigencia es de
+   1 mes sin que el SuperAdmin tenga que indicarla; cada empresa puede usarla una sola vez («La empresa ya usó su mes de prueba.»); al
+   vencer, la empresa pasa al modo restringido de RN05 y puede contratar Básico o Profesional con CU-35; el SuperAdmin puede asignarla al
+   crear la empresa (CU-33). Si necesitas un campo nuevo en el plan (por ejemplo es_prueba), va en una migración nueva. Comprueba que
+   CU-34 (planes), CU-35 (asignar suscripción y rechazar el cambio a un plan con límite inferior a las sucursales activas), CU-36 (plan y
+   uso) y exigir_funcionalidad funcionan con los tres. Pruebas: listado con tres planes, prueba asignada con vigencia de 1 mes, segunda
+   prueba rechazada, empresa con prueba vencida en modo restringido, paso de la prueba a Básico y a Profesional, y que la prueba siga
+   bloqueando CU-23 (IA).
+2. Notificación push al devolver prendas (CU-41). Al registrar una devolución o un cambio, el Cliente de esa compra (si tiene cliente)
+   recibe un push: «Su devolución {número} fue registrada. Reembolso: Bs {monto} por {medio}.» (o «Su cambio {número} fue registrado.»
+   si no hay reembolso). El aviso también queda en su campana (RF11) y en la bitácora. Construye un servicio de push reutilizable en
+   modules/reservas/rf11_notificaciones, con adaptadores y modo simulado cuando no hay claves (regla 12):
+   - Web (PWA): Web Push con VAPID (librería pywebpush). Las claves se generan con scripts/generar_vapid.py y van al .env; no hace falta
+     ninguna cuenta. El service worker recibe el push y lo muestra; el permiso se pide al iniciar sesión el Cliente.
+   - Móvil: Firebase Cloud Messaging si hay credenciales en el .env y google-services.json en el proyecto Flutter; si no, modo
+     simulado: el backend deja el aviso pendiente y la app lo muestra como notificación local (flutter_local_notifications) al abrirse
+     o al sincronizar.
+   - Tabla nueva de dispositivos (usuario, canal WEB o MOVIL, token o suscripción), con endpoints para registrar el dispositivo al iniciar
+     sesión y quitarlo al cerrarla.
+   - Si el push falla, la devolución sigue (regla 17): se registra el error y nada más.
+3. Compra sin conexión que ya no se puede cumplir. Escenario de la ingeniera: dos clientes quieren la última unidad de una prenda; uno
+   compra con conexión y el otro sin conexión. El sistema deja al cliente sin conexión hacer la compra en su dispositivo (queda
+   REGISTRADA_LOCAL); la compra real es la del cliente con conexión. Cuando el primero recupera internet y sincroniza, su operación queda
+   EN_CONFLICTO o RECHAZADA sin descontar nada y le llega un push: «Su compra {referencia} no se pudo realizar porque la prenda se agotó.»
+   Si ya se le había cobrado (venta de contado en caja con ese cliente identificado, o un pago aprobado), se registra la devolución del
+   dinero (por la pasarela o en efectivo, reutilizando CU-41) y el aviso lo dice. Hoy el sistema solo avisa al personal de la sucursal
+   (CONFLICTO_SYNC): conserva ese aviso y agrega el del cliente. Agrega la operación COMPRA del Cliente (hoy solo existen VENTA_CONTADO del
+   personal y RESERVA del cliente) en backend, web y móvil. En «Conflictos de sincronización» (CU-40), el Encargado debe poder descartar
+   una venta ya cobrada devolviendo el dinero. Prueba el escenario completo con dos clientes de EMP-A y una sola unidad, y una de
+   aislamiento con EMP-B.
+   ANTES de programar este punto 3, explícame en español cómo vas a resolver «compra del cliente sin conexión» y el cobro (la tarjeta no
+   se puede cobrar sin internet) y espera mi OK.
+Al final: secciones nuevas en docs/MENSAJES_PENDIENTES_WORD.md (RN06 pasa a tres planes; push; compra offline en conflicto) y el resumen
+en español. Mismas reglas.
+```
+
+**Prompt I (vestidor virtual, al final)** — agrega también sus rutas a la bitácora (regla 16)
 ```
 Implementa CU-06 (vestidor virtual con realidad aumentada) en Flutter, dentro de movil/lib/primer_parcial/ia y backend
 primer_parcial/ia, portando la idea del módulo features/fitting del móvil viejo y los ARAsset de catalog/ e infer_service/ del
@@ -322,6 +404,7 @@ Mejoras para la versión en Flutter:
 
 - **Claves de prueba de Stripe** (CU-32): crear la cuenta gratis, activar el *modo de prueba* y copiar `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` a `backend/.env`. El adaptador solo se probó contra un Stripe simulado en memoria; con las claves hay que hacer una compra real de prueba (4242 4242 4242 4242) y ver el pago en el panel de Stripe. Sin claves todo funciona en modo simulado.
 - Cuenta de Brevo para el correo de restablecer contraseña, cuando se despliegue.
+- **Firebase (opcional, Fase K):** para que el push llegue al teléfono con la app cerrada hace falta un proyecto gratis de Firebase (agregar la app Android, bajar `google-services.json` y poner la credencial en `.env`). Sin eso, la app muestra el aviso como notificación local al abrirse o sincronizar. El push web no necesita cuenta, pero exige HTTPS al desplegar (en `localhost` funciona).
 - Decidir dónde desplegar (Render, Railway, un VPS) cuando terminen las fases.
 
 ## 11. Para el final
@@ -329,3 +412,4 @@ Mejoras para la versión en Flutter:
 - Pasar al Word de la presentación 2 todo lo de `docs/MENSAJES_PENDIENTES_WORD.md` (mensajes de CU-08, 09, 10, 11, 12, 24, 25, 32 y RF11, más lo que salga de las fases siguientes).
 - `CLAUDE.md` y este plan nombran a Claude Code: decidir qué hacer con ellos antes de la entrega final.
 - Revisar en Word los números de página del índice del documento.
+- Word: RN06 pasa a tres planes y se agregan la bitácora, el push y la compra offline en conflicto; todo queda listado en `docs/MENSAJES_PENDIENTES_WORD.md`.

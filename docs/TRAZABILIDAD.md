@@ -41,6 +41,22 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
 ninguno: solo falta el vestidor virtual (CU-06, fase I, primer parcial).
 
+### Función transversal (sin caso de uso)
+
+| Función | Backend (`backend/app/modules/…`) | Rutas REST | Web | Móvil | Pruebas (`backend/tests/`) |
+|---|---|---|---|---|---|
+| Bitácora del sistema | `plataforma/bitacora` (`middleware.py` registra; `etiquetas.py` es la tabla ruta → acción, entidad y detalle; `acciones.py` los colores; se expone a otros paquetes por `plataforma/publico.py`) | `POST /api/auth/logout`; consulta: `GET /api/bitacora` (+ `/opciones`) para el Administrador y `GET /api/plataforma/bitacora` (+ `/opciones`) para el SuperAdministrador | `plataforma/bitacora.page.ts` (opción «Bitácora» del menú del Administrador y del SuperAdministrador) | cierre de sesión avisa al servidor (`AuthRepository.cerrarSesion`) | `test_bitacora.py` (15 pruebas: inicio y cierre de sesión, alta con detalle, intento fallido sin contraseña, sin tarjetas ni tokens, IP real, aislamiento, SuperAdministrador, 403, no editable ni borrable, filtros y paginación, todas las rutas de escritura con etiqueta) |
+
+Esquema (migración 0012): tabla `bitacora` (empresa_id vacío en operaciones de plataforma, usuario guardado con su nombre de ese momento, rol, acción, entidad, detalle, IP, fecha) con índices por (empresa, fecha) y por fecha, y un
+**disparador en la base que impide `UPDATE` y `DELETE`**: la bitácora solo se agrega. No se toca `movimientos_inventario`, que es otra cosa.
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | Una petición de escritura (POST, PUT, PATCH o DELETE) termina con éxito | `BitacoraMiddleware` |
+| 2 | Quién la hizo sale del token (en el login y el registro, de la respuesta); la empresa es la del usuario, o la de la ruta o la respuesta en las operaciones del SuperAdministrador | `_actor`, `resolver_empresa` |
+| 3 | La tabla de etiquetas da acción y entidad y arma el detalle en español con datos de la respuesta, del cuerpo o de la ruta («Registró la sucursal Centro»); una ruta sin etiqueta se registra con un texto genérico | `etiquetas.buscar`, `construir_detalle` |
+| 4 | Se guarda con la IP (`X-Forwarded-For` si hay proxy). Un intento de ingreso fallido se registra con el correo y la empresa que se intentó, nunca la contraseña. Un fallo al registrar nunca deshace la operación | `registrar` |
+
 ## Primer parcial (Anexo B)
 
 Casos de uso conservados; solo se les agrega `empresa_id`. Backend en `backend/app/primer_parcial/<paquete>/cuNN_<nombre>/`,

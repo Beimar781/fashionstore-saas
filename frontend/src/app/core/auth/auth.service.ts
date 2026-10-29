@@ -66,6 +66,8 @@ export class AuthService {
   }
 
   cerrarSesion(): void {
+    // se avisa al servidor para que quede en la bitácora; si no hay conexión, igual se cierra la sesión local
+    if (this.sesion()) this.http.post(`${API_URL}/auth/logout`, {}).subscribe({ error: () => undefined });
     localStorage.removeItem(K_ACCESS); localStorage.removeItem(K_REFRESH); localStorage.removeItem(K_SESION);
     this.sesion.set(null);
     void this.local.borrarSesion();

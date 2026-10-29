@@ -20,6 +20,12 @@ def refresh(datos: schemas.RefreshIn, db: Session = Depends(get_db)):
     return AutenticacionService(db).renovar(datos.refresh_token)
 
 
+@router.post("/logout", response_model=schemas.MensajeOut)
+def cerrar_sesion(ctx: Contexto = Depends(get_contexto)):
+    """Los tokens no tienen estado en el servidor: el cliente los descarta. Esta llamada deja constancia del cierre en la bitácora."""
+    return schemas.MensajeOut(detail="Sesión cerrada.")
+
+
 @router.get("/me", response_model=schemas.SesionOut)
 def me(ctx: Contexto = Depends(get_contexto), db: Session = Depends(get_db)):
     return AutenticacionService(db).sesion_actual(ctx)

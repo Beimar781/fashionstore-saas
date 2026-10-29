@@ -99,6 +99,9 @@ fija el plazo (15 días por defecto) y consulta todas las notas en **Devolucione
 **Modo sin conexión (Fase H):** el Cajero (`cajero@tienda.com`), el Encargado y el Cliente tienen **Modo sin conexión**: descargue el catálogo con Internet, apague la red (en Chrome: F12 → Network → Offline),
 registre una venta de contado (o una reserva, como cliente) y vuelva a conectar: se envía sola y pasa de «Registrada» a «Confirmada». El seed deja una venta que no alcanzó en el inventario: el Encargado la ve en
 **Conflictos de sincronización** y la reintenta o la descarta. En el móvil (`flutter run`) es la misma pantalla «Modo sin conexión»; el catálogo descargado también se usa si no hay Internet.
+**Bitácora (Fase J):** el Administrador (`admin@modaurbana.com`) entra a **Bitácora** y ve solo lo de su empresa; el SuperAdministrador (`superadmin@fashionstore.com`) ve la de todas las empresas con la columna **Empresa**
+y las operaciones de la plataforma. Cada inicio y cierre de sesión, cada intento fallido y cada alta, cambio, cobro o devolución queda registrado con quién, qué, cuándo y la IP; las consultas no. Se puede filtrar y buscar, y no se puede
+editar ni borrar. El seed deja unas 40 filas de ejemplo.
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.
