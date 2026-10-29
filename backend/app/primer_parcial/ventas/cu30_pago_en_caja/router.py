@@ -13,8 +13,8 @@ en_caja = contexto_operativo(CAJERO, ENCARGADO)
 
 
 @router.post("/{pedido_id}/cobrar", response_model=schemas.CobroOut)
-def cobrar_en_efectivo_o_qr(pedido_id: int, datos: schemas.CobroIn, ctx: Contexto = Depends(en_caja), db: Session = Depends(get_db)):
-    """Cobra la venta (efectivo con cambio, o QR), descuenta el stock y emite el comprobante. Con tarjeta se usa `/api/pagos`."""
+def cobrar_en_efectivo(pedido_id: int, datos: schemas.CobroIn, ctx: Contexto = Depends(en_caja), db: Session = Depends(get_db)):
+    """Cobra la venta (efectivo con cambio), descuenta el stock y emite el comprobante. Con tarjeta se usa `/api/pagos`."""
     return CobroCajaService(db, ctx).cobrar(pedido_id, datos)
 
 

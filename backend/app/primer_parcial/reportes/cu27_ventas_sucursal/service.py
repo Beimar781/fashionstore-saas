@@ -54,11 +54,18 @@ class VentasSucursalService:
             schemas.CierreMetodo(metodo=m, cobros=n, total=t, recibido=r if m == "EFECTIVO" else None, cambio=c if m == "EFECTIVO" else None)
             for m, n, t, r, c in self.ventas.cierre_por_metodo(sucursal_id, desde, hasta)
         ]
+        dev = self.ventas.devoluciones(sucursal_id, desde, hasta)
+        reemb, cobros = dev["reembolsos"], dev["cobros"]
+        efectivo = next((c.total for c in cierre if c.metodo == "EFECTIVO"), CERO) + cobros.get("EFECTIVO", CERO) - reemb.get("EFECTIVO", CERO)
         return schemas.ResumenDiaOut(
-            fecha=dia, sucursal_id=sucursal_id, sucursal=nombres_de_sucursales(self.db, self.ctx.empresa_id).get(sucursal_id, ""), total_vendido=total,
+            fecha=dia, sucursal_id=sucursal_id, sucursal=nombres_de_sucursales(self.db, self.ctx.empresa_id).get(sucursal_id, ""), total_vendido=total, ventas_netas=total - dev["devuelto"] + dev["nuevo"],
             ventas=ventas, unidades=sum(u for _, u, _ in canales.values()), ticket_promedio=(total / ventas).quantize(CERO) if ventas else CERO,
             presencial=canal("PRESENCIAL"), digital=canal("DIGITAL"), cierre_de_caja=cierre,
-            efectivo_en_caja=next((c.total for c in cierre if c.metodo == "EFECTIVO"), CERO),
+            devoluciones=schemas.DevolucionesDia(
+                notas=dev["notas"], devuelto=dev["devuelto"], entregado_en_cambios=dev["nuevo"], reembolsado_efectivo=reemb.get("EFECTIVO", CERO),
+                reembolsado_tarjeta=reemb.get("TARJETA", CERO), cobrado_efectivo=cobros.get("EFECTIVO", CERO), cobrado_tarjeta=cobros.get("TARJETA", CERO),
+            ),
+            efectivo_en_caja=efectivo,
             reservas_completadas=self.ventas.reservas_completadas(sucursal_id, desde, hasta),
         )
 

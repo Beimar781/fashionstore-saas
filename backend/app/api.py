@@ -20,6 +20,7 @@ from app.modules.ventas.cu29_venta_presencial.router import router as cu29_venta
 from app.primer_parcial.ventas.cu28_productos_en_caja.router import router as cu28_productos_en_caja
 from app.primer_parcial.ventas.cu30_pago_en_caja.router import router as cu30_pago_en_caja
 from app.primer_parcial.reportes.cu27_ventas_sucursal.router import router as cu27_ventas_sucursal
+from app.modules.ventas.cu41_devoluciones.router import router as cu41_devoluciones
 from app.primer_parcial.reservas.cu08_carrito.router import router as cu08_carrito
 from app.primer_parcial.ventas.cu11_compra_digital.router import router as cu11_compra
 from app.primer_parcial.ventas.cu12_historial_compras.router import router as cu12_historial
@@ -81,7 +82,9 @@ api_router.include_router(cu28_productos_en_caja)
 api_router.include_router(cu29_venta_presencial)
 api_router.include_router(cu30_pago_en_caja)
 api_router.include_router(cu27_ventas_sucursal)
+# P7 · Devoluciones y cambios de prendas (CU-41, nuevo)
+api_router.include_router(cu41_devoluciones)
 
 # Aquí se registran, a medida que se construyen (docs/PLAN_PRIMER_PARCIAL.md), los routers de:
-# SaaS (app/modules): P7 ventas (devoluciones, CU-41), P8 offline, P9 ia, P10 reportes.
+# SaaS (app/modules): P8 offline, P9 ia, P10 reportes.
 # Primer parcial (app/primer_parcial): P9 ia.

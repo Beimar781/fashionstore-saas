@@ -27,7 +27,7 @@ export class CajaApi {
   reserva(codigo: string) { return this.http.get<Reserva>(`${API_URL}/caja/reservas/${encodeURIComponent(codigo)}`); }
 
   // CU-30
-  cobrar(id: number, metodo: 'EFECTIVO' | 'QR', montoRecibido: number | null) {
+  cobrar(id: number, metodo: 'EFECTIVO', montoRecibido: number | null) {
     return this.http.post<CobroCaja>(`${API_URL}/caja/ventas/${id}/cobrar`, { metodo, monto_recibido: montoRecibido });
   }
   comprobante(id: number) { return this.http.get(`${API_URL}/caja/ventas/${id}/comprobante`, { responseType: 'blob' }); }

@@ -54,6 +54,12 @@ class Intento:
 
 
 @dataclass
+class Reembolso:
+    referencia: str
+    centavos: int
+
+
+@dataclass
 class Resultado:
     estado: str  # AUTORIZADO | RECHAZADO | PENDIENTE_CONFIRMACION
     motivo: str = ""
@@ -83,6 +89,13 @@ def _luhn(numero: str) -> bool:
             n = n * 2 - 9 if n > 4 else n * 2
         suma += n
     return suma % 10 == 0
+
+
+def centavos_a_reembolsar(monto_bob: Decimal, restante_bob: Decimal, restante_centavos: int) -> int:
+    """Centavos de la pasarela que corresponden a un reembolso; el último reembolso de un pago devuelve exactamente lo que quede (sin descuadres por redondeo)."""
+    if monto_bob >= restante_bob:
+        return restante_centavos
+    return min(max(int((monto_bob / Decimal(str(get_settings().tasa_bob_por_usd)) * 100).to_integral_value()), 1), restante_centavos)
 
 
 def centavos_pasarela(monto_bob: Decimal) -> int:
@@ -130,6 +143,10 @@ class PasarelaSimulada:
 
     def cancelar(self, referencia: str) -> None:
         return None
+
+    def reembolsar(self, referencia: str, monto_bob: Decimal, restante_bob: Decimal, restante_centavos: int) -> Reembolso:
+        """Devolución del dinero de una compra con tarjeta: en la simulación el reembolso se marca como hecho."""
+        return Reembolso(f"sim_re_{secrets.token_hex(8)}", centavos_a_reembolsar(monto_bob, restante_bob, restante_centavos))
 
     def eliminar_metodo(self, metodo_ref: str) -> None:
         return None
@@ -199,6 +216,12 @@ class PasarelaStripe:
         except self.sdk.StripeError:
             pass  # si ya estaba anulado o cobrado, no hay nada más que hacer
 
+    def reembolsar(self, referencia: str, monto_bob: Decimal, restante_bob: Decimal, restante_centavos: int) -> Reembolso:
+        """Reembolso (de prueba) del cobro en Stripe: devuelve el dinero a la misma tarjeta."""
+        centavos = centavos_a_reembolsar(monto_bob, restante_bob, restante_centavos)
+        r = self.sdk.Refund.create(api_key=self.clave, payment_intent=referencia, amount=centavos)
+        return Reembolso(r.id, centavos)
+
     def eliminar_metodo(self, metodo_ref: str) -> None:
         try:
             self.sdk.PaymentMethod.detach(metodo_ref, api_key=self.clave)
@@ -233,3 +256,11 @@ def obtener_pasarela():
     if cfg.stripe_activo:
         return PasarelaStripe(cfg.stripe_secret_key, cfg.stripe_publishable_key)
     return PasarelaSimulada()
+
+
+def pasarela_para(proveedor: str):
+    """La pasarela con la que se cobró un pago (para reembolsarlo). None si se cobró con Stripe y Stripe ya no está configurado."""
+    actual = obtener_pasarela()
+    if actual.proveedor == proveedor:
+        return actual
+    return PasarelaSimulada() if proveedor == "SIMULADO" else None

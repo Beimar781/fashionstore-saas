@@ -86,9 +86,12 @@ También deja en cada empresa una compra pagada del cliente demo (con su comprob
 **Pago con tarjeta:** sin claves de Stripe, el pago es simulado y se prueba con las tarjetas de prueba que muestra la pantalla de pago (por ejemplo
 `4242 4242 4242 4242` aprueba y `4000 0000 0000 9995` rechaza por fondos insuficientes). Para usar Stripe en modo de prueba, agregue en `backend/.env`
 `STRIPE_SECRET_KEY=sk_test_...` y `STRIPE_PUBLISHABLE_KEY=pk_test_...` (claves de prueba, nunca reales) y reinicie el backend.
-**Punto de venta:** `cajero@tienda.com` entra a **Caja** (escanear o buscar prendas, cobrar en efectivo, QR o tarjeta de prueba, imprimir el comprobante) y
+**Punto de venta:** `cajero@tienda.com` entra a **Caja** (escanear o buscar prendas, cobrar en efectivo o con tarjeta de prueba, imprimir el comprobante) y
 `encargado@tienda.com` a **Ventas de la sucursal** (resumen del día, cierre de caja y tickets). El seed deja ventas de caja de ejemplo. Para ver el comprobante interno
 temporal de la ficha CU-30, agregue `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` y reinicie el backend.
+**Devoluciones y cambios (CU-41):** `cajero@tienda.com` o `encargado@tienda.com` entran a **Devoluciones y cambios**, escriben el N.° de comprobante de una venta (por ejemplo el que
+muestra el ticket de **Caja**), eligen las prendas y registran la devolución o el cambio (si la prenda nueva cuesta más, el cliente paga la diferencia en efectivo o con tarjeta de prueba); la prenda vuelve al inventario de su sucursal y se imprime la nota. El Administrador
+fija el plazo (15 días por defecto) y consulta todas las notas en **Devoluciones y cambios**. El seed deja una devolución de ejemplo por empresa.
 El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
 Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
 `pip install -r requirements.txt` y `alembic upgrade head`.

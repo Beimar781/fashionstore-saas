@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.tenant import TenantRepository
 from app.modules.reservas.publico import Reserva
+from app.modules.ventas.publico import Devolucion
 from app.primer_parcial.ventas.publico import Pago, Pedido, PedidoItem
 
 
@@ -40,6 +41,16 @@ class VentasSucursalRepository(TenantRepository[Pedido]):
             .group_by(Pago.metodo).order_by(Pago.metodo)
         )
         return list(self.db.execute(stmt))
+
+    def devoluciones(self, sucursal_id: int, desde: datetime, hasta: datetime) -> dict:
+        """Devoluciones y cambios del periodo: cuántas notas, valores y dinero movido por medio (reembolsos y diferencias cobradas)."""
+        filtro = (Devolucion.empresa_id == self.empresa_id, Devolucion.sucursal_id == sucursal_id, Devolucion.creada_en >= desde, Devolucion.creada_en < hasta)
+        notas, devuelto, nuevo = self.db.execute(
+            select(func.count(Devolucion.id), func.coalesce(func.sum(Devolucion.monto_devuelto), 0), func.coalesce(func.sum(Devolucion.monto_nuevo), 0)).where(*filtro)
+        ).one()
+        reembolsos = {m: Decimal(t) for m, t in self.db.execute(select(Devolucion.medio_reembolso, func.sum(Devolucion.reembolso)).where(*filtro, Devolucion.reembolso > 0).group_by(Devolucion.medio_reembolso))}
+        cobros = {m: Decimal(t) for m, t in self.db.execute(select(Devolucion.medio_cobro, func.sum(Devolucion.cobro_adicional)).where(*filtro, Devolucion.cobro_adicional > 0).group_by(Devolucion.medio_cobro))}
+        return {"notas": int(notas), "devuelto": Decimal(devuelto), "nuevo": Decimal(nuevo), "reembolsos": reembolsos, "cobros": cobros}
 
     def reservas_completadas(self, sucursal_id: int, desde: datetime, hasta: datetime) -> int:
         stmt = select(func.count(Reserva.id)).where(

@@ -23,13 +23,13 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | CU-20 Consultar inventario global | `inventario/cu20_inventario_global` | `GET /api/inventario/global` (q, categoría, temporada, estado, sucursal, paginación) | `inventario/inventario.page.ts` (Administrador) | — | `test_cu20_inventario_global.py` (8 pruebas: disponibles, reservadas, vendidas, agotadas, próximas a ingresar) |
 | CU-26 Gestionar disponibilidad e inventario de la sucursal | `inventario/cu26_inventario_sucursal` (+ `publico.py::aplicar_movimientos`, único camino para cambiar existencias) | `GET /api/inventario/sucursal`, `POST …/sucursal/movimientos`, `PUT …/sucursal/variantes/{id}/umbral`, `GET /api/inventario/movimientos`, `GET /api/inventario/recepciones`, `POST …/recepciones/{lote}/recibir` | `inventario/inventario.page.ts`, `recepciones.page.ts`, `movimientos.page.ts` (Encargado) | — | `test_cu26_inventario_sucursal.py` (15 pruebas: ajustes, bitácora, recepción de lotes, núcleo de movimientos) |
 | CU-29 Registrar venta presencial | `ventas/cu29_venta_presencial` (usa `primer_parcial/ventas/publico.py`) | `POST /api/caja/ventas`, `GET …/ventas/pendientes`, `GET/DELETE …/ventas/{id}`, `GET /api/caja/reservas/{codigo}` | `primer-parcial/ventas/caja.page.ts` (Cajero en `/pos/caja`, Encargado en `/sucursal/caja`) | — | `test_cu29_venta_presencial.py` (15 pruebas: stock de la sucursal del cajero, desde una reserva, aislamiento) |
+| CU-41 Gestionar devoluciones y cambios | `ventas/cu41_devoluciones` (+ `nota.py`, PDF; reembolso por `pasarela_para` del CU-32) | `GET /api/devoluciones/venta?comprobante=`, `POST /api/devoluciones`, `GET /api/devoluciones`, `GET …/{id}`, `GET …/{id}/nota`, `POST …/diferencia` (cobro con tarjeta de la diferencia de un cambio), `GET/PUT …/configuracion` (plazo) | `ventas/devoluciones.page.ts` (Cajero en `/pos/devoluciones`, Encargado en `/sucursal/devoluciones`), `ventas/devoluciones-admin.page.ts` (Administrador) | — | `test_cu41_devoluciones.py` (20 pruebas: comprobante, plazo, parcial y repetida, reembolso por medio, fallo de pasarela, aislamiento, roles), `test_cu41_cambios.py` (13: diferencia en efectivo o con tarjeta, tarjeta rechazada, sin stock, Stripe simulado, reporte) |
 | CU-33 Empresas (tenants) | `plataforma/cu33_empresas` | `GET/POST /api/plataforma/empresas`, `PUT …/{id}`, `POST …/suspender`, `…/reactivar` (+ `DELETE` rechazado) | `plataforma/empresas.page.ts` | — | `test_cu33_empresas.py` (6 pasos) |
 | CU-34 Planes | `plataforma/cu34_planes` | `GET/POST /api/plataforma/planes`, `PUT …/{id}`, `POST …/inactivar` | `plataforma/planes.page.ts` | — | `test_cu34_planes.py` (5 pasos) |
 | CU-35 Suscripciones | `plataforma/cu35_suscripciones` | `GET …/empresas/{id}/suscripcion`, `POST …/suscripciones`, `POST …/suscripcion/suspender` | `plataforma/suscripcion.page.ts` | — | `test_cu35_suscripciones.py` (6 pasos) |
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-CU-41 (F) ·
 CU-21, CU-22, CU-23, CU-42, CU-36 (G) · CU-37 a CU-40 (H).
 
 ## Primer parcial (Anexo B)
@@ -52,7 +52,7 @@ pruebas en `backend/tests/primer_parcial/`.
 | ventas (P7) | CU-11 Compra digital | `ventas/cu11_compra_digital` (+ `finalizar()`: stock, comprobante y carrito al aprobarse el pago) | `POST /api/compras/checkout` | `primer-parcial/ventas/checkout.page.ts` | — | `primer_parcial/test_cu11_compra_digital.py` (5 pasos + 9: stock al pagar, no se cobra sin stock) |
 | ventas (P7) | CU-12 Historial de compras | `ventas/cu12_historial_compras` (+ `comprobante.py`, PDF) | `GET /api/compras`, `GET …/{id}`, `GET …/{id}/comprobante` | `primer-parcial/ventas/mis-compras.page.ts`, `compra-detalle.page.ts` | — | `primer_parcial/test_cu12_historial_compras.py` (5 pasos + 5) |
 | ventas (P7) | CU-28 Productos en caja | `ventas/cu28_productos_en_caja` | `GET /api/caja/productos?q=`, `GET /api/caja/productos/codigo/{codigo}` | `primer-parcial/ventas/caja.page.ts` | — | `primer_parcial/test_cu28_productos_en_caja.py` (5 pasos + 2) |
-| ventas (P7) | CU-30 Pago en caja y comprobante | `ventas/cu30_pago_en_caja` (+ `core/impuestos.py`, adaptador del servicio de impuestos; tarjeta por `cu32_pago_electronico`) | `POST /api/caja/ventas/{id}/cobrar` (efectivo y QR), `GET …/{id}/comprobante`; con tarjeta `POST /api/pagos/pedidos/{id}/iniciar` y `…/{pago}/confirmar` | `primer-parcial/ventas/caja.page.ts`, `pago-tarjeta.component.ts` | — | `primer_parcial/test_cu30_pago_en_caja.py` (5 pasos + 11: sin stock a mitad del cobro, desde una reserva) |
+| ventas (P7) | CU-30 Pago en caja y comprobante | `ventas/cu30_pago_en_caja` (+ `core/impuestos.py`, adaptador del servicio de impuestos; tarjeta por `cu32_pago_electronico`) | `POST /api/caja/ventas/{id}/cobrar` (efectivo), `GET …/{id}/comprobante`; con tarjeta `POST /api/pagos/pedidos/{id}/iniciar` y `…/{pago}/confirmar` | `primer-parcial/ventas/caja.page.ts`, `pago-tarjeta.component.ts` | — | `primer_parcial/test_cu30_pago_en_caja.py` (5 pasos + 11: sin stock a mitad del cobro, desde una reserva) |
 | ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
 | reportes (P10) | CU-27 Ventas de la sucursal | `reportes/cu27_ventas_sucursal` | `GET /api/reportes/sucursal/resumen`, `GET …/ventas`, `GET …/ventas/{id}` | `primer-parcial/reportes/ventas-sucursal.page.ts` (Encargado) | — | `primer_parcial/test_cu27_ventas_sucursal.py` (5 pasos + 4) |
 | ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
@@ -128,7 +128,7 @@ se probó con un Stripe simulado en memoria; no se probó contra Stripe real por
 
 Sin tablas nuevas: la venta de caja es un **pedido** de canal PRESENCIAL y entrega EN_TIENDA (regla 15). La migración agrega `pedidos.reserva_id` (venta nacida de una
 reserva, con un índice único para que una reserva tenga una sola venta abierta), `pedidos.comprobante_tipo` y `autorizacion_fiscal` (FACTURA o INTERNO_TEMPORAL),
-`pagos.monto_recibido` y `cambio` (arqueo de caja) y amplía el `CHECK` de `pagos.metodo` con `QR`.
+`pagos.monto_recibido` y `cambio` (arqueo de caja) y amplía el `CHECK` de `pagos.metodo` con `QR` (la Fase F dejó de usar el QR: en tienda solo hay efectivo y tarjeta; el valor sigue permitido en la restricción).
 
 Flujo de la venta de caja:
 
@@ -136,13 +136,30 @@ Flujo de la venta de caja:
 |---|---|---|
 | 1 | El cajero escanea el código de barras (o el SKU) o busca por nombre; ve talla, color, precio con promoción y el stock de **su** sucursal | CU-28 |
 | 2 | Arma la pre-factura y registra la venta: queda PENDIENTE_PAGO, sin tocar el stock. Puede venir de una reserva preparada o en probador | CU-29 `VentaPresencialService.crear` |
-| 3 | Cobra: efectivo (calcula el cambio), QR, o tarjeta con la pasarela del CU-32 | CU-30 `CobroCajaService.cobrar` / CU-32 |
+| 3 | Cobra: efectivo (calcula el cambio) o tarjeta con la pasarela del CU-32 | CU-30 `CobroCajaService.cobrar` / CU-32 |
 | 4 | `CompraService.finalizar`: descuenta el stock de la sucursal (movimiento VENTA, referencia VENTA; desde una reserva, VENTA_RESERVA), numera el comprobante `CMP-<sucursal>-<número>` y pide la autorización al servicio de impuestos | CU-11 `finalizar` |
 | 4b | Si el stock se agotó a mitad del cobro: no se descuenta nada y no se registra ningún cobro (con tarjeta se anula la autorización) | `SinStock` |
 | 5 | Si el servicio de impuestos no responde, la venta no se pierde: queda un comprobante interno temporal y se muestra el aviso de la ficha | `core/impuestos.py` |
 
 El Encargado consulta el día en CU-27 (resumen, cierre de caja por método, efectivo esperado en caja, reservas completadas y tickets). El servicio de impuestos es
 simulado; con `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` se ve el comprobante interno temporal.
+
+## Esquema de la Fase F (migración 0008)
+
+Tablas nuevas: `intentos_diferencia` (cobro con tarjeta de la diferencia de un cambio: monto fijado por el servidor), `configuracion_ventas` (plazo de devolución por empresa, 15 días por defecto), `secuencias_nota_devolucion`, `devoluciones` (nota `NDV-<sucursal>-<número>`, tipo
+DEVOLUCION o CAMBIO, montos, medio y referencia del reembolso, cobro de la diferencia) y `devolucion_items` (prendas DEVUELTAS y ENTREGADAS con su precio al momento de la venta).
+No se tocó el CHECK de inventario: la referencia `DEVOLUCION` y el tipo `DEVOLUCION` ya existían (regla 14).
+
+Flujo de una devolución o cambio:
+
+| Paso | Qué ocurre | Dónde |
+|---|---|---|
+| 1 | Se busca la venta por su comprobante, solo de la sucursal del empleado (RN10); se ve lo ya devuelto, el plazo y con qué se pagó | CU-41 `DevolucionService.venta` |
+| 2 | Se validan motivo, plazo, cantidades (nunca más de lo vendido menos lo ya devuelto) y, en un cambio, las prendas nuevas y la diferencia | `registrar`, `_a_devolver`, `_nuevas`, `_cobro_adicional` |
+| 3 | Inventario: la prenda devuelta vuelve a *disponible* (DEVOLUCION) y la nueva sale (VENTA, referencia DEVOLUCION); sin stock para el cambio no se registra nada | `_mover_inventario` / `aplicar_movimientos` |
+| 4 | Reembolso en el mismo medio del pago: efectivo en caja; tarjeta por la pasarela (Stripe de prueba o simulada), repartiendo los centavos para que la suma sea exacta. Si la pasarela falla, nada se registra | `_reembolsar` / `pasarela.reembolsar` |
+| 4b | Cambio que vale más: la diferencia se paga en efectivo (con cambio) o con tarjeta: se inicia el cobro (`POST /diferencia`), la pasarela autoriza, se registra el cambio y recién entonces se captura; si falta stock se anula la autorización | `iniciar_diferencia`, `_autorizar_tarjeta`, `_anular_cobro` |
+| 5 | Se emite la nota en PDF y CU-27 resta lo devuelto en las ventas netas y en el efectivo de caja | `nota.py`, CU-27 `devoluciones()` |
 
 ## Errores del primer parcial que se corrigieron (sección 9 del plan) y su prueba
 

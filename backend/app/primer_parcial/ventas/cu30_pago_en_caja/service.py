@@ -1,6 +1,6 @@
 """CU-30 · Procesar pago y emitir comprobante en caja (RN10). Capa de negocio.
 
-Efectivo y QR se confirman aquí; con tarjeta se usa la pasarela de CU-32. Al aprobarse el cobro el stock se descuenta en la misma
+El efectivo se cobra aquí; con tarjeta se usa la pasarela de CU-32. Al aprobarse el cobro el stock se descuenta en la misma
 transacción y se emite el comprobante: si el servicio de impuestos no responde, la venta no se pierde y queda un comprobante interno temporal.
 """
 from decimal import Decimal
@@ -61,9 +61,7 @@ class CobroCajaService:
 
     @staticmethod
     def _importes(pedido: Pedido, datos: schemas.CobroIn) -> tuple[Decimal, Decimal]:
-        """Paso 2: en efectivo se calcula el cambio; el QR se confirma por el total."""
-        if datos.metodo == "QR":
-            return pedido.total, Decimal("0.00")
+        """Paso 2: en efectivo se calcula el cambio."""
         if datos.monto_recibido is None:
             raise DatosInvalidos(MSG_FALTA_MONTO)
         if datos.monto_recibido < pedido.total:

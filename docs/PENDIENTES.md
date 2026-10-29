@@ -10,7 +10,7 @@ El Lote 1 (núcleo multitenant) está implementado y probado. El resto del docum
 - Gancho de CU-14 (desactivar con pendientes): ya cubre las reservas; la cola offline (CU-38) debe registrar el suyo con `sucursales/publico.py::registrar_verificador_de_pendientes`.
 
 ## Lote 3 — Gestión avanzada
-~~CU-10~~, ~~CU-20~~, CU-21, CU-22, CU-23, ~~CU-26~~ (hechos en la Fase B), CU-40, CU-41, CU-42 → P7 devoluciones, P9 IA/analítica, P10 reportes.
+~~CU-10~~, ~~CU-20~~, CU-21, CU-22, CU-23, ~~CU-26~~ (hechos en la Fase B), ~~CU-41~~ (hecho en la Fase F), CU-40, CU-42 → P7 devoluciones, P9 IA/analítica, P10 reportes.
 - RN07 ya está resuelta: proteger los endpoints de IA con `Depends(exigir_funcionalidad("reportes_ia"))`.
 
 ## Casos de uso conservados del primer parcial (deben funcionar dentro de cada empresa)

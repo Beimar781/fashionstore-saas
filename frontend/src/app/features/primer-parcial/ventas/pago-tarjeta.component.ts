@@ -1,7 +1,8 @@
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ComprasApi } from '../../../core/api/compras.api';
-import { ConfigPago, ResultadoPago, TarjetaGuardada, TarjetaPrueba, TarjetaSimulada } from '../../../core/compras.models';
+import { ConfigPago, IniciarPago, ResultadoPago, TarjetaGuardada, TarjetaPrueba, TarjetaSimulada } from '../../../core/compras.models';
 import { StripeJsService } from '../../../core/pagos/stripe-js.service';
 import { mensajeError } from '../../../core/ui/toast.service';
 
@@ -85,7 +86,10 @@ export class PagoTarjetaComponent implements OnInit {
   private api = inject(ComprasApi);
   private stripeJs = inject(StripeJsService);
 
-  readonly pedidoId = input.required<number>();
+  readonly pedidoId = input(0);
+  /** Para cobrar algo que no es un pedido (la diferencia de un cambio, CU-41): cómo iniciar y cómo confirmar el cobro. */
+  readonly iniciarFn = input<(() => Observable<IniciarPago>) | null>(null);
+  readonly confirmarFn = input<((pagoId: number, tarjeta: TarjetaSimulada | null) => Observable<ResultadoPago>) | null>(null);
   readonly total = input.required<string>();
   readonly permitirGuardar = input(true);  // en caja no se guardan tarjetas
   readonly listo = output<ResultadoPago>();  // pago aprobado o pendiente de confirmación
@@ -148,7 +152,8 @@ export class PagoTarjetaComponent implements OnInit {
 
   pagar() {
     this.fase.set('procesando'); this.mensaje.set(''); this.motivo.set('');
-    this.api.iniciarPago(this.pedidoId(), this.guardadaId, this.guardar && this.guardadaId === null && this.permitirGuardar()).subscribe({
+    const iniciar = this.iniciarFn()?.() ?? this.api.iniciarPago(this.pedidoId(), this.guardadaId, this.guardar && this.guardadaId === null && this.permitirGuardar());
+    iniciar.subscribe({
       next: (ini) => {
         if (ini.modo === 'stripe') void this.confirmarConStripe(ini.pago_id, ini.client_secret!, ini.publishable_key!);
         else this.confirmar(ini.pago_id, { ...this.sim });
@@ -170,7 +175,8 @@ export class PagoTarjetaComponent implements OnInit {
   }
 
   private confirmar(pagoId: number, tarjeta: TarjetaSimulada | null) {
-    this.api.confirmarPago(pagoId, tarjeta).subscribe({ next: (r) => this.terminar(r), error: (e) => this.fallo(e) });
+    const confirmar = this.confirmarFn()?.(pagoId, tarjeta) ?? this.api.confirmarPago(pagoId, tarjeta);
+    confirmar.subscribe({ next: (r) => this.terminar(r), error: (e) => this.fallo(e) });
   }
 
   reconciliar(pagoId: number) {

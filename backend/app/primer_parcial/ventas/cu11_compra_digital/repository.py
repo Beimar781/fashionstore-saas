@@ -18,6 +18,10 @@ class PedidoRepository(TenantRepository[Pedido]):
     def pendientes_de_pago(self, cliente_id: int) -> list[Pedido]:
         return list(self.db.scalars(self._consulta().where(Pedido.cliente_id == cliente_id, Pedido.estado == "PENDIENTE_PAGO")))
 
+    def por_comprobante(self, numero: str) -> Pedido | None:
+        stmt = self._consulta().where(Pedido.comprobante_numero == numero.strip().upper(), Pedido.estado == "PAGADO").options(selectinload(Pedido.items))
+        return self.db.scalar(stmt)
+
     def abiertos_presenciales(self, sucursal_id: int) -> list[Pedido]:
         """Ventas de caja de la sucursal que todavía no se cobran."""
         stmt = (

@@ -2,22 +2,23 @@
 from tests.caja_util import stock_listo, vender
 from tests.catalogo_util import cabecera_cliente, entrar
 from tests.compras_util import agregar_ok, checkout_ok, pagar
+from tests.devoluciones_util import venta_con_tarjeta
 from tests.reservas_util import fecha_local, reserva_ok
 
 MSG_OTRA_SUCURSAL = "Acceso denegado a datos de otras sucursales."
 
 
 def _movimiento(inv, mundo, client):
-    """Centro: 2 ventas de caja (efectivo y tarjeta-QR), 1 compra digital pagada, 1 reserva completada sin compra. Norte: 1 venta."""
+    """Centro: 2 ventas de caja (efectivo y tarjeta), 1 compra digital pagada, 1 reserva completada sin compra. Norte: 1 venta."""
     stock_listo(inv, mundo)
     a = vender(client, inv.h_cajero, (inv.v_sm_rojo, 2), metodo="EFECTIVO", recibido=250)  # Bs 200
-    b = vender(client, inv.h_cajero, (inv.var[("M", "Azul")], 1), metodo="QR")  # Bs 100
+    b = {"pedido": venta_con_tarjeta(client, inv, (inv.var[("M", "Azul")], 1))}  # Bs 100 con tarjeta en caja
     agregar_ok(client, inv.h_cliente, inv.v_sm_rojo, inv.centro, 3)
     d = pagar(client, inv.h_cliente, checkout_ok(client, inv.h_cliente)["id"]).json()["pedido"]  # Bs 300 digital
     res = reserva_ok(client, inv.h_cliente, inv.centro, (inv.var[("S", "Azul")], 1))
     client.post(f"/api/atencion-reservas/{res['id']}/atender", headers=inv.h_enc_centro)
     client.post(f"/api/atencion-reservas/{res['id']}/completar", json={"llevara_prendas": False}, headers=inv.h_enc_centro)
-    en_norte = vender(client, inv.h_enc_norte, (inv.v_sm_rojo, 4), metodo="QR")  # Bs 400 en otra sucursal
+    en_norte = vender(client, inv.h_enc_norte, (inv.v_sm_rojo, 4))  # Bs 400 en otra sucursal
     return a["pedido"], b["pedido"], d, en_norte["pedido"]
 
 
@@ -30,7 +31,7 @@ def test_01_el_resumen_muestra_ventas_cierre_de_caja_y_reservas_completadas(inv,
     assert (s["presencial"]["total"], s["presencial"]["ventas"], s["digital"]["total"], s["digital"]["ventas"]) == ("300.00", 2, "300.00", 1)
     cierre = {c["metodo"]: c for c in s["cierre_de_caja"]}
     assert (cierre["EFECTIVO"]["total"], cierre["EFECTIVO"]["recibido"], cierre["EFECTIVO"]["cambio"]) == ("200.00", "250.00", "50.00")
-    assert (cierre["QR"]["total"], cierre["TARJETA"]["total"]) == ("100.00", "300.00")  # la compra digital se cobró con tarjeta
+    assert (cierre["TARJETA"]["cobros"], cierre["TARJETA"]["total"]) == (2, "400.00")  # la venta de caja y la compra digital, ambas con tarjeta
     assert s["efectivo_en_caja"] == "200.00" and s["reservas_completadas"] == 1
 
 
@@ -41,7 +42,7 @@ def test_02_los_totales_coinciden_con_los_tickets(inv, mundo, client):
     assert lista["total"] == resumen["total_vendido"] == "600.00" and len(lista["tickets"]) == resumen["ventas"] == 3
     assert sum(float(t["total"]) for t in lista["tickets"]) == 600.0
     assert sum(t["unidades"] for t in lista["tickets"]) == resumen["unidades"]
-    assert sorted(t["metodo"] for t in lista["tickets"]) == ["EFECTIVO", "QR", "TARJETA"]
+    assert sorted(t["metodo"] for t in lista["tickets"]) == ["EFECTIVO", "TARJETA", "TARJETA"]
 
 
 def test_03_el_detalle_de_un_ticket(inv, mundo, client):

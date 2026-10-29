@@ -110,10 +110,6 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
                 </div>
                 <div><button class="btn primary" (click)="cobrarCaja('EFECTIVO')" [disabled]="cobrando() || cambioNum() < 0">{{ cobrando() ? 'Cobrando…' : 'Cobrar Bs ' + v.total }}</button></div>
               }
-              @if (metodo() === 'QR') {
-                <p class="small muted">Confirme en su banca que el cliente pagó el QR por el total de la venta.</p>
-                <div><button class="btn primary" (click)="cobrarCaja('QR')" [disabled]="cobrando()">{{ cobrando() ? 'Confirmando…' : 'Confirmar cobro por QR · Bs ' + v.total }}</button></div>
-              }
               @if (metodo() === 'TARJETA') {
                 <app-pago-tarjeta [pedidoId]="v.id" [total]="v.total" [permitirGuardar]="false" (listo)="alTarjeta($event)" (sinStock)="avisoSinStock()" />
               }
@@ -163,7 +159,7 @@ export class CajaPage implements OnInit {
   private toast = inject(ToastService);
 
   readonly media = MEDIA_URL;
-  readonly metodos: { id: MetodoCaja; texto: string }[] = [{ id: 'EFECTIVO', texto: '💵 Efectivo' }, { id: 'TARJETA', texto: '💳 Tarjeta' }, { id: 'QR', texto: '📱 QR' }];
+  readonly metodos: { id: MetodoCaja; texto: string }[] = [{ id: 'EFECTIVO', texto: '💵 Efectivo' }, { id: 'TARJETA', texto: '💳 Tarjeta' }];
   readonly resultados = signal<ProductoCaja[]>([]);
   readonly lineas = signal<LineaVenta[]>([]);
   readonly reserva = signal<Reserva | null>(null);
@@ -257,7 +253,7 @@ export class CajaPage implements OnInit {
   }
 
   // ---- CU-30 ----
-  cobrarCaja(metodo: 'EFECTIVO' | 'QR') {
+  cobrarCaja(metodo: 'EFECTIVO') {
     this.cobrando.set(true); this.errorCobro.set('');
     this.api.cobrar(this.venta()!.id, metodo, metodo === 'EFECTIVO' ? this.recibido : null).subscribe({
       next: (c) => { this.cobrando.set(false); this.cobro.set(c); this.venta.set(c.pedido); },

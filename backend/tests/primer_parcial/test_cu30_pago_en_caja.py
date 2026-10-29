@@ -52,10 +52,11 @@ def test_03_monto_recibido_invalido_o_venta_ya_cobrada(inv, mundo, client):
     assert existencias(client, inv.h_enc_centro, inv.v_sm_rojo)["vendida"] == 1
 
 
-def test_04_cobro_con_qr(inv, mundo, client):
+def test_04_en_tienda_solo_efectivo_o_tarjeta(inv, mundo, client):
     stock_listo(inv, mundo)
-    c = vender(client, inv.h_cajero, (inv.v_sm_rojo, 1), metodo="QR")
-    assert (c["pago"]["metodo"], c["cambio"], c["pedido"]["estado"]) == ("QR", "0.00", "PAGADO")
+    p = venta_ok(client, inv.h_cajero, (inv.v_sm_rojo, 1))
+    assert cobrar(client, inv.h_cajero, p["id"], "QR", 100).status_code == 422  # el QR no es un medio de pago de la tienda
+    assert client.get(f"/api/caja/ventas/{p['id']}", headers=inv.h_cajero).json()["estado"] == "PENDIENTE_PAGO"
 
 
 def test_05_cobro_con_tarjeta_usa_la_pasarela_de_cu32(inv, mundo, client, db):

@@ -191,3 +191,13 @@ def test_16_quien_puede_pagar_una_compra_digital(inv, mundo, client):
         assert iniciar(client, h, p["id"]).status_code == 404
     for h in (inv.h_enc_centro, inv.h_cajero, inv.h_admin):  # las tarjetas guardadas son solo del cliente
         assert client.get("/api/pagos/tarjetas", headers=h).status_code == 403
+
+
+def test_17_el_pago_online_es_siempre_con_tarjeta(inv, mundo, client, db):
+    from tests.caja_util import cobrar
+    p = _pedido(inv, mundo, client)
+    # el efectivo no existe para una compra digital: caja no la cobra, solo el cliente paga con tarjeta por la pasarela
+    assert cobrar(client, inv.h_cajero, p["id"], "EFECTIVO", 500).status_code == 404
+    assert pagar(client, inv.h_cliente, p["id"]).json()["aprobado"] is True
+    pagos = db.execute(text("SELECT DISTINCT p.metodo FROM pagos p JOIN pedidos o ON o.id = p.pedido_id WHERE o.canal = 'DIGITAL'")).scalars().all()
+    assert pagos == ["TARJETA"]

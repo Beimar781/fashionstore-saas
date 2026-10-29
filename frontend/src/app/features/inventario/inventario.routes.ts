@@ -7,6 +7,7 @@ const movimientos = () => import('./movimientos.page').then((m) => m.Movimientos
 export const SUCURSAL_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'reservas' },
   { path: 'caja', loadComponent: () => import('../primer-parcial/ventas/caja.page').then((m) => m.CajaPage), title: 'Caja · FashionStore' },
+  { path: 'devoluciones', loadComponent: () => import('../ventas/devoluciones.page').then((m) => m.DevolucionesPage), title: 'Devoluciones y cambios · FashionStore' },
   { path: 'ventas', loadComponent: () => import('../primer-parcial/reportes/ventas-sucursal.page').then((m) => m.VentasSucursalPage), title: 'Ventas de la sucursal · FashionStore' },
   { path: 'reservas', loadComponent: () => import('../primer-parcial/reservas/reservas-sucursal.page').then((m) => m.ReservasSucursalPage), title: 'Reservas de la sucursal · FashionStore' },
   { path: 'atencion', loadComponent: () => import('../primer-parcial/reservas/atencion.page').then((m) => m.AtencionPage), title: 'Atención de reservas · FashionStore' },

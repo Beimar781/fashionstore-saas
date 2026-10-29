@@ -19,14 +19,14 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
       <form class="card pad row" style="margin-bottom:1rem" (ngSubmit)="cargar()">
         <label style="max-width:170px">Día<input name="f" type="date" [(ngModel)]="fecha" [max]="maximo" /></label>
         <label style="max-width:170px">Canal<select name="c" [(ngModel)]="canal"><option value="">Todos</option><option value="PRESENCIAL">Caja (POS)</option><option value="DIGITAL">Pedidos online</option></select></label>
-        <label style="max-width:170px">Cobrado con<select name="m" [(ngModel)]="metodo"><option value="">Todos</option><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta</option><option value="QR">QR</option></select></label>
+        <label style="max-width:170px">Cobrado con<select name="m" [(ngModel)]="metodo"><option value="">Todos</option><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta</option></select></label>
         <div class="row" style="align-self:end"><button class="btn primary">Consultar</button><button type="button" class="btn ghost" (click)="hoyDia()">Hoy</button></div>
       </form>
       @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
 
       @if (resumen(); as r) {
         <div class="grid cols-3" style="margin-bottom:1rem">
-          <div class="card pad"><div class="small muted">Total vendido</div><div class="cifra">Bs {{ r.total_vendido }}</div><div class="small muted">{{ r.ventas }} venta(s) · {{ r.unidades }} prenda(s) · ticket promedio Bs {{ r.ticket_promedio }}</div></div>
+          <div class="card pad"><div class="small muted">Total vendido</div><div class="cifra">Bs {{ r.total_vendido }}</div><div class="small muted">{{ r.ventas }} venta(s) · {{ r.unidades }} prenda(s) · ticket promedio Bs {{ r.ticket_promedio }}</div>@if (r.devoluciones.notas) { <div class="small"><strong>Ventas netas Bs {{ r.ventas_netas }}</strong> (descuenta devoluciones y cambios)</div> }</div>
           <div class="card pad"><div class="small muted">Ventas en caja (POS)</div><div class="cifra">Bs {{ r.presencial.total }}</div><div class="small muted">{{ r.presencial.ventas }} venta(s) · {{ r.presencial.unidades }} prenda(s)</div></div>
           <div class="card pad"><div class="small muted">Pedidos online (retiro o despacho)</div><div class="cifra">Bs {{ r.digital.total }}</div><div class="small muted">{{ r.digital.ventas }} pedido(s) · {{ r.digital.unidades }} prenda(s)</div></div>
         </div>
@@ -37,6 +37,14 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
               <div class="row between small"><span><strong>{{ nombreMetodo(c.metodo) }}</strong> · {{ c.cobros }} cobro(s)@if (c.recibido) { · recibido Bs {{ c.recibido }}, cambio Bs {{ c.cambio }} }</span><strong>Bs {{ c.total }}</strong></div>
             } @empty { <p class="muted small">Sin cobros en el día.</p> }
             <div class="row between total"><strong>Efectivo que debe haber en caja</strong><strong>Bs {{ r.efectivo_en_caja }}</strong></div>
+          </section>
+          <section class="card pad stack"><h3>Devoluciones y cambios</h3>
+            @if (r.devoluciones.notas) {
+              <div class="row between small"><span>{{ r.devoluciones.notas }} nota(s) · prendas devueltas</span><strong>Bs {{ r.devoluciones.devuelto }}</strong></div>
+              <div class="row between small"><span>Entregado en cambios</span><strong>Bs {{ r.devoluciones.entregado_en_cambios }}</strong></div>
+              <div class="row between small"><span>Reembolsado en efectivo / tarjeta</span><strong>Bs {{ r.devoluciones.reembolsado_efectivo }} / {{ r.devoluciones.reembolsado_tarjeta }}</strong></div>
+              <div class="row between small"><span>Diferencias cobradas (efectivo / tarjeta)</span><strong>Bs {{ r.devoluciones.cobrado_efectivo }} / {{ r.devoluciones.cobrado_tarjeta }}</strong></div>
+            } @else { <p class="muted small">Sin devoluciones ni cambios en el día.</p> }
           </section>
           <section class="card pad stack"><h3>Reservas</h3><div class="cifra">{{ r.reservas_completadas }}</div><p class="small muted">reserva(s) completada(s) en el día</p></section>
         </div>
@@ -92,7 +100,7 @@ export class VentasSucursalPage implements OnInit {
 
   ngOnInit() { this.cargar(); }
 
-  nombreMetodo(m: string | null) { return m === 'EFECTIVO' ? 'Efectivo' : m === 'TARJETA' ? 'Tarjeta' : m === 'QR' ? 'QR' : '—'; }
+  nombreMetodo(m: string | null) { return m === 'EFECTIVO' ? 'Efectivo' : m === 'TARJETA' ? 'Tarjeta' : '—'; }
   hoyDia() { this.fecha = hoy(); this.cargar(); }
 
   cargar() {

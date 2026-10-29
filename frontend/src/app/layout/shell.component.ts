@@ -25,12 +25,15 @@ const NAV_EMPRESA: Item[] = [
   { ruta: '/empresa/proveedores', texto: 'Proveedores', icono: '🚚', operativo: true },
   { ruta: '/empresa/abastecimiento', texto: 'Abastecimiento', icono: '📦', operativo: true },
   { ruta: '/empresa/inventario/global', texto: 'Inventario global', icono: '📊', operativo: true },
+  { ruta: '/empresa/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️', operativo: true },
 ];
 const NAV_CAJERO: Item[] = [
   { ruta: '/pos/caja', texto: 'Caja', icono: '🧾' },
+  { ruta: '/pos/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
 ];
 const NAV_ENCARGADO: Item[] = [
   { ruta: '/sucursal/caja', texto: 'Caja', icono: '🧾' },
+  { ruta: '/sucursal/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
   { ruta: '/sucursal/ventas', texto: 'Ventas de la sucursal', icono: '📈' },
   { ruta: '/sucursal/reservas', texto: 'Reservas', icono: '📅' },
   { ruta: '/sucursal/atencion', texto: 'Atención en mostrador', icono: '🛎️' },

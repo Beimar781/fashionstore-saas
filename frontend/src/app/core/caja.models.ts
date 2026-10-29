@@ -12,13 +12,17 @@ export interface LineaVenta { variante_id: number; sku: string; producto: string
 
 export interface CobroCaja { pedido: Pedido; pago: PagoResumen; cambio: string; aviso: string | null; }
 
-export type MetodoCaja = 'EFECTIVO' | 'TARJETA' | 'QR';
+export type MetodoCaja = 'EFECTIVO' | 'TARJETA';
 
 /** CU-27 · ventas de la sucursal. */
 export interface TotalCanal { ventas: number; unidades: number; total: string; }
 export interface CierreMetodo { metodo: string; cobros: number; total: string; recibido: string | null; cambio: string | null; }
+export interface DevolucionesDia {
+  notas: number; devuelto: string; entregado_en_cambios: string; reembolsado_efectivo: string; reembolsado_tarjeta: string;
+  cobrado_efectivo: string; cobrado_tarjeta: string;
+}
 export interface ResumenDia {
-  fecha: string; sucursal_id: number; sucursal: string; total_vendido: string; ventas: number; unidades: number; ticket_promedio: string;
+  fecha: string; sucursal_id: number; sucursal: string; total_vendido: string; ventas_netas: string; devoluciones: DevolucionesDia; ventas: number; unidades: number; ticket_promedio: string;
   presencial: TotalCanal; digital: TotalCanal; cierre_de_caja: CierreMetodo[]; efectivo_en_caja: string; reservas_completadas: number;
 }
 export interface Ticket {

@@ -8,9 +8,9 @@ from app.primer_parcial.ventas.cu11_compra_digital.schemas import PagoResumenOut
 
 
 class CobroIn(BaseModel):
-    """Efectivo y QR se confirman en caja. El pago con tarjeta usa la pasarela de CU-32 (`/api/pagos/...`)."""
+    """El efectivo se cobra en caja. El pago con tarjeta usa la pasarela de CU-32 (`/api/pagos/...`)."""
 
-    metodo: Literal["EFECTIVO", "QR"]
+    metodo: Literal["EFECTIVO"]
     monto_recibido: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
 
 

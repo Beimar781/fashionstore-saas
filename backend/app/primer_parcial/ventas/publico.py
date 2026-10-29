@@ -5,4 +5,8 @@ La venta presencial (CU-29, SaaS), las devoluciones (CU-41) y los reportes usan 
 from app.primer_parcial.ventas.cu11_compra_digital.schemas import PagoResumenOut, PedidoOut  # noqa: F401
 from app.primer_parcial.ventas.cu11_compra_digital.service import Linea, CompraService, SinStock  # noqa: F401
 from app.primer_parcial.ventas.cu28_productos_en_caja.service import sucursal_de_caja  # noqa: F401
+from app.primer_parcial.ventas.cu11_compra_digital.service import MSG_RECHAZO  # noqa: F401
+from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import Tarjeta, obtener_pasarela, pasarela_para  # noqa: F401
+from app.primer_parcial.ventas.cu32_pago_electronico.schemas import TarjetaIn  # noqa: F401
+from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoRechazado, PasarelaNoDisponible  # noqa: F401
 from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem  # noqa: F401  (entidades de solo lectura para los reportes)

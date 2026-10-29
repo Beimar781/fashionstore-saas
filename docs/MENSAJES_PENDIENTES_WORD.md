@@ -182,13 +182,13 @@ comprobante interno temporal.» (CU-30). **CU-29 no tiene ficha ni prueba** en e
   empresa no existe para él (404).
 - **CU-30 · el stock se descuenta al cobrar**, no al registrar la venta. Movimiento VENTA con referencia VENTA; si la venta viene de una reserva, el stock pasa de
   *reservado* a *vendido* (VENTA_RESERVA) y lo que el cliente no se lleva vuelve a *disponible*. Cada venta lleva un comprobante `CMP-<sucursal>-<número>`.
-- **CU-30 · medios de pago.** Efectivo (el sistema calcula el cambio), QR simple local (el cajero confirma que se pagó) y tarjeta (con la misma pasarela de CU-32; en
+- **CU-30 · medios de pago.** Efectivo (el sistema calcula el cambio) y tarjeta (con la misma pasarela de CU-32; en
   caja no se guardan tarjetas). Un solo método por venta; el pago mixto no se implementa en esta versión.
-- **CU-30 · sin stock a mitad del cobro.** Si las prendas se agotan mientras se cobra, no se descuenta nada y no se registra ningún cobro. En efectivo o QR la venta sigue
+- **CU-30 · sin stock a mitad del cobro.** Si las prendas se agotan mientras se cobra, no se descuenta nada y no se registra ningún cobro. En efectivo la venta sigue
   pendiente para que el cajero la anule y la rehaga; con tarjeta se anula la autorización y la venta queda cancelada.
 - **CU-30 · servicio de impuestos.** Adaptador simulado (regla 12): autoriza el comprobante con un código de prueba y el comprobante es una *factura*. Si el servicio no
   responde, la venta se cobra igual y el comprobante queda como *interno temporal*. La conversión posterior del temporal en factura todavía no está implementada.
-- **CU-27 · cierre de caja.** No hay un registro de cierre: el «cierre» del día es el arqueo por método (efectivo, tarjeta, QR), con el efectivo que debe haber en caja
+- **CU-27 · cierre de caja.** No hay un registro de cierre: el «cierre» del día es el arqueo por método (efectivo, tarjeta), con el efectivo que debe haber en caja
   (lo cobrado en efectivo, ya descontado el cambio). Incluye las ventas de caja, los pedidos online pagados de la sucursal y las reservas completadas del día.
 - **CU-27 · otra sucursal.** Pedir los datos de otra sucursal (o un ticket de otra sucursal de la misma empresa) responde 403 con el mensaje de la ficha; un ticket de otra
   empresa responde 404 (no se revela que existe).
@@ -220,3 +220,59 @@ comprobante interno temporal.» (CU-30). **CU-29 no tiene ficha ni prueba** en e
 ### Configuración nueva
 
 `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` (opcional): simula que el servicio de impuestos no responde, para mostrar el comprobante interno temporal de la ficha CU-30.
+
+## Fase F
+
+CU-41 **no tiene ficha ni prueba en el Word** (solo aparece en la tabla 2.5.5 y en RN15): falta redactarla. Los mensajes de abajo salen del código.
+
+### Decisiones de diseño que conviene reflejar en las fichas
+
+- **CU-41 · quién.** Lo registran el Cajero y el Encargado, solo sobre ventas de **su** sucursal (RN10); una venta de otra sucursal u otra empresa no existe para ellos (404). El
+  Administrador solo consulta las notas de toda la empresa y fija el plazo.
+- **CU-41 · RN15.** Se requiere el comprobante de la venta (`CMP-<sucursal>-<número>`); se busca sin distinguir mayúsculas. Plazo de devolución por empresa, 15 días desde el pago
+  por defecto, configurable de 0 a 365 días por el Administrador.
+- **CU-41 · devolución parcial.** Se puede devolver parte de lo vendido y volver más tarde por el resto; nunca más de lo vendido menos lo ya devuelto.
+- **CU-41 · inventario.** La prenda devuelta vuelve a *disponible* de la sucursal de la venta (movimiento DEVOLUCION, referencia DEVOLUCION). Se asume que la prenda se recibe en buen
+  estado; no hay una bandeja de revisión de prendas dañadas.
+- **CU-41 · reembolso en el mismo medio de pago.** Efectivo → efectivo; tarjeta → a la misma tarjeta por la pasarela (Stripe de prueba o
+  simulada, regla 12). El reembolso se prorratea por el valor devuelto y el último devuelve exactamente lo que quedaba, para que la suma coincida con lo cobrado. Si la pasarela falla,
+  la devolución no se registra y el inventario no cambia.
+- **CU-41 · cambio.** Se devuelven una o más prendas y se entregan otras, sujeto a la disponibilidad de la sucursal. Si lo nuevo vale más, el cliente paga la diferencia en caja
+  (**el cliente elige**: en efectivo, con cálculo del cambio, o con tarjeta por la misma pasarela del CU-32; con tarjeta primero se autoriza, luego se registra el cambio y recién entonces se cobra, y si falta stock
+  o la tarjeta se rechaza no se cobra ni se registra nada). Si vale menos, se reembolsa la diferencia en el medio de la venta original. Se puede
+  cambiar por la misma prenda que se devuelve.
+- **CU-41 · nota.** Cada devolución o cambio emite una nota `NDV-<sucursal>-<número>` en PDF con las prendas, los montos y el medio del reembolso.
+- **CU-41 · cobro de la diferencia con tarjeta.** El Cajero inicia el cobro (el servidor calcula el monto, nunca el navegador) y confirma la tarjeta; no se guardan tarjetas en caja. La diferencia cobrada con tarjeta se muestra
+  aparte en CU-27 y no entra al efectivo de caja.
+- **CU-27 · ventas netas.** El reporte del día muestra las ventas netas (vendido − devuelto + entregado en cambios), el detalle de devoluciones y descuenta del efectivo que debe haber
+  en caja los reembolsos en efectivo (y suma las diferencias cobradas en efectivo).
+- **Pagos en tienda (decisión del equipo).** En el local se paga con efectivo o tarjeta; online solo con tarjeta (cubierto por pruebas). Se quitó el QR que la ficha CU-30
+  mencionaba como «QR simple local»: la ficha debe decir «efectivo o tarjeta». Los planes SaaS (CU-33/35) conservan «QR» como forma de pago administrativa de la suscripción.
+
+### Mensajes nuevos
+
+| CU | Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|---|
+| CU-41 | Falta el comprobante | «Para devolver o cambiar una prenda se requiere el comprobante de la venta.» | 422 | Pendiente (RN15) |
+| CU-41 | Comprobante inexistente, de otra sucursal o de otra empresa | «No se encontró una venta con ese comprobante en su sucursal.» | 404 | Pendiente |
+| CU-41 | Fuera del plazo | «El plazo para devolver o cambiar esta compra venció el {fecha} (plazo de {n} días).» | 409 | Pendiente (RN15) |
+| CU-41 | Sin motivo | «Indique el motivo de la devolución.» | 422 | Pendiente |
+| CU-41 | Sin prendas elegidas | «Seleccione al menos una prenda a devolver.» | 422 | Pendiente |
+| CU-41 | Línea que no pertenece a la venta | «La prenda indicada no pertenece a esa venta.» | 422 | Pendiente |
+| CU-41 | Más de lo vendido | «Solo se pueden devolver {n} unidad(es) de {prenda} ({talla}, {color}): se vendieron {v} y ya se devolvieron {d}.» | 409 | Pendiente |
+| CU-41 | Prenda ya devuelta por completo | «{prenda} ({talla}, {color}) ya fue devuelto por completo.» | 409 | Pendiente |
+| CU-41 | Cambio sin prendas nuevas | «Un cambio requiere al menos una prenda nueva.» | 422 | Pendiente |
+| CU-41 | Devolución con prendas nuevas | «Una devolución no lleva prendas nuevas; registre un cambio.» | 422 | Pendiente |
+| CU-41 | Prenda nueva inactiva o retirada | «Una o más prendas del cambio ya no están disponibles en el catálogo.» | 422 | Pendiente |
+| CU-41 | Sin stock para el cambio | «No hay stock suficiente en {sucursal} para el cambio: {prenda} ({talla}, {color}): solicitadas {n}, disponibles {d}.» | 409 | Pendiente |
+| CU-41 | Cambio que vale más y no se indica el pago | «El cambio tiene una diferencia de Bs {monto} a cobrar: indique cómo paga el cliente.» | 422 | Pendiente |
+| CU-41 | La diferencia se quiere pagar con tarjeta pero no hay diferencia | «El cambio no tiene una diferencia a cobrar.» | 422 | Pendiente |
+| CU-41 | Se elige tarjeta sin iniciar el cobro | «Inicie el cobro con tarjeta de la diferencia antes de registrar el cambio.» | 422 | Pendiente |
+| CU-41 | El cobro iniciado es de otra venta u otro cajero | «Cobro de la diferencia no encontrado.» | 404 | Pendiente |
+| CU-41 | El cambio cambió después de iniciar el cobro (otras prendas o cantidades) o el cobro ya se usó | «El cobro de la diferencia ya no coincide con el cambio. Inicie el cobro con tarjeta nuevamente.» | 409 | Pendiente |
+| CU-41 | Tarjeta rechazada al pagar la diferencia | Los mismos de CU-11 y CU-32: «La transacción no pudo ser procesada…» con el motivo del banco | 402 | Ya están en CU-11 y CU-32 |
+| CU-41 | La pasarela no respondió al pagar la diferencia | «No se pudo comunicar con la pasarela de pago. Intente nuevamente: no se registró el cambio ni se cobró nada.» | 502 | Pendiente |
+| CU-41 | Efectivo recibido menor a la diferencia | «El monto recibido es menor a la diferencia a cobrar.» | 422 | Pendiente |
+| CU-41 | La pasarela no pudo reembolsar | «No se pudo reembolsar el pago en la pasarela: la devolución no se registró. Intente nuevamente.» | 502 | Pendiente |
+| CU-41 | La venta no tiene pago aprobado | «La venta no tiene un pago aprobado que reembolsar.» | 409 | Pendiente |
+| CU-41 | Nota inexistente o de otra sucursal/empresa | «Devolución no encontrada.» | 404 | Pendiente |

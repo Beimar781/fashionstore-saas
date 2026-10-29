@@ -151,6 +151,15 @@ class CompraService:
             raise NoEncontrado("Venta no encontrada.")
         return pedido
 
+    # ---- lo que necesitan las devoluciones (CU-41) ----
+    def venta_por_comprobante(self, numero: str, sucursal_id: int) -> Pedido | None:
+        """Una compra pagada de la sucursal, identificada por el número de su comprobante (RN15)."""
+        pedido = self.pedidos.por_comprobante(numero)
+        return pedido if pedido is not None and pedido.sucursal_id == sucursal_id else None
+
+    def pago_aprobado(self, pedido: Pedido):
+        return next((g for g in reversed(self.pedidos.pagos_de([pedido.id])[pedido.id]) if g.estado == "APROBADO"), None)
+
     def cancelar(self, pedido: Pedido, motivo: str) -> None:
         pedido.estado, pedido.motivo_cancelacion = "CANCELADO", motivo
         for pago in self.pedidos.pagos_de([pedido.id])[pedido.id]:

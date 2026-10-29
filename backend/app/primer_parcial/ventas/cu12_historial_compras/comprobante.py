@@ -86,7 +86,7 @@ def generar_pdf(empresa: dict, sucursal: dict, cliente: str, pedido: Pedido, pag
     y -= 9 * mm
 
     if pago is not None:
-        medio = f"{pago.tarjeta_marca} terminada en {pago.tarjeta_ultimos4}" if pago.tarjeta_ultimos4 else {"EFECTIVO": "Efectivo", "QR": "QR"}.get(pago.metodo, pago.metodo.capitalize())
+        medio = f"{pago.tarjeta_marca} terminada en {pago.tarjeta_ultimos4}" if pago.tarjeta_ultimos4 else {"EFECTIVO": "Efectivo"}.get(pago.metodo, pago.metodo.capitalize())
         linea(f"Pago: {medio} · {pago.estado.replace('_', ' ').capitalize()}", 10, True)
         if pago.monto_recibido is not None:
             linea(f"Recibido: {_fmt(pago.monto_recibido)} · Cambio: {_fmt(pago.cambio or 0)}", 9)

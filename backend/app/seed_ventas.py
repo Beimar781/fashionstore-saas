@@ -1,4 +1,4 @@
-"""Datos de ejemplo de ventas: compra digital del cliente demo (Fase D) y ventas de caja del Cajero y el Encargado (Fase E). Idempotente."""
+"""Datos de ejemplo de ventas: compra digital del cliente demo (Fase D), ventas de caja (Fase E) y una devolución (Fase F). Idempotente."""
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -9,6 +9,9 @@ from app.modules.acceso.dependencias import Contexto
 from app.modules.acceso.models import Rol, Usuario
 from app.modules.inventario.models import Existencia
 from app.modules.sucursales.models import Sucursal
+from app.modules.ventas.cu41_devoluciones.schemas import DevolucionIn, ItemDevueltoIn
+from app.modules.ventas.cu41_devoluciones.service import DevolucionService
+from app.modules.ventas.publico import Devolucion
 from app.modules.ventas.cu29_venta_presencial.schemas import LineaIn, VentaIn
 from app.modules.ventas.cu29_venta_presencial.service import VentaPresencialService
 from app.primer_parcial.reservas.cu08_carrito.schemas import ItemIn
@@ -20,7 +23,7 @@ from app.primer_parcial.ventas.cu30_pago_en_caja.service import CobroCajaService
 from app.primer_parcial.ventas.cu32_pago_electronico import schemas
 from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import PasarelaSimulada
 from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoService
-from app.primer_parcial.ventas.models import Pedido
+from app.primer_parcial.ventas.models import Pago, Pedido
 
 
 def cargar(db: Session, empresa) -> None:
@@ -44,10 +47,10 @@ def cargar(db: Session, empresa) -> None:
 
 
 def cargar_caja(db: Session, empresa) -> None:
-    """Ventas de caja de ejemplo (Fase E): el Cajero y el Encargado de cada empresa venden en su sucursal (efectivo y QR)."""
+    """Ventas de caja de ejemplo (Fase E): el Cajero y el Encargado de cada empresa venden en su sucursal (efectivo y tarjeta)."""
     if db.scalar(select(Pedido.id).where(Pedido.empresa_id == empresa.id, Pedido.canal == "PRESENCIAL").limit(1)):
         return
-    for rol, medios in ((CAJERO, ("EFECTIVO", "QR")), (ENCARGADO, ("EFECTIVO",))):
+    for rol, medios in ((CAJERO, ("EFECTIVO", "EFECTIVO")), (ENCARGADO, ("EFECTIVO",))):
         empleado = db.scalar(select(Usuario).join(Usuario.rol).where(Usuario.empresa_id == empresa.id, Rol.nombre == rol, Usuario.sucursal_id.is_not(None)).order_by(Usuario.id).limit(1))
         if empleado is None:
             continue
@@ -59,3 +62,23 @@ def cargar_caja(db: Session, empresa) -> None:
             pedido = VentaPresencialService(db, ctx).crear(VentaIn(items=[LineaIn(variante_id=variante_id, cantidad=1)]))
             recibido = (Decimal(pedido.total) / 10).to_integral_value(rounding="ROUND_CEILING") * 10 if metodo == "EFECTIVO" else None
             CobroCajaService(db, ctx).cobrar(pedido.id, CobroIn(metodo=metodo, monto_recibido=recibido))
+
+
+def cargar_devoluciones(db: Session, empresa) -> None:
+    """Una devolución de ejemplo (Fase F): el Cajero devuelve una prenda de su primera venta en efectivo."""
+    if db.scalar(select(Devolucion.id).where(Devolucion.empresa_id == empresa.id).limit(1)):
+        return
+    cajero = db.scalar(select(Usuario).join(Usuario.rol).where(Usuario.empresa_id == empresa.id, Rol.nombre == CAJERO, Usuario.sucursal_id.is_not(None)).order_by(Usuario.id).limit(1))
+    if cajero is None:
+        return
+    venta = db.scalar(
+        select(Pedido).join(Pago, Pago.pedido_id == Pedido.id)
+        .where(Pedido.empresa_id == empresa.id, Pedido.canal == "PRESENCIAL", Pedido.estado == "PAGADO", Pedido.sucursal_id == cajero.sucursal_id, Pago.metodo == "EFECTIVO")
+        .order_by(Pedido.id).limit(1)
+    )
+    if venta is None or not venta.items:
+        return
+    ctx = Contexto(cajero, CAJERO, empresa.id, cajero.sucursal_id)
+    DevolucionService(db, ctx).registrar(DevolucionIn(
+        comprobante=venta.comprobante_numero, motivo="Le quedó pequeña", items=[ItemDevueltoIn(pedido_item_id=venta.items[0].id, cantidad=1)],
+    ))
