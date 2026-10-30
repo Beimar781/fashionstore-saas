@@ -568,3 +568,25 @@ la regla de que el procesamiento de la cámara es local (privacidad) y las metas
 
 Agregar a la vista de **despliegue** (UML) los tres servicios de Railway, el Volume y los servicios externos (Brevo, Stripe, Google Gemini, Firebase Cloud Messaging); a los **requisitos no funcionales**, la configuración por variables de entorno, el health check y el arranque seguro; y al **CU-23, CU-07 y CU-42**, que la IA externa es
 Google Gemini con respaldo local. El `usesCleartextTraffic` y las demás notas de la fase anterior ya no aplican. No hay casos de uso nuevos ni rutas nuevas de escritura (la bitácora no cambia).
+
+
+# Prompt M · Cierre del despliegue y APK de prueba
+
+## Reglas y decisiones (para la vista de despliegue y los requisitos no funcionales)
+
+- **Modelo de IA y respaldo:** el modelo por defecto de Gemini pasa a ser `gemini-3.1-flash-lite` (responde en 1 a 2 s); `gemini-flash-latest` se quedaba sin responder con la clave del proyecto. Se cambia con `IA_MODELO` sin tocar el código. El tiempo de espera a la IA se mantiene en **20 s**: subirlo haría esperar más al cliente antes de caer al respaldo.
+- **Respaldo y diagnóstico:** si la IA no responde (sin clave, tiempo agotado, error HTTP o respuesta que no es JSON), CU-07, CU-23 y CU-42 siguen funcionando con reglas locales (origen `REGLAS`). El registro del servidor ahora dice el tipo de error (`ReadTimeout`, `ConnectError`, `JSONDecodeError`...) o el código HTTP; nunca la clave, el prompt ni el cuerpo de la respuesta.
+- **Despliegue en Railway (lo aprendido en la práctica):** cada servicio necesita su Root Directory (`/backend` y `/frontend`); el dominio público apunta al puerto de destino 8080 con `PORT=8080`; el health check `/salud` se configura en la interfaz de Railway; `CORS_ORIGINS` lleva el dominio literal del frontend; las variables se cargan en bloque con el Raw Editor. Plan Hobby: unos 5 USD al mes más el uso. URLs reales y cuentas de demostración en `docs/DESPLIEGUE.md`.
+- **Cómo se obtiene el APK:** GitHub → Actions → «Compilar APK» → Run workflow → descargar el artefacto `fashionstore-apk` (zip con `app-release.apk`, 14 días) e instalarlo permitiendo orígenes desconocidos. El flujo se detiene si `API_URL` no empieza con `https://` y no termina en `/api` (el APK de release no admite tráfico sin cifrar).
+- **Móvil, recuperación de contraseña:** la pantalla de inicio de sesión tiene «¿Olvidó su contraseña?», que usa el mismo `POST /api/auth/olvide-password` de la web (CU-02); el enlace del correo abre la web.
+- **Móvil, pago con tarjeta:** con la pasarela simulada el móvil pide la tarjeta de prueba; con Stripe (el despliegue real) el pedido queda pendiente y el pago se termina desde la web, porque los datos de la tarjeta los captura Stripe.js en el navegador y nunca pasan por nuestro servidor.
+- **Móvil, rendimiento del vestidor:** al mantener presionado el título del vestidor aparece un contador con los FPS actuales y el promedio de la pantalla (medidos con los tiempos de cuadro de Flutter), para documentar el rendimiento en un celular real. Oculto, no consume nada.
+- **Prueba de humo y guía de pruebas:** `scripts/humo_produccion.py` revisa el sistema desplegado (salud, inicios de sesión, catálogo, pagos en modo Stripe, asistente con IA en EMP-B y bloqueo 403 en EMP-A) y `docs/PRUEBAS_SISTEMA.md` es la lista de verificación web y móvil.
+
+## Mensajes nuevos
+
+No hay mensajes HTTP nuevos ni cambiados en este bloque. Se reutilizan los ya existentes: 403 «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» (asistente de EMP-A) y la respuesta genérica de CU-02 al pedir restablecer la contraseña desde el móvil.
+
+## Para el Word
+
+Vista de despliegue: URLs reales, puertos y Root Directory de cada servicio. Requisitos no funcionales: modelo de IA configurable, tiempo de espera de 20 s y respaldo con reglas locales con registro del motivo; el APK solo acepta HTTPS. Pruebas: agregar la guía `docs/PRUEBAS_SISTEMA.md` y la prueba de humo, y los FPS medidos en el celular real (tomados con el contador del vestidor).
