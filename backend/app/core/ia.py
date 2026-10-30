@@ -10,7 +10,7 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 URL_MENSAJES = "https://api.anthropic.com/v1/messages"
 URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-MODELOS_POR_DEFECTO = {"gemini": "gemini-flash-latest", "anthropic": "claude-haiku-5-5"}
+MODELOS_POR_DEFECTO = {"gemini": "gemini-3.1-flash-lite", "anthropic": "claude-haiku-5-5"}
 
 
 def _objeto_json(texto: str) -> dict:
@@ -34,8 +34,8 @@ class ClienteIA:
             return None
         try:
             return self._gemini(sistema, usuario) if self.proveedor == "gemini" else self._anthropic(sistema, usuario)
-        except Exception:  # sin red, JSON inválido, etc.: se usa el respaldo
-            logger.warning("La IA externa (%s) no respondió; se usa el modo de respaldo.", self.proveedor)
+        except Exception as error:  # sin red, JSON inválido, etc.: se usa el respaldo (solo se registra el tipo de error, nunca la clave ni el prompt)
+            logger.warning("La IA externa (%s) no respondió (%s); se usa el modo de respaldo.", self.proveedor, type(error).__name__)
             return None
 
     def _anthropic(self, sistema: str, usuario: str) -> dict | None:

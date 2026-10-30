@@ -1,6 +1,8 @@
 """Prompt L · IA con Google Gemini (gratuito) o Claude — mismo contrato `json_estructurado`, fallos y límites caen al respaldo, y la elección del proveedor sale del `.env`."""
 import json
 
+import httpx
+
 from app.core import ia
 from app.core.config import get_settings
 from app.core.ia import ClienteIA, obtener_ia
@@ -81,7 +83,7 @@ def test_06_el_proveedor_y_el_modelo_salen_de_la_configuracion(monkeypatch):
     monkeypatch.setattr(cfg, "anthropic_api_key", "a")
     monkeypatch.setattr(cfg, "ia_proveedor", "gemini")
     cliente = obtener_ia()
-    assert (cliente.proveedor, cliente.modelo, cliente.clave) == ("gemini", "gemini-flash-latest", "g")
+    assert (cliente.proveedor, cliente.modelo, cliente.clave) == ("gemini", "gemini-3.1-flash-lite", "g")
     monkeypatch.setattr(cfg, "ia_proveedor", "anthropic")
     cliente = obtener_ia()
     assert (cliente.proveedor, cliente.modelo, cliente.clave) == ("anthropic", "claude-haiku-5-5", "a")
@@ -114,3 +116,33 @@ def test_08_los_casos_de_uso_funcionan_igual_con_gemini(inv, mundo, db, client, 
     monkeypatch.setattr(service, "obtener_ia", lambda: ClienteIA("clave", "gemini-flash-latest", http=api_caida, proveedor="gemini"))
     r = client.post("/api/ia/reportes", json={"prompt": "ventas de este mes"}, headers=inv.h_admin)
     assert r.status_code == 201 and r.json()["origen"] == "REGLAS"  # el límite gratuito no deja sin reporte al usuario
+
+
+def test_09_un_timeout_cae_al_respaldo_y_el_log_dice_el_tipo_de_excepcion(caplog):
+    def colgada(**_):
+        raise httpx.ReadTimeout("sin respuesta")
+
+    with caplog.at_level("WARNING", logger="app.core.ia"):
+        assert _gemini(lambda url, **kw: colgada()).json_estructurado("prompt secreto", "u") is None
+    assert "ReadTimeout" in caplog.text and "clave-gemini" not in caplog.text and "prompt secreto" not in caplog.text
+
+
+def test_10_el_log_trae_el_codigo_http_cuando_no_es_200_y_el_tipo_de_error_si_el_json_no_sirve(caplog):
+    with caplog.at_level("WARNING", logger="app.core.ia"):
+        assert _gemini(GeminiFalso((503, []))).json_estructurado("s", "u") is None
+        assert "503" in caplog.text
+        caplog.clear()
+        assert _gemini(GeminiFalso(_ok('{"a": }'))).json_estructurado("s", "u") is None
+        assert "JSONDecodeError" in caplog.text
+
+
+def test_11_una_respuesta_200_valida_del_modelo_por_defecto_da_origen_ia(inv, mundo, db, client, monkeypatch):
+    from app.modules.ia.cu23_reportes_generativos import service
+    from tests.reportes_util import con_ia, movimiento
+
+    con_ia(db, mundo)
+    movimiento(client, inv, mundo)
+    api = GeminiFalso(_ok(json.dumps({"ventas": True, "periodo": "mes"})))
+    monkeypatch.setattr(service, "obtener_ia", lambda: ClienteIA("clave", ia.MODELOS_POR_DEFECTO["gemini"], http=api, proveedor="gemini"))
+    r = client.post("/api/ia/reportes", json={"prompt": "ventas de este mes"}, headers=inv.h_admin)
+    assert r.status_code == 201 and r.json()["origen"] == "IA" and "gemini-3.1-flash-lite" in api.llamadas[0][0]

@@ -372,7 +372,7 @@ código: solo en variables de entorno (regla 12). Haz esto:
    - Un script scripts/probar_correo.py que envía un correo de prueba por Brevo e imprime el error legible si el remitente no está
      verificado. Si Brevo rechaza un envío en producción, la API devuelve un error claro y lo registra.
    - IA gratuita (sin tarjeta): hoy core/ia.py solo habla con Anthropic, que es de pago. Agrega el proveedor Google Gemini y hazlo el
-     predeterminado (IA_PROVEEDOR=gemini|anthropic; GEMINI_API_KEY; IA_MODELO con valor por defecto gemini-flash-latest (gemini-2.5-flash ya no está disponible para cuentas nuevas), cambiable sin tocar
+     predeterminado (IA_PROVEEDOR=gemini|anthropic; GEMINI_API_KEY; IA_MODELO con valor por defecto gemini-3.1-flash-lite (gemini-2.5-flash ya no está disponible para cuentas nuevas y gemini-flash-latest se cuelga con nuestra clave), cambiable sin tocar
      código). Llamada: POST https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent con el encabezado
      x-goog-api-key, systemInstruction, contents y generationConfig.responseMimeType="application/json"; si el modelo lo permite,
      desactiva el «pensamiento» (thinkingBudget 0) para no gastar tokens. La interfaz json_estructurado no cambia, así que CU-07, CU-23 y
