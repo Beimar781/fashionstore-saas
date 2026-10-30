@@ -30,6 +30,13 @@ class AuthRepository {
     return _guardar(respuesta);
   }
 
+  /// CU-02: pide el correo de restablecimiento. El servidor responde siempre lo mismo, exista o no la cuenta; el enlace del correo abre la web.
+  Future<String> olvidePassword({String? codigoEmpresa, required String email}) async {
+    final codigo = (codigoEmpresa ?? '').trim();
+    final r = await _api.post('/auth/olvide-password', {'codigo_empresa': codigo.isEmpty ? null : codigo, 'email': email.trim()}, autenticado: false);
+    return r['detail'] as String? ?? 'Si los datos son correctos, recibirá un correo con el enlace.';
+  }
+
   /// Sesión guardada en el dispositivo (permite continuar sin conexión).
   Future<Sesion?> sesionLocal() async {
     final filas = await (await _db).query('sesion', where: 'id = 1');

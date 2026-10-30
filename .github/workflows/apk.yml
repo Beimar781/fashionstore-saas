@@ -22,6 +22,10 @@ jobs:
             echo "::error::Falta la variable API_URL (Settings → Secrets and variables → Actions → Variables). Ejemplo: https://backend-produccion.up.railway.app/api"
             exit 1
           fi
+          case "$API_URL" in
+            https://*/api) ;;
+            *) echo "::error::API_URL debe empezar con https:// y terminar en /api (el APK de release no admite tráfico sin cifrar)."; exit 1 ;;
+          esac
 
       # Firebase (avisos push nativos): google-services.json no se sube al repositorio; se guarda su contenido en el secreto GOOGLE_SERVICES_JSON
       # (Settings → Secrets and variables → Actions → Secrets). Si no existe, el APK se compila sin Firebase y los avisos se muestran dentro de la app.

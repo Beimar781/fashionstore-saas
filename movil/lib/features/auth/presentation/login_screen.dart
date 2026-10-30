@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/api_client.dart';
+import '../data/auth_repository.dart';
 import 'auth_controller.dart';
 
 /// CU-02 · Inicio de sesión con código de empresa, correo y contraseña.
@@ -41,6 +43,21 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _email.text,
           password: _password.text,
         );
+  }
+
+  /// Pide al servidor el correo para restablecer la contraseña con el código de empresa y el correo escritos en el formulario.
+  Future<void> _olvideMiPassword() async {
+    final mensajes = ScaffoldMessenger.of(context);
+    if (!_email.text.contains('@')) {
+      mensajes.showSnackBar(const SnackBar(content: Text('Escriba su correo para enviarle el enlace de restablecimiento.')));
+      return;
+    }
+    try {
+      final detalle = await context.read<AuthRepository>().olvidePassword(codigoEmpresa: _codigo.text, email: _email.text);
+      mensajes.showSnackBar(SnackBar(content: Text(detalle)));
+    } on ApiException catch (e) {
+      mensajes.showSnackBar(SnackBar(content: Text(e.mensaje)));
+    }
   }
 
   @override
@@ -108,7 +125,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(auth.error!, style: TextStyle(color: esquema.onErrorContainer)),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(onPressed: _olvideMiPassword, child: const Text('¿Olvidó su contraseña?')),
+                    ),
+                    const SizedBox(height: 4),
                     FilledButton(
                       onPressed: auth.cargando ? null : _entrar,
                       child: auth.cargando

@@ -9,6 +9,7 @@ import '../data/vestidor_repository.dart';
 import '../domain/cuerpo.dart';
 import '../domain/guia.dart';
 import '../domain/metricas.dart';
+import 'contador_fps.dart';
 import 'vestidor_controller.dart';
 
 /// CU-06 · Vestidor virtual: la cámara muestra al cliente y la prenda se dibuja sobre sus hombros y torso. Solo prendas superiores.
@@ -34,6 +35,7 @@ class _VestidorScreenState extends State<VestidorScreen> with WidgetsBindingObse
   DetectorPose? _detector;
   bool _ocupado = false;
   bool _permisoDenegado = false;
+  bool _verFps = false;
   String? _errorCamara;
 
   @override
@@ -157,7 +159,7 @@ class _VestidorScreenState extends State<VestidorScreen> with WidgetsBindingObse
       builder: (context, _) => Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: Text(widget.nombre),
+          title: GestureDetector(onLongPress: () => setState(() => _verFps = !_verFps), child: Text(widget.nombre)), // mantener presionado: contador de FPS
           actions: [
             if (_camaras.length > 1)
               IconButton(
@@ -171,7 +173,10 @@ class _VestidorScreenState extends State<VestidorScreen> with WidgetsBindingObse
             IconButton(tooltip: 'FPS y latencia', icon: Icon(_c.depuracion ? Icons.bug_report : Icons.bug_report_outlined), onPressed: _c.alternarDepuracion),
           ],
         ),
-        body: _cuerpo(context),
+        body: Stack(children: [
+          Positioned.fill(child: _cuerpo(context)),
+          if (_verFps) const Positioned(right: 8, top: 8, child: ContadorFps()),
+        ]),
       ),
     );
   }
