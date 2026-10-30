@@ -2,7 +2,8 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -34,3 +35,20 @@ class PreferenciaCliente(Base):
     cliente_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
     empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
     personalizar: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ArAsset(Base):
+    """CU-06 · Imagen PNG con fondo transparente de una prenda superior en un color, con sus puntos de anclaje. La talla solo cambia la escala."""
+
+    __tablename__ = "ar_assets"
+    __table_args__ = (UniqueConstraint("empresa_id", "producto_id", "color_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
+    producto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("productos.id", ondelete="CASCADE"))
+    color_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("colores.id"))
+    ruta: Mapped[str] = mapped_column(String(300))
+    ancho: Mapped[int] = mapped_column(Integer)
+    alto: Mapped[int] = mapped_column(Integer)
+    anclaje: Mapped[dict] = mapped_column(JSONB)
+    actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

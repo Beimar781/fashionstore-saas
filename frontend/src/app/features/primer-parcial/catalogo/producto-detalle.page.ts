@@ -6,13 +6,14 @@ import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { Categoria, Coleccion, ColorCatalogo, GENEROS, GrupoTalla, Marca, ProductoDetalle } from '../../../core/catalogo.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { alternar, tallasDeCategoria } from './catalogo.util';
+import { VestidorProductoComponent } from './vestidor-producto.component';
 
 interface FilaVariante { id: number; sku: string; talla: string; color: string; precio: string; barras: string; activa: boolean; }
 
 /** CU-18 · Detalle del producto: datos, variantes (SKU), fotografías y retiro del catálogo. */
 @Component({
   selector: 'app-producto-detalle',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, VestidorProductoComponent],
   template: `
     <div class="page">
       <a routerLink="/empresa/catalogo/productos" class="small">← Productos</a>
@@ -88,6 +89,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
             } @empty { <p class="muted small">Todavía no hay fotografías: el producto se verá sin imagen en la tienda.</p> }
           </div>
         </section>
+        <app-vestidor-producto [productoId]="prod.id" />
       } @else { <div class="empty">Cargando…</div> }
     </div>`,
   styles: `

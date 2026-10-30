@@ -39,7 +39,7 @@ Hay dos tablas, igual que las dos zonas de código: **SaaS** (`backend/app/modul
 | Aislamiento multitenant (5.3.1) | `core/tenant.py` (`TenantRepository`) | todas las rutas de empresa | — | — | `test_aislamiento_multitenant.py` (4 pruebas + 3 flujos) |
 
 Pendientes del SaaS, por fase (se agregan a esta tabla al construirlos):
-ninguno: solo falta el vestidor virtual (CU-06, fase I, primer parcial).
+ninguno: el vestidor virtual (CU-06, fase I) ya está construido; su cámara y su rendimiento solo se comprueban con el APK en un celular.
 
 ### Función transversal (sin caso de uso)
 
@@ -80,7 +80,7 @@ pruebas en `backend/tests/primer_parcial/`.
 | ventas (P7) | CU-30 Pago en caja y comprobante | `ventas/cu30_pago_en_caja` (+ `core/impuestos.py`, adaptador del servicio de impuestos; tarjeta por `cu32_pago_electronico`) | `POST /api/caja/ventas/{id}/cobrar` (efectivo), `GET …/{id}/comprobante`; con tarjeta `POST /api/pagos/pedidos/{id}/iniciar` y `…/{pago}/confirmar` | `primer-parcial/ventas/caja.page.ts`, `pago-tarjeta.component.ts` | — | `primer_parcial/test_cu30_pago_en_caja.py` (5 pasos + 11: sin stock a mitad del cobro, desde una reserva) |
 | ventas (P7) | CU-32 Pago electrónico | `ventas/cu32_pago_electronico` (+ `pasarela.py`: Stripe de prueba o simulada) | `GET /api/pagos/config`, `GET/DELETE …/tarjetas`, `POST …/pedidos/{id}/iniciar`, `POST …/{id}/confirmar`, `POST …/{id}/reconciliar`, `GET …/{id}` | `primer-parcial/ventas/checkout.page.ts` (formulario de tarjeta y resultado), `core/pagos/stripe-js.service.ts` | — | `primer_parcial/test_cu32_pago_electronico.py` (5 pasos + 11), `test_cu32_pasarela_stripe.py` (10, con Stripe simulado en memoria) |
 | reportes (P10) | CU-27 Ventas de la sucursal | `reportes/cu27_ventas_sucursal` | `GET /api/reportes/sucursal/resumen`, `GET …/ventas`, `GET …/ventas/{id}` | `primer-parcial/reportes/ventas-sucursal.page.ts` (Encargado) | — | `primer_parcial/test_cu27_ventas_sucursal.py` (5 pasos + 4) |
-| ia (P9) | CU-06 Vestidor virtual (RA) | — | — | — | — | — |
+| ia (P9) | CU-06 Vestidor virtual (RA) | `ia/cu06_vestidor` (`imagen.py` valida el PNG; escala por talla y solo prendas superiores en `service.py`) | `GET /api/vestidor/productos/{id}`, `PUT …/{id}/colores/{color_id}` (sube el PNG), `DELETE …/{id}/colores/{color_id}` | Administrador: `primer-parcial/catalogo/vestidor-producto.component.ts` (en el detalle del producto) | `primer_parcial/ia/vestidor/` (`domain`: One Euro, anclaje, guía y bloqueo, métricas; `data`: `DetectorMlKit` y repositorio; `presentation`: pantalla con cámara y vista de FPS) | `test_cu06_vestidor.py` (11 pruebas: PNG, 800 px, reemplazo, solo prendas superiores, anclaje, roles, aislamiento); móvil: `test/vestidor_test.dart` (25 pruebas de la lógica pura) |
 | ia (P9) | CU-07 Asistente y recomendador | `ia/cu07_asistente` (usa la búsqueda del CU-04 vía `modules/catalogo/publico.py`) | `POST /api/asistente/chat`, `GET /api/asistente/recomendaciones`, `GET …/outfit`, `POST …/interacciones`, `GET/PUT …/privacidad`, `DELETE …/historial` | `primer-parcial/ia/asistente.page.ts`, `core/ia/aprendizaje.service.ts` (avisa lo que el cliente busca y mira desde `catalogo.page.ts` y `prenda.page.ts`) | — | `primer_parcial/test_cu07_asistente.py` (12 pruebas: reglas, IA con doble en memoria, stock, contexto, plan, aislamiento), `test_cu07_perfil.py` (13: perfil de gustos, motivos, ofertas, outfits, IA que elige y se valida, privacidad) |
 
 ## Esquema de la Fase A (migración 0003)

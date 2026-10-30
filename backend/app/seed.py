@@ -19,6 +19,7 @@ from app.seed_abastecimiento import cargar as cargar_abastecimiento
 from app.seed_catalogo import cargar as cargar_catalogo
 from app.seed_reservas import cargar as cargar_reservas
 from app.seed_bitacora import cargar as cargar_bitacora
+from app.seed_vestidor import cargar_vestidor
 from app.seed_ventas import cargar as cargar_ventas, cargar_caja, cargar_devoluciones, cargar_historial, cargar_perfil_cliente, cargar_conflicto_offline
 
 SUPER_EMAIL, SUPER_PASS = "superadmin@fashionstore.com", "Super2026*"
@@ -117,6 +118,8 @@ def ejecutar(db: Session) -> None:
         cargar_perfil_cliente(db, empresa)
         db.flush()
         cargar_conflicto_offline(db, empresa)
+        db.flush()
+        cargar_vestidor(db, empresa)  # Fase I: PNG de demostración de las camisas y polos
     db.flush()
     cargar_bitacora(db)  # Fase J: ejemplos de la bitácora
     db.commit()

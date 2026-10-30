@@ -5,6 +5,8 @@ import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart' show fechaCorta;
 import '../../../features/offline/presentation/offline_controller.dart';
+import '../../ia/vestidor/data/vestidor_repository.dart';
+import '../../ia/vestidor/presentation/vestidor_screen.dart';
 import '../data/catalogo_repository.dart';
 
 /// Catálogo del cliente (CU-03, CU-04): busca en línea y, si no hay conexión, usa el catálogo descargado (CU-37) avisando de cuándo es (RN16).
@@ -125,6 +127,7 @@ class _DetallePrenda extends StatefulWidget {
 }
 
 class _DetallePrendaState extends State<_DetallePrenda> {
+  late final VestidorRepository _vestidor = VestidorRepository(context.read<AuthRepository>().api);
   int? _sucursalId;
   Map<String, dynamic>? _opciones;
   String? _mensaje;
@@ -133,6 +136,13 @@ class _DetallePrendaState extends State<_DetallePrenda> {
   void initState() {
     super.initState();
     _cargar();
+    _vestidor.precargar(widget.prenda['id'] as int);  // el PNG del vestidor queda listo mientras el cliente mira la ficha
+  }
+
+  void _probar() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => VestidorScreen(repo: _vestidor, productoId: widget.prenda['id'] as int, nombre: '${widget.prenda['nombre']}'),
+    ));
   }
 
   Future<void> _cargar() async {
@@ -160,7 +170,9 @@ class _DetallePrendaState extends State<_DetallePrenda> {
       padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${widget.prenda['nombre']}', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _probar, icon: const Icon(Icons.checkroom), label: const Text('Probar en el vestidor'))),
+        const SizedBox(height: 4),
         DropdownButtonFormField<int?>(
           initialValue: _sucursalId,
           decoration: const InputDecoration(labelText: 'Disponibilidad en'),

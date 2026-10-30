@@ -99,6 +99,9 @@ ETIQUETAS: list[Etiqueta] = [
     E("POST", "/inventario/recepciones/{lote_id}/recibir", "RECIBIR", "lote", "Recibió el lote[ {codigo}] en la sucursal"),
     E("POST", "/inventario/sucursal/movimientos", "AJUSTAR", "inventario", "Ajustó el inventario[: {tipo} de {cantidad} unidad(es)]"),
     E("PUT", "/inventario/sucursal/variantes/{variante_id}/umbral", "MODIFICAR", "inventario", "Cambió el umbral mínimo de existencias de la variante #{variante_id}"),
+    # ---- vestidor virtual ----
+    E("PUT", "/vestidor/productos/{producto_id}/colores/{color_id}", "MODIFICAR", "vestidor", "Subió la imagen del vestidor virtual del producto #{producto_id} (color #{color_id})"),
+    E("DELETE", "/vestidor/productos/{producto_id}/colores/{color_id}", "ELIMINAR", "vestidor", "Quitó la imagen del vestidor virtual del producto #{producto_id} (color #{color_id})"),
     # ---- reservas ----
     E("POST", "/reservas", "CREAR", "reserva", "Registró la reserva[ {codigo}]"),
     E("POST", "/reservas/{reserva_id}/cancelar", "CANCELAR", "reserva", "Canceló la reserva[ {codigo}]"),

@@ -23,7 +23,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 | ~~CU-08, CU-11, CU-12, CU-32 carrito, compra y pagos~~ (hechos en la Fase D) | `orders`, `payments` | `primer_parcial/reservas` y `primer_parcial/ventas` |
 | ~~CU-24, CU-25 reservas de sucursal~~ (hechos en la Fase C) | `reservations` | `primer_parcial/reservas` |
 | ~~CU-27, CU-28, CU-30 ventas y punto de venta~~ (hechos en la Fase E) | `pos`, `orders` | `primer_parcial/ventas` y `primer_parcial/reportes` |
-| CU-06 vestidor virtual (RA); ~~CU-07 asistente IA~~ (hecho en la Fase G) | `infer_service`, `ai` | P9 |
+| ~~CU-06 vestidor virtual (RA)~~ (hecho en la Fase I; falta medir FPS en un celular); ~~CU-07 asistente IA~~ (hecho en la Fase G) | `infer_service`, `ai` | P9 |
 
 Riesgo a planificar: el vestidor virtual del móvil está en React Native; en Flutter requiere cámara + estimación de pose
 (el servicio de inferencia en Python puede reutilizarse tal cual detrás de la API).

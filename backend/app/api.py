@@ -39,6 +39,7 @@ from app.modules.reportes.cu21_ventas_y_reservas.router import router as cu21_re
 from app.modules.reportes.cu22_indicadores.router import router as cu22_indicadores
 from app.modules.ia.cu23_reportes_generativos.router import router as cu23_reportes_generativos
 from app.modules.ia.cu42_analitica_ml.router import router as cu42_analitica
+from app.primer_parcial.ia.cu06_vestidor.router import router as cu06_vestidor
 from app.primer_parcial.ia.cu07_asistente.router import router as cu07_asistente
 from app.modules.offline.cu37_catalogo_offline.router import router as cu37_catalogo_offline
 from app.modules.offline.cu38_sincronizar.router import router as cu38_sincronizar
@@ -114,6 +115,8 @@ api_router.include_router(cu22_indicadores)
 api_router.include_router(cu23_reportes_generativos)
 api_router.include_router(cu42_analitica)
 api_router.include_router(cu07_asistente)
+# P9 · Vestidor virtual (CU-06, primer parcial): el recurso AR de cada prenda superior por color
+api_router.include_router(cu06_vestidor)
 # P8 · Operación offline y sincronización (CU-37 a CU-40)
 api_router.include_router(cu37_catalogo_offline)
 api_router.include_router(cu38_sincronizar)

@@ -13,11 +13,12 @@ Del plan original solo falta **CU-06** (vestidor virtual, fase I). La clase del 
 | F Devoluciones | Hecha | `b1bc631` | 41 |
 | G Reportes e IA | Hecha | `192228b`, `5a27222` | 07, 21, 22, 23, 36, 42 |
 | H Offline | Hecha | `062d933` | 37, 38, 39, 40 |
-| **J Bitácora** | **Siguiente** | | transversal, sin CU |
-| **K Ajustes de la clase** | Pendiente | | 3 planes (prueba gratuita) · push de devoluciones · compra offline en conflicto |
-| I Vestidor virtual | Pendiente (al final) | | 06 |
+| J Bitácora | Hecha | `8589413` | transversal, sin CU |
+| K Ajustes de la clase | Hecha | `8e286b5` | 3 planes (prueba gratuita) · push de devoluciones · compra offline en conflicto |
+| Android y APK | Hecho | `94d33f2` | carpeta `movil/android/` y flujo `.github/workflows/apk.yml` |
+| **I Vestidor virtual** | **Siguiente** | | 06 |
 
-Hasta la Fase H: 476 pruebas del backend pasando, la web compila y la última migración es la 0011.
+Hasta la Fase K: 533 pruebas del backend y 22 de Flutter pasando, la web compila y la última migración es la 0014.
 
 Fuentes (todo en `D:\proyectos\1er parcial si2\`):
 - `1er-parcialSI2\backend-ecommerce-si2`: Django (apps catalog, inventory, orders, payments, pos, promotions, reservations, suppliers, reports, ai, notifications).
@@ -138,7 +139,7 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 1. Un paquete por carpeta y un caso de uso por subcarpeta, en la zona que le toca según la sección 3 (SaaS o `primer_parcial`): `<zona>/<paquete>/cuNN_<nombre>/{router,service,repository,schemas}.py`. Nada de lógica suelta fuera de un CU.
 2. Modelo con `empresa_id` y repositorio que hereda de `TenantRepository`; la empresa sale siempre del token.
 3. Únicos por empresa: `slug`, `sku`, `codigo`, `nombre`. Imágenes en una carpeta por empresa. Stock por sucursal de la empresa.
-4. Una migración Alembic nueva por fase (0003 fue la A; la última subida es la 0011; la siguiente es la 0012). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
+4. Una migración Alembic nueva por fase (0003 fue la A; la última subida es la 0014; la siguiente es la 0015). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
 5. Textos de error iguales a los de la ficha del CU en el documento (Anexo B para los conservados).
 6. Pruebas en `backend/tests/test_cuNN_*.py`, una por paso de la ficha, más una de aislamiento entre empresas.
 7. Funciones por plan (IA, reportes) con `exigir_funcionalidad(...)`.
@@ -155,7 +156,7 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 
 ## 6. Orden recomendado
 
-Las fases A a H están hechas. Lo que sigue: **J** (bitácora), **K** (ajustes de la clase) y al final **I** (vestidor virtual), que es lo más riesgoso porque necesita cámara y estimación de pose. J va antes de K y de I para que lo nuevo ya quede registrado en la bitácora.
+Las fases A a K están hechas. Solo queda **I** (vestidor virtual), que es lo más riesgoso porque necesita cámara y estimación de pose.
 
 ## 7. Prompts para Claude Code
 
@@ -415,4 +416,5 @@ Mejoras para la versión en Flutter:
 - Pasar al Word de la presentación 2 todo lo de `docs/MENSAJES_PENDIENTES_WORD.md` (mensajes de CU-08, 09, 10, 11, 12, 24, 25, 32 y RF11, más lo que salga de las fases siguientes).
 - `CLAUDE.md` y este plan nombran a Claude Code: decidir qué hacer con ellos antes de la entrega final.
 - Revisar en Word los números de página del índice del documento.
+- Al desplegar con HTTPS: quitar `usesCleartextTraffic` de `movil/android/app/src/main/AndroidManifest.xml` y poner la URL real en la variable `API_URL` de GitHub.
 - Word: RN06 pasa a tres planes y se agregan la bitácora, el push y la compra offline en conflicto; todo queda listado en `docs/MENSAJES_PENDIENTES_WORD.md`.

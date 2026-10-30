@@ -497,3 +497,38 @@ Agregar a RF11 el envío de avisos push (campana + push), las tablas `dispositiv
 
 Agregar la operación COMPRA al CU-37/38 (tipos de operación offline) y su flujo alternativo «sin existencias» (conflicto + aviso al cliente); en el CU-40, la opción «descartar y devolver el dinero» que invoca CU-41; en el CU-41, el paso «revisar la prenda (sin daños, sin desgaste, con etiquetas)» antes del plazo y del inventario;
 y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
+
+---
+
+# Fase I · Vestidor virtual (CU-06)
+
+## Reglas y decisiones
+
+- **Solo prendas superiores.** En esta versión el vestidor funciona con camisas, polos, chaquetas (y prendas equivalentes: camisetas, poleras, blusas, casacas, sacos, chompas y sudaderas), reconocidas por el nombre de su categoría. Para cualquier otra prenda el cliente ve «Esta prenda no admite vestidor.» y el Administrador no puede subirle imagen.
+- **Un recurso por producto y color** (la talla solo cambia la escala): el Administrador sube un **PNG ya recortado** (con fondo transparente). **No hay recorte automático de fondo.** El servidor comprueba que sea un PNG de verdad (por su firma, no por el nombre del archivo), que tenga transparencia
+  (al menos el 2 % de la imagen transparente: un PNG con fondo sólido se rechaza), lo reduce a **800 px de ancho** y lo guarda en la carpeta de imágenes de la empresa. Subir otra vez el mismo color reemplaza el anterior y borra el archivo viejo.
+- **Puntos de anclaje por prenda:** altura de la línea de hombros, ancho de hombros, altura de la cadera y ajuste fino de escala (valores de 0 a 1 dentro de rangos válidos). La **escala por talla** se da por código de talla (XS 0.92, S 0.96, M 1.0, L 1.05, XL 1.10...); las tallas numéricas u otras usan 1.0.
+- **La cámara y la detección de pose ocurren solo en el teléfono.** Se usa ML Kit (plan A) con la cámara a resolución media; ningún cuadro de la cámara se envía al servidor. Los puntos del cuerpo (hombros y caderas) pasan por una interfaz común para poder cambiar a MoveNet con tflite (plan B) sin tocar el anclaje.
+- **Metas de rendimiento:** prenda visible en menos de 1 segundo y 15 FPS o más en un teléfono de gama media. La pantalla tiene una vista de depuración (botón del insecto) que mide FPS, latencia y tiempo hasta ver la prenda.
+- **Guía en pantalla:** «Ponte frente a la cámara», «Sube la cámara hasta que se vean tus hombros», «Acércate un poco», «Aléjate un poco», «Ponte de frente a la cámara». Umbral de confianza 0.30 y bloqueo con 2 cuadros buenos.
+- **Quién usa qué:** el Administrador sube y quita las imágenes; el Cliente consulta lo que necesita para probarse la prenda (la información y el PNG se precargan al abrir la ficha del producto). Sin plan especial: no depende de la IA del plan Profesional.
+- **Tabla nueva:** `ar_assets` (producto, color, ruta del PNG, medidas y anclaje). Un recurso por producto y color.
+
+## Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| El Cliente consulta una prenda que no es superior | «Esta prenda no admite vestidor.» | 200 (con `admite: false`) | Pendiente |
+| El Administrador sube imagen a una prenda que no es superior | «Esta prenda no admite vestidor: solo se aceptan camisas, polos y chaquetas.» | 422 | Pendiente |
+| Archivo que no es PNG, está dañado o no tiene fondo transparente | «El archivo debe ser una imagen PNG con fondo transparente.» | 422 | Pendiente |
+| Imagen más pesada que el máximo de la empresa | «La imagen no puede pesar más de {mb} MB.» | 422 | Pendiente |
+| Color que no pertenece a ninguna variante del producto | «El producto no tiene prendas de ese color.» | 422 | Pendiente |
+| Puntos de anclaje fuera de rango | «Los puntos de anclaje de la prenda no son válidos.» | 422 | Pendiente |
+| Quitar una imagen que no existe | «La prenda no tiene imagen de vestidor en ese color.» | 404 | Pendiente |
+| Prenda superior sin imagen en ese color (móvil) | «Esta prenda todavía no tiene imagen para el vestidor.» | (pantalla) | Pendiente |
+| Permiso de cámara denegado (móvil) | «Necesitamos la cámara para el vestidor. Permita el acceso en Ajustes → Aplicaciones → FashionStore → Permisos y vuelva a abrir el vestidor.» | (pantalla) | Pendiente |
+
+## Para el Word
+
+Completar el CU-06 con: flujo del Administrador (subir el PNG recortado por color y ajustar el anclaje), flujo del Cliente (abrir el vestidor desde la ficha de la prenda, guía en pantalla, elegir color y talla), la excepción «prenda no admitida», la tabla `ar_assets`,
+la regla de que el procesamiento de la cámara es local (privacidad) y las metas de rendimiento. Agregar la interfaz de detección (plan A: ML Kit; plan B: MoveNet con tflite) a la vista de arquitectura del móvil. Las rutas nuevas quedaron en la bitácora (regla 16).
