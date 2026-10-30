@@ -27,3 +27,7 @@ El código base del primer parcial es Django/React Native; se **porta** a FastAP
 
 Riesgo a planificar: el vestidor virtual del móvil está en React Native; en Flutter requiere cámara + estimación de pose
 (el servicio de inferencia en Python puede reutilizarse tal cual detrás de la API).
+
+## Despliegue (Prompt L): lo que falta del lado del equipo
+
+El código y la guía están listos (`docs/DESPLIEGUE.md`). Falta: crear las cuentas y las claves (Railway, Brevo, Stripe de prueba, Google AI Studio, Firebase), desplegar, y comprobar con las claves reales el correo, el pago de prueba, la IA y el push (web y móvil). Sin cada clave, esa función sigue en modo simulado.

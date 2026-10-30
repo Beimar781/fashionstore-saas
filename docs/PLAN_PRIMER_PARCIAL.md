@@ -1,7 +1,7 @@
 # Plan: casos de uso del primer parcial dentro del SaaS
 
 Base: el monorepo `fashionstore-saas` (FastAPI + Angular PWA + Flutter), con aislamiento por `empresa_id`. Ya están hechos CU-02, 13, 14, 33, 34 y 35.
-Del plan original solo falta **CU-06** (vestidor virtual, fase I). La clase del 29/10 agregó dos fases: **J** (bitácora) y **K** (tres ajustes de la ingeniera).
+Todos los casos de uso del plan están hechos. La clase del 29/10 agregó las fases **J** (bitácora) y **K** (tres ajustes de la ingeniera). Lo que sigue es la **Fase L (preparar el despliegue)**, el despliegue en la nube, la prueba conjunta web y móvil y el documento.
 
 | Fase | Estado | Commit | CU |
 |---|---|---|---|
@@ -16,9 +16,10 @@ Del plan original solo falta **CU-06** (vestidor virtual, fase I). La clase del 
 | J Bitácora | Hecha | `8589413` | transversal, sin CU |
 | K Ajustes de la clase | Hecha | `8e286b5` | 3 planes (prueba gratuita) · push de devoluciones · compra offline en conflicto |
 | Android y APK | Hecho | `94d33f2` | carpeta `movil/android/` y flujo `.github/workflows/apk.yml` |
-| **I Vestidor virtual** | **Siguiente** | | 06 |
+| I Vestidor virtual | Hecha (falta medir FPS en un celular) | `d7bb3f7` | 06 |
+| **L Preparar el despliegue** | **Siguiente** | | Railway, claves reales, push móvil con Firebase, prendas de demostración, guía paso a paso |
 
-Hasta la Fase K: 533 pruebas del backend y 22 de Flutter pasando, la web compila y la última migración es la 0014.
+Hasta la Fase I: 544 pruebas del backend y 47 de Flutter pasando, la web compila y la última migración es la 0015.
 
 Fuentes (todo en `D:\proyectos\1er parcial si2\`):
 - `1er-parcialSI2\backend-ecommerce-si2`: Django (apps catalog, inventory, orders, payments, pos, promotions, reservations, suppliers, reports, ai, notifications).
@@ -139,7 +140,7 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 1. Un paquete por carpeta y un caso de uso por subcarpeta, en la zona que le toca según la sección 3 (SaaS o `primer_parcial`): `<zona>/<paquete>/cuNN_<nombre>/{router,service,repository,schemas}.py`. Nada de lógica suelta fuera de un CU.
 2. Modelo con `empresa_id` y repositorio que hereda de `TenantRepository`; la empresa sale siempre del token.
 3. Únicos por empresa: `slug`, `sku`, `codigo`, `nombre`. Imágenes en una carpeta por empresa. Stock por sucursal de la empresa.
-4. Una migración Alembic nueva por fase (0003 fue la A; la última subida es la 0014; la siguiente es la 0015). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
+4. Una migración Alembic nueva por fase (0003 fue la A; la última subida es la 0015; la siguiente es la 0016). **Nunca se edita una migración ya subida**: si hay que corregir una restricción, va en la nueva (como hizo la 0006 con las referencias de inventario).
 5. Textos de error iguales a los de la ficha del CU en el documento (Anexo B para los conservados).
 6. Pruebas en `backend/tests/test_cuNN_*.py`, una por paso de la ficha, más una de aislamiento entre empresas.
 7. Funciones por plan (IA, reportes) con `exigir_funcionalidad(...)`.
@@ -156,7 +157,7 @@ Los puntos 1 a 4 los cubre la tabla de arriba; no hace falta documento nuevo, po
 
 ## 6. Orden recomendado
 
-Las fases A a K están hechas. Solo queda **I** (vestidor virtual), que es lo más riesgoso porque necesita cámara y estimación de pose.
+Las fases A a K e I están hechas. Sigue **L** (preparar el despliegue); después se despliega y se prueba todo junto (web y móvil).
 
 ## 7. Prompts para Claude Code
 
@@ -354,6 +355,75 @@ primer_parcial/ia, portando la idea del módulo features/fitting del móvil viej
 backend. Lee la sección 9 del plan («Vestidor virtual») y aplica sus mejoras de rendimiento (meta: prenda visible en menos de 1 segundo y 15 FPS o más). Primero dime qué librerías de cámara y detección de pose usarías en Flutter (plan A y plan B) y qué riesgos ves; espera mi OK antes de programar.
 ```
 
+**Prompt L (preparar el despliegue en Railway, con todo funcional)**
+```
+Prepara el proyecto para desplegarlo TODO en Railway (el enunciado exige la nube) y que cada función quede real: correo con Brevo, pago
+con Stripe de prueba, IA con la API GRATUITA de Google Gemini, push web y push móvil con Firebase. No agregues casos de uso nuevos. Arquitectura:
+un proyecto de Railway con tres servicios: Postgres (plugin de Railway), backend (carpeta backend, Dockerfile) y frontend (carpeta
+frontend, Dockerfile con nginx). Las cuentas y las claves las crea el usuario; tú nunca las pides en el chat ni las escribes en el
+código: solo en variables de entorno (regla 12). Haz esto:
+1. Backend en Railway:
+   - El Dockerfile debe escuchar en el puerto de la variable PORT y arrancar con --proxy-headers para que la IP de la bitácora sea la real.
+   - DATABASE_URL llega de Railway como postgresql://...: conviértela a postgresql+psycopg:// (app y alembic).
+   - Las imágenes (productos y PNG del vestidor) siguen en disco, en MEDIA_DIR=/app/media, que en Railway será un Volume montado en esa
+     ruta; el seed vuelve a crear las del demo si el volumen está vacío.
+   - Un endpoint /salud (health check). El backend se niega a arrancar en producción con la SECRET_KEY por defecto.
+   - CARGAR_DATOS_DEMO=true: al arrancar, después de las migraciones, carga el seed solo si la base está vacía (sin duplicar nunca).
+   - Un script scripts/probar_correo.py que envía un correo de prueba por Brevo e imprime el error legible si el remitente no está
+     verificado. Si Brevo rechaza un envío en producción, la API devuelve un error claro y lo registra.
+   - IA gratuita (sin tarjeta): hoy core/ia.py solo habla con Anthropic, que es de pago. Agrega el proveedor Google Gemini y hazlo el
+     predeterminado (IA_PROVEEDOR=gemini|anthropic; GEMINI_API_KEY; IA_MODELO con valor por defecto gemini-flash-latest (gemini-2.5-flash ya no está disponible para cuentas nuevas), cambiable sin tocar
+     código). Llamada: POST https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent con el encabezado
+     x-goog-api-key, systemInstruction, contents y generationConfig.responseMimeType="application/json"; si el modelo lo permite,
+     desactiva el «pensamiento» (thinkingBudget 0) para no gastar tokens. La interfaz json_estructurado no cambia, así que CU-07, CU-23 y
+     CU-42 siguen igual. Un error 429 (límite gratuito), 503 (modelo saturado) o cualquier fallo cae al modo de respaldo con reglas locales, como hoy. Pruebas con
+     un doble en memoria para ambos proveedores. Si la clave no existe, todo sigue en modo de respaldo.
+   - FCM_CREDENCIALES acepta también el contenido JSON de la cuenta de servicio (variable FCM_CREDENCIALES_JSON), porque en Railway no
+     hay archivos.
+2. Frontend en Railway: Dockerfile en dos etapas (compila con node, sirve con nginx en el puerto PORT). La dirección de la API no se
+   graba al compilar: al arrancar el contenedor se genera /config.js con la variable API_URL (window.__API_URL__, que api.config.ts ya
+   lee), y index.html lo carga primero (en desarrollo, un config.js vacío). nginx devuelve index.html en las rutas de la app y no guarda
+   en caché ngsw.json, index.html ni config.js. CORS_ORIGINS y FRONTEND_URL del backend llevan la URL pública del frontend. Comprueba
+   que el service worker, el manifest y el push web funcionan por HTTPS.
+3. Móvil: quita usesCleartextTraffic del AndroidManifest. Integra Firebase Cloud Messaging (firebase_core, firebase_messaging, el plugin
+   google-services de Gradle y el permiso POST_NOTIFICATIONS de Android 13): la app pide el permiso, registra el token como dispositivo
+   MOVIL en el backend al iniciar sesión, lo quita al cerrar sesión y muestra la notificación nativa con la app cerrada, en segundo
+   plano y abierta. Usa movil/android/app/google-services.json, que el usuario descarga de Firebase para el applicationId actual
+   (com.example.fashionstore_movil) y deja en esa carpeta: si todavía no está, avísame en español y espera; no inventes uno. Sin
+   Firebase el modo actual (avisos dentro de la app) sigue funcionando. El flujo apk.yml compila con ese archivo.
+4. Prendas de demostración reales. En D:\proyectos\1er parcial si2\Imagenes PNG hay 7 PNG con fondo transparente. Cópialos a
+   backend/app/seed_data/prendas/ reducidos a 1200 px de lado mayor, conservando la transparencia, con estos nombres y prendas:
+   - pngwing.com (1).png → camiseta-raglan-gris.png: «Camiseta Raglán Gris» (manga 3/4, gris con mangas oscuras)
+   - pngwing.com (2).png → chaqueta-cuero-negra.png: «Chaqueta de Cuero Negra»
+   - pngwing.com (3).png → polo-blanco.png: «Polo Blanco»
+   - pngwing.com (4).png → camiseta-mostaza.png: «Camiseta Mostaza»
+   - pngwing.com.png → camiseta-beige.png: «Camiseta Beige»
+   - —Pngtree—navy t-shirt template for branding_23265449.png → camiseta-azul-marino.png: «Camiseta Azul Marino»
+   - —Pngtree—olive green t-shirt with dove_23735499.png → camiseta-verde-oliva.png: «Camiseta Verde Oliva Estampada»
+   El seed agrega las 7 prendas a las dos empresas (con precios distintos, en Bs), cada una con su color real, tallas S, M, L y XL
+   dentro del grupo de tallas de su categoría, stock en las sucursales y su imagen como foto del producto y como PNG del vestidor
+   (anchor_config calculado a partir del recuadro visible del PNG: la línea de hombros cerca del borde superior de la prenda; la chaqueta
+   y la manga 3/4 también son prendas superiores). Reemplazan a las prendas de demostración dibujadas con Pillow, que ya no se cargan.
+   Mantén pruebas del seed y del vestidor con estas imágenes y comprueba que cada empresa solo ve sus archivos.
+5. Arregla la prueba test_04_aviso_de_vencimiento_cercano de tests/test_cu36_plan_y_uso.py: falla entre las 20:00 y las 24:00 de Bolivia
+   porque compara con current_date de la base (UTC) y la app usa la fecha de Bolivia (zona_horaria_horas). Usa en la prueba la misma
+   fecha que usa la app.
+6. Archivos de Railway: backend/railway.toml y frontend/railway.toml (builder Dockerfile, health check del backend), y un
+   backend/.env.example completo y comentado con TODAS las variables (SECRET_KEY, DATABASE_URL, CORS_ORIGINS, FRONTEND_URL, MEDIA_DIR,
+   CARGAR_DATOS_DEMO, BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME, STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, IA_PROVEEDOR, GEMINI_API_KEY,
+   ANTHROPIC_API_KEY (opcional), IA_MODELO, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, FCM_PROYECTO, FCM_CREDENCIALES_JSON).
+7. Escribe docs/DESPLIEGUE.md en español, paso a paso para alguien que nunca usó Railway: crear el proyecto desde el repo de GitHub, el
+   plugin de Postgres, los dos servicios con su «Root Directory», el Volume del backend en /app/media, las variables de cada servicio
+   (con referencias como ${{Postgres.DATABASE_URL}}), generar el dominio público de cada servicio (Settings → Networking), el primer
+   arranque con CARGAR_DATOS_DEMO=true, cómo ver los registros, y cómo crear la variable API_URL en GitHub (Settings → Secrets and
+   variables → Actions → Variables) para compilar el APK. Incluye una tabla «Clave · dónde se genera · dónde se pone» con el paso exacto
+   para: SECRET_KEY, Brevo (clave de API y remitente verificado), Stripe (claves de prueba), Google Gemini (clave de API de Google AI Studio: gratis y sin tarjeta),
+   VAPID (scripts/generar_vapid.py) y Firebase (proyecto, app Android, google-services.json y clave privada de la cuenta de servicio).
+   Aclara que Railway cobra por uso después de su crédito de prueba. Actualiza el README con un enlace a esa guía.
+Corre pytest, npm run build, flutter analyze y flutter test, y haz commit. Si algo necesita una clave que aún no existe, ese punto
+queda en modo simulado y me avisas qué falta. Mismas reglas.
+```
+
 ## 8. Cómo probar el móvil
 
 Decisión del equipo: **sin cable y sin emulador**. Mientras se desarrolla, el móvil se prueba con `flutter analyze` y `flutter test` (lógica, sincronización offline y pantallas). Al final, con el backend ya desplegado, se genera la app instalable y se prueba en los celulares de los dos integrantes.
@@ -409,7 +479,8 @@ Mejoras para la versión en Flutter:
 - **Claves de prueba de Stripe** (CU-32): crear la cuenta gratis, activar el *modo de prueba* y copiar `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` a `backend/.env`. El adaptador solo se probó contra un Stripe simulado en memoria; con las claves hay que hacer una compra real de prueba (4242 4242 4242 4242) y ver el pago en el panel de Stripe. Sin claves todo funciona en modo simulado.
 - Cuenta de Brevo para el correo de restablecer contraseña, cuando se despliegue.
 - **Firebase (opcional, Fase K):** para que el push llegue al teléfono con la app cerrada hace falta un proyecto gratis de Firebase (agregar la app Android, bajar `google-services.json` y poner la credencial en `.env`). Sin eso, la app muestra el aviso como notificación local al abrirse o sincronizar. El push web no necesita cuenta, pero exige HTTPS al desplegar (en `localhost` funciona).
-- Decidir dónde desplegar (Render, Railway, un VPS) cuando terminen las fases.
+- Crear las cuentas de **Railway**, **Brevo**, **Stripe** (modo de prueba), **Firebase** y **Google AI Studio** (clave de Gemini, gratis y sin tarjeta) y generar las claves; la tabla «Clave · dónde se genera · dónde se pone» está en `docs/DESPLIEGUE.md` (la escribe el Prompt L). Las claves nunca se pegan en el chat ni en el código: solo en las variables de Railway y en `backend/.env`.
+- Medir FPS y latencia del vestidor virtual en un celular (Fase I) y pasarme los números.
 
 ## 11. Para el final
 

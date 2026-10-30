@@ -7,6 +7,7 @@ import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/home/presentation/home_screen.dart';
 import 'features/offline/data/offline_repository.dart';
+import 'features/notificaciones/data/proveedor_push.dart';
 import 'features/notificaciones/data/push_repository.dart';
 import 'features/notificaciones/presentation/push_controller.dart';
 import 'features/offline/presentation/offline_controller.dart';
@@ -15,28 +16,30 @@ final _mensajero = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(FashionStoreApp(authRepo: AuthRepository()));
+  final authRepo = AuthRepository();
+  runApp(FashionStoreApp(authRepo: authRepo, pushRepo: PushRepository(authRepo.api, proveedor: ProveedorFirebase())));
 }
 
 class FashionStoreApp extends StatelessWidget {
-  const FashionStoreApp({super.key, required this.authRepo});
+  const FashionStoreApp({super.key, required this.authRepo, required this.pushRepo});
 
   final AuthRepository authRepo;
+  final PushRepository pushRepo;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         Provider<AuthRepository>.value(value: authRepo),
-        ChangeNotifierProvider(create: (_) => AuthController(authRepo, antesDeCerrarSesion: PushRepository(authRepo.api).quitarDispositivo)..iniciar()),
+        ChangeNotifierProvider(create: (_) => AuthController(authRepo, antesDeCerrarSesion: pushRepo.quitarDispositivo)..iniciar()),
         // el modo sin conexión sigue a la sesión: al iniciar sesión sincroniza lo pendiente y reintenta mientras haya operaciones sin enviar
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
           create: (_) => OfflineController(OfflineRepository(authRepo.api))..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8))),
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
         ),
-        // avisos push (modo simulado): el dispositivo se registra al iniciar sesión y los avisos pendientes se muestran en el inicio
+        // avisos push: con Firebase el token de FCM se registra al iniciar sesión y la notificación es nativa; sin Firebase (modo simulado) los avisos se muestran en el inicio
         ChangeNotifierProxyProvider<AuthController, PushController>(
-          create: (_) => PushController(PushRepository(authRepo.api)),
+          create: (_) => PushController(pushRepo),
           update: (_, auth, push) => push!..usarSesion(auth.sesion),
         ),
       ],

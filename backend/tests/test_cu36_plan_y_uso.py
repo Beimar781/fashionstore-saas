@@ -1,6 +1,9 @@
 """CU-36 Plan, límites y uso de la empresa — plan, vigencia, límite de sucursales, consumo y funcionalidades; también con la suscripción vencida."""
+from datetime import timedelta
+
 from sqlalchemy import text
 
+from app.modules.reportes.base import hoy_local
 from tests.reportes_util import con_ia, movimiento
 
 
@@ -36,10 +39,11 @@ def test_03_consumo_de_la_empresa(inv, mundo, db, client):
 
 
 def test_04_aviso_de_vencimiento_cercano(inv, mundo, db, client):
-    db.execute(text("UPDATE suscripciones SET fecha_vencimiento = current_date + 5 WHERE empresa_id = :e"), {"e": mundo.a.id})
+    # la fecha de Bolivia (la que usa la app), no current_date de la base (UTC): entre las 20:00 y las 24:00 locales difieren en un día
+    db.execute(text("UPDATE suscripciones SET fecha_vencimiento = :f WHERE empresa_id = :e"), {"e": mundo.a.id, "f": hoy_local() + timedelta(days=5)})
     db.commit()
     p = _plan(client, inv.h_admin)
-    assert p["vigencia"]["dias_restantes"] in (4, 5)
+    assert p["vigencia"]["dias_restantes"] == 5
     assert any(a.startswith("Su suscripción vence en") for a in p["alertas"])
 
 

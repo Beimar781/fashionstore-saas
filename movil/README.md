@@ -10,16 +10,14 @@ esquema local para el Lote 2 (productos locales, operaciones pendientes con esta
 4. Crear un emulador: Android Studio → *Device Manager → Create Device* (por ejemplo Pixel 6, Android 14) → ▶.
    O conectar un celular Android con *Depuración USB* activada.
 
-## Generar las carpetas de plataforma y correr
+## Correr (la carpeta android/ ya está en el repositorio)
 ```powershell
 cd movil
-flutter create . --project-name fashionstore_movil --org bo.fashionstore --platforms=android
-python tools/preparar_android.py        # permiso de Internet + HTTP de desarrollo
 flutter pub get
 flutter run                             # el backend debe estar corriendo en la PC (puerto 8000)
 ```
 - Emulador Android: usa `http://10.0.2.2:8000/api` (ya es el valor por defecto; `10.0.2.2` es el localhost de la PC).
-- Celular físico (misma red Wi‑Fi): `flutter run --dart-define=API_URL=http://192.168.X.X:8000/api`
+- Celular físico (misma red Wi‑Fi): `flutter run --dart-define=API_URL=http://192.168.X.X:8000/api` (solo en depuración: el APK de release ya no admite `http://`; usa el backend de Railway con https)
 - Pruebas: `flutter test`
 
 ## Estructura (por paquetes)

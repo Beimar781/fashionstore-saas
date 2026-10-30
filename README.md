@@ -9,6 +9,8 @@ Plataforma de comercio electrónico **multitenant** para tiendas de ropa. Proyec
 | `movil/` | Aplicación móvil con almacenamiento local | Flutter · Dart · SQLite |
 | `docs/` | Trazabilidad de casos de uso y pendientes | — |
 
+**Despliegue en la nube (Railway):** la guía paso a paso, con la tabla de claves, está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+
 ## Requisitos
 
 - [Python 3.13](https://www.python.org/downloads/)
@@ -94,8 +96,8 @@ muestra el ticket de **Caja**), eligen las prendas y registran la devolución o 
 fija el plazo (15 días por defecto) y consulta todas las notas en **Devoluciones y cambios**. El seed deja una devolución de ejemplo por empresa.
 **Reportes, IA y plan (Fase G):** el seed deja 10 semanas de ventas de demostración. EMP-A (`admin@modaurbana.com`) tiene el plan **Básico**: ve **Reportes**, **Indicadores** y **Mi plan**, y
 **Reportes con IA**, **Analítica con ML** y el **Asistente** del cliente salen bloqueados (🔒). EMP-B (`admin@estiloandino.com`, plan **Profesional**) tiene todo: pida un reporte escrito o dictado con el micrófono
-(Chrome o Edge), vea el pronóstico de demanda y, como `cliente@emp-b.com`, pruebe el **Asistente de compras**. El asistente aprende de lo que el cliente compra, busca y mira (el seed ya deja búsquedas y prendas vistas del cliente demo), y el cliente puede apagarlo o borrarlo en **Mi privacidad**. Sin clave de IA todo funciona con reglas de respaldo; para usar Claude agregue
-`ANTHROPIC_API_KEY=` en `backend/.env` (la clave nunca va en el código ni se sube a git) y reinicie el backend.
+(Chrome o Edge), vea el pronóstico de demanda y, como `cliente@emp-b.com`, pruebe el **Asistente de compras**. El asistente aprende de lo que el cliente compra, busca y mira (el seed ya deja búsquedas y prendas vistas del cliente demo), y el cliente puede apagarlo o borrarlo en **Mi privacidad**. Sin clave de IA todo funciona con reglas de respaldo; para usar la IA real agregue
+`GEMINI_API_KEY=` (Google Gemini, gratis y sin tarjeta; es el proveedor por defecto) o `IA_PROVEEDOR=anthropic` con `ANTHROPIC_API_KEY=` (Claude) en `backend/.env` (la clave nunca va en el código ni se sube a git) y reinicie el backend.
 **Modo sin conexión (Fase H):** el Cajero (`cajero@tienda.com`), el Encargado y el Cliente tienen **Modo sin conexión**: descargue el catálogo con Internet, apague la red (en Chrome: F12 → Network → Offline),
 registre una venta de contado (o una reserva, como cliente) y vuelva a conectar: se envía sola y pasa de «Registrada» a «Confirmada». El seed deja una venta que no alcanzó en el inventario: el Encargado la ve en
 **Conflictos de sincronización** y la reintenta o la descarta. En el móvil (`flutter run`) es la misma pantalla «Modo sin conexión»; el catálogo descargado también se usa si no hay Internet.

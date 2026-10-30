@@ -532,3 +532,39 @@ y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
 
 Completar el CU-06 con: flujo del Administrador (subir el PNG recortado por color y ajustar el anclaje), flujo del Cliente (abrir el vestidor desde la ficha de la prenda, guía en pantalla, elegir color y talla), la excepción «prenda no admitida», la tabla `ar_assets`,
 la regla de que el procesamiento de la cámara es local (privacidad) y las metas de rendimiento. Agregar la interfaz de detección (plan A: ML Kit; plan B: MoveNet con tflite) a la vista de arquitectura del móvil. Las rutas nuevas quedaron en la bitácora (regla 16).
+
+---
+
+# Prompt L · Despliegue en Railway
+
+## Reglas y decisiones (para la vista de despliegue y los requisitos no funcionales)
+
+- **Arquitectura en la nube:** un proyecto de Railway con tres servicios: PostgreSQL (plugin), **backend** (FastAPI en contenedor Docker) y **frontend** (PWA de Angular compilada y servida con nginx, en contenedor Docker). Todo por HTTPS con el dominio público que da Railway. Las imágenes de productos y los PNG del vestidor
+  se guardan en un **Volume** montado en `/app/media` del backend. La app móvil se compila en GitHub Actions y apunta al backend desplegado.
+- **Configuración por variables de entorno** (nada de claves en el código): `DATABASE_URL` (Railway la entrega como `postgresql://`; el backend la convierte solo a `postgresql+psycopg://`), `SECRET_KEY`, `CORS_ORIGINS`, `FRONTEND_URL`, `MEDIA_DIR`, `CARGAR_DATOS_DEMO` y las de cada servicio externo.
+  La dirección de la API en la web **no se graba al compilar**: el contenedor genera `/config.js` con `API_URL` cada vez que arranca.
+- **Producción segura:** el backend se niega a arrancar en producción con la `SECRET_KEY` por defecto. Detrás del proxy de Railway usa `--proxy-headers`, así que la bitácora guarda la IP real del cliente.
+- **Health check:** `GET /salud` responde 200 `{"estado":"ok"}` si la base contesta (503 si no); Railway lo usa para saber si el backend está vivo.
+- **Datos de demostración al arrancar** (`CARGAR_DATOS_DEMO=true`): después de las migraciones carga el seed **solo si la base está vacía** (nunca duplica). Si la base ya tiene datos pero el volumen de imágenes está vacío, repone únicamente las imágenes de demostración.
+- **Prendas de demostración reales:** siete prendas superiores (cuatro camisetas de color, una raglán de manga 3/4, un polo y una chaqueta de cuero) con imágenes PNG de fondo transparente de hasta 1200 px, que sirven de foto del producto y de recurso del vestidor (CU-06). Se agregan a las dos empresas con precios distintos,
+  con tallas S, M, L y XL, existencias en las sucursales y el **anclaje del vestidor calculado a partir del recuadro visible de la prenda** (hombros al 8 % de su altura, ancho de hombros a 12 %, cadera cerca del borde inferior). Reemplazan a las prendas dibujadas por código de la Fase I.
+- **IA gratuita:** la IA externa pasa a ser **Google Gemini** por defecto (clave de Google AI Studio, gratis y sin tarjeta; modelo `gemini-flash-latest`, cambiable con `IA_MODELO`); Claude queda como proveedor alterno (`IA_PROVEEDOR=anthropic`). La interfaz no cambia: CU-07, CU-23 y CU-42 funcionan igual. Si Gemini responde 429 (límite gratuito), 503 (saturado) o falla,
+  se usa el modo de respaldo con reglas locales, como antes. Sin clave, todo sigue en modo de respaldo.
+- **Correo (Brevo):** si Brevo rechaza un envío en producción (remitente no verificado, clave inválida, IP no autorizada), la API responde **502** con un mensaje claro y el detalle técnico queda en los registros del servidor, sin mostrarse al usuario. Consecuencia conocida: en la recuperación de contraseña, ese error solo aparece
+  cuando la cuenta existe y el envío se intentó; el resto del tiempo la respuesta sigue siendo genérica (CU-02).
+- **Push móvil con Firebase:** la app pide el permiso de notificaciones (Android 13), registra el **token de FCM** como dispositivo MOVIL al iniciar sesión, lo vuelve a registrar si Firebase lo renueva y lo da de baja al cerrar sesión. La notificación es nativa con la app cerrada, en segundo plano y abierta (canal «avisos» de importancia alta).
+  Sin Firebase (sin `google-services.json` al compilar o sin credenciales en el backend) sigue el modo anterior: los avisos aparecen dentro de la app. Las credenciales de la cuenta de servicio se pueden dar como contenido JSON en la variable `FCM_CREDENCIALES_JSON` (en Railway no hay archivos).
+- **Móvil por HTTPS:** el APK de release ya no permite tráfico `http://` (se quitó `usesCleartextTraffic`); solo las compilaciones de depuración lo permiten, para probar contra la PC.
+
+## Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Brevo rechaza o no responde al enviar un correo (por ejemplo el de restablecer contraseña) | «No se pudo enviar el correo. Intente nuevamente en unos minutos o avise al administrador.» | 502 | Pendiente |
+| Arranque en producción con la SECRET_KEY por defecto (mensaje del servidor, no de la API) | «En producción la SECRET_KEY no puede ser la de por defecto. Defina una clave larga y secreta en las variables del servicio (ver docs/DESPLIEGUE.md).» | — (el servidor no arranca) | Pendiente |
+| Health check sin base de datos | `{"estado":"sin_base_de_datos"}` | 503 | Pendiente |
+
+## Para el Word
+
+Agregar a la vista de **despliegue** (UML) los tres servicios de Railway, el Volume y los servicios externos (Brevo, Stripe, Google Gemini, Firebase Cloud Messaging); a los **requisitos no funcionales**, la configuración por variables de entorno, el health check y el arranque seguro; y al **CU-23, CU-07 y CU-42**, que la IA externa es
+Google Gemini con respaldo local. El `usesCleartextTraffic` y las demás notas de la fase anterior ya no aplican. No hay casos de uso nuevos ni rutas nuevas de escritura (la bitácora no cambia).

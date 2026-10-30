@@ -6,6 +6,7 @@ import os
 os.environ["STRIPE_SECRET_KEY"] = ""
 os.environ["STRIPE_PUBLISHABLE_KEY"] = ""
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
 from datetime import date, timedelta
 
 import pytest

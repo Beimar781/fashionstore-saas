@@ -1,13 +1,20 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+SECRET_KEY_POR_DEFECTO = "cambiar-esta-clave-larga-y-secreta"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/fashionstore_saas"
-    secret_key: str = "cambiar-esta-clave-larga-y-secreta"
+    secret_key: str = SECRET_KEY_POR_DEFECTO
+    # Despliegue (Railway): en producción el backend se niega a arrancar con la SECRET_KEY por defecto. Railway define RAILWAY_ENVIRONMENT por su cuenta.
+    entorno: str = "desarrollo"
+    railway_environment: str = ""
+    cargar_datos_demo: bool = False  # al arrancar, carga el seed solo si la base está vacía
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
     refresh_token_days: int = 7
@@ -30,9 +37,11 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     # Servicio de impuestos (CU-30): hoy es simulado; esta opción simula que no responde, para ver el comprobante interno temporal
     impuestos_simular_falla: bool = False
-    # IA (CU-07, CU-23): sin clave se usa el modo de respaldo con reglas locales. La clave va en .env, nunca en el código.
+    # IA (CU-07, CU-23, CU-42): sin clave se usa el modo de respaldo con reglas locales. Las claves van en .env, nunca en el código.
+    ia_proveedor: str = "gemini"  # gemini (gratuito) | anthropic
+    gemini_api_key: str = ""
     anthropic_api_key: str = ""
-    ia_modelo: str = "claude-haiku-5-5"
+    ia_modelo: str = ""  # vacío = el modelo por defecto del proveedor
     tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
 
     # Avisos push (regla 17): sin claves VAPID / sin cuenta de servicio de Firebase quedan en modo simulado. Las claves van en .env, nunca en el código.
@@ -40,6 +49,7 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:soporte@fashionstore.com"
     fcm_credenciales: str = ""  # ruta al JSON de la cuenta de servicio de Firebase
+    fcm_credenciales_json: str = ""  # el mismo JSON pegado como variable (en Railway no hay archivos)
     fcm_proyecto: str = ""
 
     @property
@@ -52,7 +62,20 @@ class Settings(BaseSettings):
 
     @property
     def fcm_activo(self) -> bool:
-        return bool(self.fcm_credenciales and self.fcm_proyecto)
+        return bool((self.fcm_credenciales or self.fcm_credenciales_json) and self.fcm_proyecto)
+
+    @property
+    def es_produccion(self) -> bool:
+        return self.entorno.lower() in ("produccion", "producción", "production") or bool(self.railway_environment)
+
+    @field_validator("database_url")
+    @classmethod
+    def _driver_psycopg(cls, url: str) -> str:
+        """Railway entrega postgresql://... (o postgres://...): SQLAlchemy necesita el driver psycopg (3) indicado."""
+        for prefijo in ("postgresql://", "postgres://"):
+            if url.startswith(prefijo):
+                return "postgresql+psycopg://" + url[len(prefijo):]
+        return url
 
     brevo_sender_email: str = "no-reply@fashionstore.com"
     brevo_sender_name: str = "FashionStore"

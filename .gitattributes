@@ -1,0 +1,4 @@
+# Los archivos que se ejecutan o se procesan dentro de contenedores Linux llevan siempre saltos de línea LF
+*.sh text eol=lf
+*.template text eol=lf
+Dockerfile text eol=lf

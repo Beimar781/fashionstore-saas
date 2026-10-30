@@ -1,8 +1,11 @@
 import 'package:fashionstore_movil/core/db/local_database.dart';
 import 'package:fashionstore_movil/core/network/api_client.dart';
 import 'package:fashionstore_movil/features/auth/data/sesion.dart';
+import 'package:fashionstore_movil/features/notificaciones/data/proveedor_push.dart';
 import 'package:fashionstore_movil/features/notificaciones/data/push_repository.dart';
 import 'package:fashionstore_movil/features/notificaciones/presentation/push_controller.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -26,6 +29,28 @@ class ApiFalsa extends ApiClient {
     if (cae) throw ApiException('Sin conexión con el servidor.', sinConexion: true);
     return avisos;
   }
+}
+
+/// Firebase simulado: entrega el token que la prueba indique (null = sin Firebase o permiso negado) y deja disparar un aviso con la app abierta.
+class FirebaseFalso implements ProveedorPush {
+  FirebaseFalso(this.token);
+
+  String? token;
+  int inicios = 0;
+  void Function()? _alRecibir;
+  final StreamController<String> renovaciones = StreamController<String>.broadcast();
+
+  @override
+  Future<String?> iniciar({required void Function() alRecibir}) async {
+    inicios++;
+    _alRecibir = alRecibir;
+    return token;
+  }
+
+  @override
+  Stream<String> get tokenRenovado => renovaciones.stream;
+
+  void llegaUnAviso() => _alRecibir?.call();
 }
 
 Map<String, dynamic> _aviso(int id) => {'id': id, 'titulo': 'Devolución registrada', 'mensaje': 'Registramos la devolución NDV-001-000001.', 'leida': false};
@@ -98,5 +123,51 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 100));
     expect(api.llamadas, isEmpty);
     c.dispose();
+  });
+
+  group('con Firebase', () {
+    test('el dispositivo se registra con el token de FCM y se da de baja con ese mismo token', () async {
+      final r = PushRepository(api, proveedor: FirebaseFalso('fcm-token-1'));
+      await r.registrarDispositivo();
+      expect(api.llamadas.last.$2, {'canal': 'MOVIL', 'token': 'fcm-token-1'});
+      await r.quitarDispositivo();
+      expect(api.llamadas.last.$1, '/notificaciones/dispositivos/baja');
+      expect(api.llamadas.last.$2['token'], 'fcm-token-1');
+    });
+
+    test('si el usuario niega el permiso o no hay Firebase, sigue el modo simulado', () async {
+      final r = PushRepository(api, proveedor: FirebaseFalso(null));
+      await r.registrarDispositivo();
+      expect(api.llamadas.last.$2['token'], startsWith('simulado-'));
+      await r.quitarDispositivo();
+      expect(api.llamadas.last.$2['token'], api.llamadas.first.$2['token']);
+    });
+
+    test('al cerrar sesión se da de baja el token registrado aunque Firebase ya no responda', () async {
+      final firebase = FirebaseFalso('fcm-token-2');
+      final r = PushRepository(api, proveedor: firebase);
+      await r.registrarDispositivo();
+      firebase.token = null;
+      await r.quitarDispositivo();
+      expect(api.llamadas.last.$2['token'], 'fcm-token-2');
+    });
+
+    test('un token renovado se vuelve a registrar y un aviso con la app abierta actualiza la campana', () async {
+      final firebase = FirebaseFalso('fcm-token-3');
+      final c = PushController(PushRepository(api, proveedor: firebase));
+      api.avisos = [];
+      c.usarSesion(_sesion());
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(firebase.inicios, 1);
+      firebase.renovaciones.add('fcm-token-nuevo');
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.llamadas.last.$2['token'], 'fcm-token-nuevo');
+      api.avisos = [_aviso(9)];
+      firebase.llegaUnAviso();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(c.avisos.map((a) => a.id), [9]);
+      c.usarSesion(null);
+      c.dispose();
+    });
   });
 }

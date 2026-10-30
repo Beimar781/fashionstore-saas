@@ -28,6 +28,18 @@ def guardar_imagen(empresa_id: int, producto_id: int, datos: bytes, extension: s
     return ruta
 
 
+def existe_imagen(ruta: str) -> bool:
+    return (_carpeta_media() / ruta).is_file()
+
+
+def escribir_imagen(ruta: str, datos: bytes) -> None:
+    """Vuelve a escribir un archivo en la misma ruta que guarda la base (para reponer las imágenes de demostración en un volumen vacío)."""
+    destino = (_carpeta_media() / ruta).resolve()
+    if _carpeta_media() in destino.parents:
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_bytes(datos)
+
+
 def borrar_imagen(ruta: str) -> None:
     destino = (_carpeta_media() / ruta).resolve()
     if _carpeta_media() in destino.parents:  # nunca borra fuera de la carpeta de imágenes

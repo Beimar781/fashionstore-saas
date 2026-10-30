@@ -21,6 +21,7 @@ from app.modules.reservas.rf11_notificaciones.service import notificar
 logger = logging.getLogger(__name__)
 MSG_SUSCRIPCION = "La suscripción del navegador no es válida."
 MSG_DISPOSITIVO = "El identificador del dispositivo no es válido."
+CANAL_ANDROID = "avisos"  # el mismo canal que crea la app móvil (importancia alta: la notificación aparece sobre la pantalla)
 
 
 class DispositivoCaducado(Exception):
@@ -62,14 +63,18 @@ class AdaptadorFCM:
 
     ALCANCE = "https://www.googleapis.com/auth/firebase.messaging"
 
-    def __init__(self, credenciales: str, proyecto: str, enviar=None):
-        self.credenciales, self.proyecto, self._enviar = credenciales, proyecto, enviar or self._post
+    def __init__(self, credenciales: str, proyecto: str, enviar=None, credenciales_json: str = ""):
+        """`credenciales` es la ruta del JSON de la cuenta de servicio; `credenciales_json` es su contenido (en Railway no hay archivos)."""
+        self.credenciales, self.credenciales_json, self.proyecto, self._enviar = credenciales, credenciales_json, proyecto, enviar or self._post
 
     def _token_de_acceso(self) -> str:
         from google.auth.transport.requests import Request
         from google.oauth2 import service_account
 
-        c = service_account.Credentials.from_service_account_file(self.credenciales, scopes=[self.ALCANCE])
+        if self.credenciales_json:
+            c = service_account.Credentials.from_service_account_info(json.loads(self.credenciales_json), scopes=[self.ALCANCE])
+        else:
+            c = service_account.Credentials.from_service_account_file(self.credenciales, scopes=[self.ALCANCE])
         c.refresh(Request())
         return c.token
 
@@ -81,7 +86,8 @@ class AdaptadorFCM:
     def enviar(self, token: str, m: Mensaje) -> None:
         r = self._enviar(
             f"https://fcm.googleapis.com/v1/projects/{self.proyecto}/messages:send",
-            {"message": {"token": token, "notification": {"title": m.titulo, "body": m.cuerpo}, "data": {k: str(v) for k, v in m.datos.items()}}},
+            {"message": {"token": token, "notification": {"title": m.titulo, "body": m.cuerpo}, "android": {"priority": "HIGH", "notification": {"channel_id": CANAL_ANDROID}},
+                         "data": {k: str(v) for k, v in m.datos.items()}}},
         )
         if r.status_code in (404, 410):
             raise DispositivoCaducado()
@@ -93,7 +99,7 @@ def adaptadores_por_defecto() -> tuple[AdaptadorWebPush | None, AdaptadorFCM | N
     """Los adaptadores reales según el `.env`; None = modo simulado (sin claves)."""
     cfg = get_settings()
     web = AdaptadorWebPush(cfg.vapid_private_key, cfg.vapid_subject) if cfg.vapid_activo else None
-    movil = AdaptadorFCM(cfg.fcm_credenciales, cfg.fcm_proyecto) if cfg.fcm_activo else None
+    movil = AdaptadorFCM(cfg.fcm_credenciales, cfg.fcm_proyecto, credenciales_json=cfg.fcm_credenciales_json) if cfg.fcm_activo else None
     return web, movil
 
 

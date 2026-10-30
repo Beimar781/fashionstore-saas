@@ -19,8 +19,24 @@ jobs:
           API_URL: ${{ vars.API_URL }}
         run: |
           if [ -z "$API_URL" ]; then
-            echo "::error::Falta la variable API_URL (Settings → Secrets and variables → Actions → Variables). Ejemplo: http://192.168.1.50:8000/api"
+            echo "::error::Falta la variable API_URL (Settings → Secrets and variables → Actions → Variables). Ejemplo: https://backend-produccion.up.railway.app/api"
             exit 1
+          fi
+
+      # Firebase (avisos push nativos): google-services.json no se sube al repositorio; se guarda su contenido en el secreto GOOGLE_SERVICES_JSON
+      # (Settings → Secrets and variables → Actions → Secrets). Si no existe, el APK se compila sin Firebase y los avisos se muestran dentro de la app.
+      - name: Preparar google-services.json
+        working-directory: .
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > movil/android/app/google-services.json
+            echo "google-services.json creado desde el secreto GOOGLE_SERVICES_JSON: el APK llevará Firebase."
+          elif [ -f movil/android/app/google-services.json ]; then
+            echo "google-services.json viene del repositorio: el APK llevará Firebase."
+          else
+            echo "::warning::No hay google-services.json ni secreto GOOGLE_SERVICES_JSON: el APK se compila SIN Firebase (avisos dentro de la app)."
           fi
 
       - uses: actions/setup-java@v4

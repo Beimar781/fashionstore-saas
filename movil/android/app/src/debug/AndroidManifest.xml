@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Solo en compilaciones de depuración: permite probar contra el backend de la PC por http. El APK de release solo usa https (Railway) -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -125,9 +125,8 @@ def test_10_aislamiento_entre_empresas(inv, mundo, tienda_b, datos, client):
 
 
 def test_11_el_png_de_demostracion_del_seed_es_valido():
-    from app.seed_vestidor import png_de_camisa
-
     from app.primer_parcial.ia.cu06_vestidor.imagen import preparar_png
+    from app.seed_prendas import CARPETA
 
-    png, ancho, alto = preparar_png(png_de_camisa("#C0392B"))
-    assert (ancho, alto) == (400, 480) and png[:8] == b"\x89PNG\r\n\x1a\n"
+    png, ancho, alto = preparar_png((CARPETA / "polo-blanco.png").read_bytes())  # 1200 x 1200 en el seed; el vestidor lo guarda a 800 px de ancho
+    assert (ancho, alto) == (800, 800) and png[:8] == b"\x89PNG\r\n\x1a\n"

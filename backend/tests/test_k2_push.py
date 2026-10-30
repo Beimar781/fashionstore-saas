@@ -176,7 +176,7 @@ def test_12_adaptador_fcm_interpreta_la_respuesta_del_servicio():
     ok.enviar("token-1", Mensaje("Título", "Cuerpo", {"referencia_id": 7}))
     url, cuerpo = enviadas[0]
     assert url == "https://fcm.googleapis.com/v1/projects/mi-proyecto/messages:send"
-    assert cuerpo["message"] == {"token": "token-1", "notification": {"title": "Título", "body": "Cuerpo"}, "data": {"referencia_id": "7"}}
+    assert cuerpo["message"] == {"token": "token-1", "notification": {"title": "Título", "body": "Cuerpo"}, "android": {"priority": "HIGH", "notification": {"channel_id": "avisos"}}, "data": {"referencia_id": "7"}}
     with pytest.raises(DispositivoCaducado):
         AdaptadorFCM("c", "p", enviar=lambda *_: Resp(404)).enviar("t", Mensaje("a", "b"))
     with pytest.raises(RuntimeError):

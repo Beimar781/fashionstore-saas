@@ -38,6 +38,9 @@ Prohibido: Shopify/Magento/PrestaShop/WooCommerce. No usar Django/Celery/Redis (
 - **Avisos push (regla 17):** un aviso importante al cliente (devolución o cambio, compra offline en conflicto) se envía con `avisar_cliente` de `reservas/publico.py` (campana RF11 + push a sus dispositivos).
   Va **después** de confirmar la operación y un fallo del push solo se registra en `push_envios`, nunca la deshace. Sin claves VAPID/FCM en `backend/.env` funciona en modo simulado; `python scripts/generar_vapid.py` crea las claves VAPID.
 
+- **Despliegue (regla 18):** Railway con tres servicios (Postgres, backend y frontend con Dockerfile; ver `docs/DESPLIEGUE.md`). Toda variable nueva se agrega a `backend/.env.example` y a la tabla de claves de esa guía. La IA es Gemini (gratis) o Claude por `IA_PROVEEDOR`;
+  el correo, Brevo; sin claves, cada adaptador sigue en modo simulado. En producción el backend no arranca con la `SECRET_KEY` por defecto. `google-services.json` no se sube a git (va en el secreto `GOOGLE_SERVICES_JSON` de GitHub Actions).
+
 ## Pruebas
 `cd backend && python -m pytest -q` — una prueba por paso de las tablas 5.2.1/5.3.1 del documento (`tests/test_cuNN_*.py`).
 Al agregar un caso de uso, agregar su archivo de pruebas con el mismo formato.

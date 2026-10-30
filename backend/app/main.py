@@ -7,16 +7,21 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 import app.db_models  # noqa: F401  (registra los modelos)
 from app.api import api_router
+from app.arranque import validar_configuracion
 from app.core.config import get_settings
+from app.core.database import engine
 from app.core.errors import registrar_manejadores
 from app.modules.plataforma.publico import BitacoraMiddleware
 
 
 def create_app() -> FastAPI:
+    validar_configuracion()
     app = FastAPI(
         title="FashionStore SaaS API",
         description="Plataforma de comercio electrónico multitenant (SI2 · Examen parcial 2).",
@@ -35,6 +40,17 @@ def create_app() -> FastAPI:
     carpeta_media.mkdir(parents=True, exist_ok=True)
     app.mount("/media", StaticFiles(directory=carpeta_media), name="media")  # imágenes de productos
     app.include_router(api_router, prefix="/api")
+
+    @app.get("/salud", tags=["salud"])
+    def salud() -> JSONResponse:
+        """Health check de la nube: responde 200 solo si la base de datos contesta."""
+        try:
+            with engine.connect() as conexion:
+                conexion.execute(text("SELECT 1"))
+        except Exception:  # noqa: BLE001
+            return JSONResponse({"estado": "sin_base_de_datos"}, status_code=503)
+        return JSONResponse({"estado": "ok"})
+
     return app
 
 
