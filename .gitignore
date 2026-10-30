@@ -12,6 +12,10 @@ movil/.dart_tool/
 movil/build/
 # Secretos y entorno
 .env
+.env.*
+!.env.example
+*.env
+claves-despliegue.env
 *.log
 .DS_Store
 backend/media/
