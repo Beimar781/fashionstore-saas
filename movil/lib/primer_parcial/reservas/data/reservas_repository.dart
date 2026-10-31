@@ -14,10 +14,13 @@ class ReservasRepository {
   // ---- compra digital: checkout y pago con tarjeta de prueba (CU-11, CU-32) ----
   Future<Map<String, dynamic>> checkout() => _api.post('/compras/checkout', {'tipo_entrega': 'RETIRO', 'nit_ci': '0', 'razon_social': 'Sin nombre'});
 
-  /// Inicia el pago. Con Stripe la tarjeta se captura en la web; con la pasarela de pruebas se confirma con una tarjeta de prueba.
+  /// Inicia el pago. Con Stripe devuelve la clave pública y el `client_secret` para la hoja de pago; con la pasarela simulada se confirma con una tarjeta de prueba.
   Future<Map<String, dynamic>> iniciarPago(int pedidoId) => _api.post('/pagos/pedidos/$pedidoId/iniciar', {});
 
-  Future<Map<String, dynamic>> confirmarPago(int pagoId, Map<String, dynamic> tarjeta) => _api.post('/pagos/$pagoId/confirmar', {'tarjeta': tarjeta});
+  /// Con Stripe la tarjeta ya se confirmó en la hoja de pago: `tarjeta` va vacía y el servidor lee el resultado en Stripe.
+  Future<Map<String, dynamic>> confirmarPago(int pagoId, Map<String, dynamic>? tarjeta) => _api.post('/pagos/$pagoId/confirmar', {'tarjeta': tarjeta});
+
+  Future<Map<String, dynamic>> reconciliarPago(int pagoId) => _api.post('/pagos/$pagoId/reconciliar', {});
 
   // ---- reservas (CU-10) ----
   Future<List<Map<String, dynamic>>> reservas() async => (await _api.getLista('/reservas')).cast<Map<String, dynamic>>();

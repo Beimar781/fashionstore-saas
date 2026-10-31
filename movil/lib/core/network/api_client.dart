@@ -8,10 +8,13 @@ import '../config/api_config.dart';
 
 /// Error de comunicación o de negocio con mensaje listo para mostrar al usuario.
 class ApiException implements Exception {
-  ApiException(this.mensaje, {this.statusCode, this.sinConexion = false});
+  ApiException(this.mensaje, {this.statusCode, this.sinConexion = false, this.motivo = ''});
 
   final String mensaje;
   final int? statusCode;
+
+  /// Detalle que da el banco cuando rechaza un pago con tarjeta (402).
+  final String motivo;
 
   /// `true` cuando no hubo respuesta del servidor (sin Internet o servidor caído).
   final bool sinConexion;
@@ -72,9 +75,11 @@ class ApiClient {
       final datos = respuesta.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(respuesta.bodyBytes));
       if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) return datos;
       final detalle = datos is Map ? datos['detail'] : null;
+      final motivo = datos is Map ? datos['motivo'] : null;
       throw ApiException(
         detalle is String ? detalle : 'No se pudo completar la operación.',
         statusCode: respuesta.statusCode,
+        motivo: motivo is String ? motivo : '',
       );
     } on SocketException {
       throw ApiException('Sin conexión con el servidor.', sinConexion: true);

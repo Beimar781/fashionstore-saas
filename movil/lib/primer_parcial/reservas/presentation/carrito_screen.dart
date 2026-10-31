@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
+import '../data/hoja_de_pago.dart';
+import '../data/pago_movil.dart';
 import '../data/reservas_repository.dart';
 
 /// Carrito del cliente (CU-08) y pago de la compra digital (CU-11, CU-32). El stock se descuenta recién cuando el pago se aprueba.
@@ -15,9 +17,10 @@ class CarritoScreen extends StatefulWidget {
 
 class _CarritoScreenState extends State<CarritoScreen> {
   late final ReservasRepository _repo = ReservasRepository(context.read<AuthRepository>().api);
+  late final PagoMovil _pago = PagoMovil(_repo, HojaDePagoStripe());
   Map<String, dynamic>? _carrito;
   String? _error;
-  String? _resultado;
+  ResultadoPagoMovil? _resultado;
   bool _trabajando = false;
 
   @override
@@ -46,23 +49,17 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   Future<void> _pagar() async {
     setState(() { _trabajando = true; _error = null; _resultado = null; });
-    try {
-      final pedido = await _repo.checkout();
-      final pago = await _repo.iniciarPago(pedido['id'] as int);
-      if (pago['modo'] == 'stripe') {
-        setState(() => _resultado = 'El pedido ${pedido['codigo']} quedó pendiente de pago. Este entorno usa Stripe: termine el pago desde la versión web.');
-      } else {
-        final tarjeta = await _pedirTarjeta(pago['monto'] as String);
-        if (tarjeta == null) {
-          setState(() => _resultado = 'El pedido ${pedido['codigo']} quedó pendiente de pago.');
-        } else {
-          final r = await _repo.confirmarPago(pago['pago_id'] as int, tarjeta);
-          setState(() => _resultado = r['aprobado'] == true ? '✔ Pago aprobado. Comprobante ${(r['pedido'] as Map)['comprobante_numero']}.' : '${r['mensaje']}');
-        }
-      }
-    } on ApiException catch (e) {
-      setState(() => _error = e.mensaje);
-    }
+    await _mostrar(await _pago.pagar(pedirTarjeta: _pedirTarjeta));
+  }
+
+  Future<void> _verificar(int pagoId) async {
+    setState(() => _trabajando = true);
+    await _mostrar(await _pago.verificar(pagoId));
+  }
+
+  Future<void> _mostrar(ResultadoPagoMovil r) async {
+    if (!mounted) return;
+    setState(() => _resultado = r);
     await _cargar();
     if (mounted) setState(() => _trabajando = false);
   }
@@ -90,6 +87,22 @@ class _CarritoScreenState extends State<CarritoScreen> {
     );
   }
 
+  Widget _tarjetaResultado(ResultadoPagoMovil r) => Card(
+        color: switch (r.tipo) {
+          TipoPago.aprobado => const Color(0xFFE6F4EA),
+          TipoPago.rechazado || TipoPago.error => const Color(0xFFFDE7E7),
+          _ => null,
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(r.mensaje),
+            if (r.tipo == TipoPago.pendiente && r.pagoId != null)
+              TextButton(onPressed: _trabajando ? null : () => _verificar(r.pagoId!), child: const Text('Verificar estado del pago')),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final items = ((_carrito?['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
@@ -99,7 +112,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
         onRefresh: _cargar,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-          if (_resultado != null) Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(_resultado!))),
+          if (_resultado != null) _tarjetaResultado(_resultado!),
           if (_carrito == null && _error == null) const Center(child: CircularProgressIndicator()),
           if (_carrito != null && items.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Su carrito está vacío.'))),
           for (final a in ((_carrito?['avisos'] as List?) ?? const [])) Text('$a', style: const TextStyle(color: Color(0xFF8A5A00))),
