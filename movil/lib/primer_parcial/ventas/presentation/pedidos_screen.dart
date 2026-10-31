@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart' show fechaCorta;
+import '../data/comprobante_movil.dart';
 import '../data/ventas_repository.dart';
+import 'boton_comprobante.dart';
 
 /// Historial de compras del cliente (CU-12): compras digitales y de mostrador, con su estado y comprobante.
 class PedidosScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class PedidosScreen extends StatefulWidget {
 
 class _PedidosScreenState extends State<PedidosScreen> {
   late final VentasRepository _repo = VentasRepository(context.read<AuthRepository>().api);
+  late final ComprobanteMovil _comprobante = ComprobanteMovil(_repo);
   List<Map<String, dynamic>>? _compras;
   String? _error;
 
@@ -48,7 +51,11 @@ class _PedidosScreenState extends State<PedidosScreen> {
             Text('Total Bs ${p['total']}', style: const TextStyle(fontWeight: FontWeight.bold)),
             if (p['comprobante_numero'] != null) Text('Comprobante ${p['comprobante_numero']}'),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar'))],
+          actions: [
+            if (p['comprobante_numero'] != null)
+              BotonComprobante(comprobante: _comprobante, pedidoId: p['id'] as int, numero: '${p['comprobante_numero']}'),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+          ],
         ),
       );
     } on ApiException catch (e) {
@@ -71,6 +78,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
               child: ListTile(
                 onTap: () => _ver(c),
                 title: Text('${c['codigo']} · Bs ${c['total']}'),
+                trailing: c['comprobante_numero'] == null
+                    ? null
+                    : BotonComprobante(comprobante: _comprobante, pedidoId: c['id'] as int, numero: '${c['comprobante_numero']}'),
                 subtitle: Text('${c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
                 isThreeLine: c['comprobante_numero'] != null,
               ),

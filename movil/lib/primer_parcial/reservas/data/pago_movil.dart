@@ -5,10 +5,14 @@ import 'reservas_repository.dart';
 enum TipoPago { aprobado, rechazado, pendiente, cancelado, error }
 
 class ResultadoPagoMovil {
-  const ResultadoPagoMovil(this.tipo, this.mensaje, {this.pagoId});
+  const ResultadoPagoMovil(this.tipo, this.mensaje, {this.pagoId, this.pedidoId, this.comprobante});
 
   final TipoPago tipo;
   final String mensaje;
+
+  /// Pedido y número de comprobante de un pago aprobado: sirven para el botón «Ver comprobante».
+  final int? pedidoId;
+  final String? comprobante;
 
   /// Para volver a preguntar el estado de un pago que quedó pendiente de confirmación.
   final int? pagoId;
@@ -62,8 +66,14 @@ class PagoMovil {
   ResultadoPagoMovil _desdeRespuesta(Map<String, dynamic> r) {
     if (r['aprobado'] == true) {
       final pago = r['pago'] as Map<String, dynamic>;
-      final comprobante = (r['pedido'] as Map<String, dynamic>)['comprobante_numero'];
-      return ResultadoPagoMovil(TipoPago.aprobado, '✔ Pago aprobado\n${pago['tarjeta_marca']} terminada en ${pago['tarjeta_ultimos4']} · Comprobante N.° $comprobante');
+      final pedido = r['pedido'] as Map<String, dynamic>;
+      final comprobante = pedido['comprobante_numero'];
+      return ResultadoPagoMovil(
+        TipoPago.aprobado,
+        '✔ Pago aprobado\n${pago['tarjeta_marca']} terminada en ${pago['tarjeta_ultimos4']} · Comprobante N.° $comprobante',
+        pedidoId: pedido['id'] as int?,
+        comprobante: comprobante as String?,
+      );
     }
     return ResultadoPagoMovil(TipoPago.pendiente, '⏳ Pendiente de confirmación\n${r['mensaje']}', pagoId: (r['pago'] as Map<String, dynamic>)['id'] as int);
   }

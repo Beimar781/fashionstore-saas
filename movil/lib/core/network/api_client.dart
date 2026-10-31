@@ -23,6 +23,14 @@ class ApiException implements Exception {
   String toString() => mensaje;
 }
 
+/// Archivo que devolvió el servidor (por ejemplo, el comprobante PDF) y el nombre que sugirió en `Content-Disposition`.
+class ArchivoDescargado {
+  ArchivoDescargado(this.bytes, this.nombre);
+
+  final List<int> bytes;
+  final String? nombre;
+}
+
 /// Cliente REST compartido por todos los paquetes (la misma API que usa la PWA Angular).
 /// Agrega el token Bearer y, ante un 401, intenta renovar la sesión una vez.
 class ApiClient {
@@ -45,6 +53,26 @@ class ApiClient {
   Future<Map<String, dynamic>> put(String ruta, Map<String, dynamic> cuerpo) async => _mapa(await _enviar('PUT', ruta, cuerpo: cuerpo));
 
   Future<Map<String, dynamic>> delete(String ruta) async => _mapa(await _enviar('DELETE', ruta));
+
+  /// GET de un archivo binario con el token de la sesión (si caduca, se renueva una vez).
+  Future<ArchivoDescargado> descargar(String ruta, {bool reintento = false}) async {
+    final token = await obtenerToken();
+    try {
+      final respuesta = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}$ruta'), headers: {if (token != null) 'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 30));
+      if (respuesta.statusCode == 401 && !reintento && await renovarToken()) return await descargar(ruta, reintento: true);
+      if (respuesta.statusCode != 200) throw ApiException('No se pudo descargar el archivo.', statusCode: respuesta.statusCode);
+      final nombre = RegExp(r'filename="?([^";]+)"?').firstMatch(respuesta.headers['content-disposition'] ?? '')?.group(1);
+      return ArchivoDescargado(respuesta.bodyBytes, nombre);
+    } on SocketException {
+      throw ApiException('Sin conexión con el servidor.', sinConexion: true);
+    } on TimeoutException {
+      throw ApiException('Sin conexión con el servidor.', sinConexion: true);
+    } on http.ClientException {
+      throw ApiException('Sin conexión con el servidor.', sinConexion: true);
+    }
+  }
 
   Map<String, dynamic> _mapa(dynamic datos) => datos is Map<String, dynamic> ? datos : <String, dynamic>{};
 

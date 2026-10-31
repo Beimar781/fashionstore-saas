@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
+import '../../ventas/data/comprobante_movil.dart';
+import '../../ventas/data/ventas_repository.dart';
+import '../../ventas/presentation/boton_comprobante.dart';
 import '../data/hoja_de_pago.dart';
 import '../data/pago_movil.dart';
 import '../data/reservas_repository.dart';
@@ -18,6 +21,7 @@ class CarritoScreen extends StatefulWidget {
 class _CarritoScreenState extends State<CarritoScreen> {
   late final ReservasRepository _repo = ReservasRepository(context.read<AuthRepository>().api);
   late final PagoMovil _pago = PagoMovil(_repo, HojaDePagoStripe());
+  late final ComprobanteMovil _comprobante = ComprobanteMovil(VentasRepository(context.read<AuthRepository>().api));
   Map<String, dynamic>? _carrito;
   String? _error;
   ResultadoPagoMovil? _resultado;
@@ -97,6 +101,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
           padding: const EdgeInsets.all(12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(r.mensaje),
+            if (r.tipo == TipoPago.aprobado && r.pedidoId != null)
+              BotonComprobante(comprobante: _comprobante, pedidoId: r.pedidoId!, numero: r.comprobante ?? ''),
             if (r.tipo == TipoPago.pendiente && r.pagoId != null)
               TextButton(onPressed: _trabajando ? null : () => _verificar(r.pagoId!), child: const Text('Verificar estado del pago')),
           ]),
