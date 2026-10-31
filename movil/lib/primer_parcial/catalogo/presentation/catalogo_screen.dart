@@ -64,11 +64,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
 
   Future<void> _detalle(Map<String, dynamic> prenda) async {
     if (prenda['local'] == true) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _DetallePrenda(repo: _repo, prenda: prenda, sucursales: _sucursales),
-    );
+    await mostrarDetallePrenda(context, _repo, prenda, _sucursales);
   }
 
   @override
@@ -116,6 +112,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 }
+
+/// Ficha de la prenda con sus tallas y colores. La abren el catálogo y el asistente de compras.
+Future<void> mostrarDetallePrenda(BuildContext context, CatalogoRepository repo, Map<String, dynamic> prenda, List<Map<String, dynamic>> sucursales) =>
+    showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (_) => _DetallePrenda(repo: repo, prenda: prenda, sucursales: sucursales));
 
 class _DetallePrenda extends StatefulWidget {
   const _DetallePrenda({required this.repo, required this.prenda, required this.sucursales});

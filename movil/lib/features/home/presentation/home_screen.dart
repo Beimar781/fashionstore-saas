@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../primer_parcial/ia/asistente/presentation/asistente_screen.dart';
 import '../../../primer_parcial/catalogo/presentation/catalogo_screen.dart';
 import '../../../primer_parcial/reservas/presentation/carrito_screen.dart';
 import '../../../primer_parcial/reservas/presentation/reservas_screen.dart';
@@ -119,7 +120,8 @@ class HomeScreen extends StatelessWidget {
             _acceso(context, Icons.storefront, 'Catálogo', 'Busque prendas; sin conexión usa el catálogo descargado', const CatalogoScreen()),
             _acceso(context, Icons.shopping_cart, 'Mi carrito', 'Prendas elegidas y pago con tarjeta de prueba', const CarritoScreen()),
             _acceso(context, Icons.receipt_long, 'Mis compras', 'Historial y comprobantes', const PedidosScreen()),
-            _acceso(context, Icons.event, 'Mis reservas', 'Consulte y cancele sus reservas', const ReservasScreen()),
+            _acceso(context, Icons.event, 'Mis reservas', 'Reserve prendas, consúltelas y cancélelas', const ReservasScreen()),
+            if (s.iaHabilitada) _acceso(context, Icons.auto_awesome, 'Asistente de compras', 'Pida prendas en lenguaje natural (plan Profesional)', const AsistenteScreen()),
           ],
           if (offline.habilitado && !s.restringido)
             _acceso(context, Icons.cloud_off, 'Modo sin conexión', s.rol == 'Cliente' ? 'Descargue el catálogo y reserve sin Internet' : 'Descargue el catálogo y registre ventas de contado sin Internet', const ModoOfflineScreen()),
