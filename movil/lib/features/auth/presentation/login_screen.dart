@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../data/auth_repository.dart';
 import 'auth_controller.dart';
+import 'registro_screen.dart';
 
 /// CU-02 · Inicio de sesión con código de empresa, correo y contraseña.
 class LoginScreen extends StatefulWidget {
@@ -43,6 +44,19 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _email.text,
           password: _password.text,
         );
+  }
+
+  /// CU-01: abre «Crear cuenta»; al volver con la cuenta creada deja el código y el correo escritos para iniciar sesión.
+  Future<void> _crearCuenta() async {
+    final mensajes = ScaffoldMessenger.of(context);
+    final creada = await Navigator.push<(String, String)>(context, MaterialPageRoute(builder: (_) => const RegistroScreen()));
+    if (creada == null || !mounted) return;
+    setState(() {
+      _codigo.text = creada.$1;
+      _email.text = creada.$2;
+      _password.clear();
+    });
+    mensajes.showSnackBar(const SnackBar(content: Text('Cuenta creada. Ingrese con su contraseña.')));
   }
 
   /// Pide al servidor el correo para restablecer la contraseña con el código de empresa y el correo escritos en el formulario.
@@ -136,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Text('Ingresar'),
                     ),
+                    TextButton(onPressed: _crearCuenta, child: const Text('¿No tiene cuenta? Crear cuenta')),
                     if (kDebugMode) ...[
                       const SizedBox(height: 20),
                       const Text('Cuentas de demostración (solo en desarrollo)', style: TextStyle(fontSize: 12)),

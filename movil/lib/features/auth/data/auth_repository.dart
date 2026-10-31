@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../core/db/local_database.dart';
 import '../../../core/network/api_client.dart';
+import 'registro_cliente.dart';
 import 'sesion.dart';
 
 /// Acceso a datos del paquete Usuarios y acceso: API REST + sesión local en SQLite.
@@ -29,6 +30,9 @@ class AuthRepository {
     );
     return _guardar(respuesta);
   }
+
+  /// CU-01: crea la cuenta de cliente. No inicia sesión: el cliente vuelve al login a ingresar con sus datos.
+  Future<void> registrarCliente(RegistroCliente datos) async => _api.post('/auth/registro', datos.aCuerpo(), autenticado: false);
 
   /// CU-02: pide el correo de restablecimiento. El servidor responde siempre lo mismo, exista o no la cuenta; el enlace del correo abre la web.
   Future<String> olvidePassword({String? codigoEmpresa, required String email}) async {
