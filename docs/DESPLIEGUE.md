@@ -138,6 +138,8 @@ Con `CARGAR_DATOS_DEMO=true`, al arrancar el backend: aplica las migraciones →
 
 El pago con tarjeta del APK usa **Stripe en modo prueba** (hoja de pago de Stripe): la clave pública se la da el backend, no hay que configurar nada en GitHub. Tarjetas de prueba en `docs/PRUEBAS_SISTEMA.md`. Con la `flutter_stripe` el APK pesa unos 104 MB.
 
+El release se compila **sin reducción de código** (`isMinifyEnabled = false`) por problemas de R8 con WorkManager y Stripe, que cerraban la app al abrir; por eso el APK pesa más. Después de compilar, el flujo corre una **prueba de arranque en un emulador de GitHub** (trabajo `prueba_arranque`, API 34): instala el APK, lo abre y falla si la app se cierra; el `logcat` queda como artefacto `logcat-arranque`. Si el emulador no estuviera disponible, el APK igual se entrega y el resultado se ve en el resumen del run.
+
 El APK solo habla por **https**: ya no admite `http://`. Para probar contra el backend de tu PC por Wi‑Fi, usa una compilación de depuración (`flutter run`), que sí lo permite.
 
 ## 4. Costos

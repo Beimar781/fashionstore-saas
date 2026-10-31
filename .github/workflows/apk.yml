@@ -69,3 +69,48 @@ jobs:
           path: movil/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+  # Abre el APK en un emulador y comprueba que no se cierra al arrancar. Si el emulador no está disponible, el APK igual se entrega.
+  prueba_arranque:
+    needs: apk
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fashionstore-apk
+
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Abrir la app en un emulador
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: |
+            adb install -r app-release.apk
+            adb logcat -c
+            adb shell monkey -p com.example.fashionstore_movil -c android.intent.category.LAUNCHER 1
+            sleep 25
+            adb logcat -d > logcat.txt
+            adb shell pidof com.example.fashionstore_movil > pid.txt || true
+            if grep -E "FATAL EXCEPTION|AndroidRuntime" logcat.txt | grep -q "fashionstore_movil"; then echo "La app se cerró al arrancar (ver logcat-arranque)."; exit 1; fi
+            if [ ! -s pid.txt ]; then echo "La app no sigue en ejecución 25 segundos después de abrirla."; exit 1; fi
+            echo "La app arrancó y sigue en ejecución."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logcat-arranque
+          path: logcat.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Resumen de la prueba de arranque
+        if: always()
+        run: echo "Prueba de arranque en emulador (API 34): ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

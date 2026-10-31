@@ -36,6 +36,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Sin reducción de código: R8 quitaba WorkDatabase_Impl (WorkManager lo trae por dentro con Firebase, ML Kit y las notificaciones) y la app se cerraba al abrir.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            // Por si alguien vuelve a activar R8: las reglas de respaldo conservan lo que esas librerías necesitan.
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

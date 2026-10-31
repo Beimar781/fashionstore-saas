@@ -639,3 +639,7 @@ CU-32 y CU-11: el flujo alterno «pago con tarjeta desde la app móvil» (Paymen
 ## Para el Word
 
 CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con las mismas pantallas y los mensajes de arriba. En el cuadro de requisitos, la regla de paridad: el Cliente tiene las mismas funciones en web y móvil salvo el vestidor (solo móvil); el resto de los roles, solo web. Librerías nuevas del móvil: `path_provider` y `open_filex`.
+
+# Prompt S · Arranque del APK
+
+- **Decisión de construcción:** el APK de release se compila sin reducción de código (R8 apagado): R8 quitaba una clase de WorkManager y la app se cerraba al abrir. Se agrega al flujo de GitHub una prueba de arranque en un emulador Android (API 34) que instala el APK, lo abre y falla si se cierra. No hay mensajes ni casos de uso nuevos.
