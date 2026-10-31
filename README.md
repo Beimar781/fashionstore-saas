@@ -7,7 +7,6 @@ Proyecto de **Sistemas de Información 2** (INF 412-SA, UAGRM) · Grupo 20.
 **En producción (Railway)**
 
 - Web: <https://frontend-production-13a8.up.railway.app>
-- API: <https://fashionstore-saas-production.up.railway.app> (documentación en `/docs`, estado en `/salud`)
 - APK: se compila en GitHub Actions (ver [Aplicación móvil](#aplicación-móvil-apk))
 
 ## Contexto del sistema
@@ -41,7 +40,6 @@ Proyecto de **Sistemas de Información 2** (INF 412-SA, UAGRM) · Grupo 20.
 | `backend/` | API REST, reglas de negocio y migraciones | Python 3.13 · FastAPI · SQLAlchemy · Alembic · PostgreSQL |
 | `frontend/` | Paneles web y tienda, PWA instalable | Angular 21 · Service Worker · IndexedDB |
 | `movil/` | Aplicación móvil para el Cliente y el personal de tienda | Flutter · Dart · SQLite · ML Kit |
-| `docs/` | Despliegue, guía de pruebas, trazabilidad de casos de uso | — |
 | `.github/workflows/` | Compilación del APK | GitHub Actions |
 
 Servicios externos (todos con plan gratuito o modo de prueba): Brevo (correo), Stripe (pagos de prueba), Google Gemini (IA), Firebase Cloud Messaging (push móvil).
@@ -88,7 +86,7 @@ python -m app.seed              # roles, planes, SuperAdmin y dos empresas de ej
 uvicorn app.main:app --reload   # inicia la API
 ```
 
-API en <http://localhost:8000> · documentación en <http://localhost:8000/docs>.
+API en <http://localhost:8000>.
 
 ### 3. Web (terminal 2)
 
@@ -154,22 +152,7 @@ EMP-A tiene el plan **Básico** (sin IA: los reportes con IA, la analítica con 
 
 ## Aplicación móvil (APK)
 
-El APK se compila en GitHub: **Actions → «Compilar APK» → Run workflow**. Al terminar, en la ejecución se descarga el artefacto `fashionstore-apk` (un `.zip` con `app-release.apk`, disponible 14 días). Se instala en Android permitiendo «instalar apps de orígenes desconocidos». El flujo incluye una prueba de arranque en un emulador. El APK se conecta al backend de Railway por HTTPS. Configuración (variable `API_URL`, secreto de Firebase) en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md), apartado 3.6.
-
-## Despliegue en la nube
-
-Guía paso a paso (Railway, Volume de imágenes, Brevo, Stripe, Gemini, Firebase y la tabla de variables): [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). El despliegue es automático con cada `git push` a `main`; las migraciones corren al arrancar el backend. La prueba de humo del despliegue es `python scripts/humo_produccion.py <URL del backend>`.
-
-## Documentación
-
-| Archivo | Contenido |
-|---|---|
-| [`docs/PRUEBAS_SISTEMA.md`](docs/PRUEBAS_SISTEMA.md) | Guía de pruebas manuales por rol, en web y móvil |
-| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Despliegue en Railway, claves y APK |
-| [`docs/TRAZABILIDAD.md`](docs/TRAZABILIDAD.md) | Casos de uso → código → pruebas |
-| [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Avance por lotes |
-| [`docs/MENSAJES_PENDIENTES_WORD.md`](docs/MENSAJES_PENDIENTES_WORD.md) | Mensajes y reglas para el documento del proyecto |
-| [`CLAUDE.md`](CLAUDE.md) | Convenciones del código del repositorio |
+El APK se compila en GitHub: **Actions → «Compilar APK» → Run workflow**. Al terminar, en la ejecución se descarga el artefacto `fashionstore-apk` (un `.zip` con `app-release.apk`, disponible 14 días). Se instala en Android permitiendo «instalar apps de orígenes desconocidos». El flujo incluye una prueba de arranque en un emulador. El APK se conecta al backend de Railway por HTTPS.
 
 ## Problemas frecuentes
 
