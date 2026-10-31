@@ -25,5 +25,6 @@ class ReservasRepository {
 
   // ---- reservas (CU-10) ----
   Future<List<Map<String, dynamic>>> reservas() async => (await _api.getLista('/reservas')).cast<Map<String, dynamic>>();
-  Future<Map<String, dynamic>> cancelar(int reservaId) => _api.post('/reservas/$reservaId/cancelar', {});
+  Future<Map<String, dynamic>> reservar(Map<String, dynamic> cuerpo) => _api.post('/reservas', cuerpo);
+  Future<Map<String, dynamic>> cancelar(int reservaId, {String motivo = ''}) => _api.post('/reservas/$reservaId/cancelar', {'motivo': motivo.trim()});
 }

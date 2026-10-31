@@ -7,6 +7,7 @@ import '../../../features/offline/presentation/modo_offline_screen.dart' show fe
 import '../../../features/offline/presentation/offline_controller.dart';
 import '../../ia/vestidor/data/vestidor_repository.dart';
 import '../../ia/vestidor/presentation/vestidor_screen.dart';
+import '../../reservas/data/reserva_borrador.dart';
 import '../data/catalogo_repository.dart';
 
 /// Catálogo del cliente (CU-03, CU-04): busca en línea y, si no hay conexión, usa el catálogo descargado (CU-37) avisando de cuándo es (RN16).
@@ -154,6 +155,18 @@ class _DetallePrendaState extends State<_DetallePrenda> {
     }
   }
 
+  void _reservar(Map<String, dynamic> v) {
+    context.read<ReservaBorrador>().agregar(PrendaElegida(
+          varianteId: v['variante_id'] as int,
+          producto: '${widget.prenda['nombre']}',
+          sku: '${v['sku'] ?? ''}',
+          talla: '${v['talla']}',
+          color: '${v['color']}',
+          max: v['cantidad'] as int,
+        ));
+    setState(() => _mensaje = '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada a su reserva. Confírmela en «Mis reservas».');
+  }
+
   Future<void> _agregar(Map<String, dynamic> v) async {
     try {
       await widget.repo.agregarAlCarrito(v['variante_id'] as int, 1, _sucursalId);
@@ -196,7 +209,8 @@ class _DetallePrendaState extends State<_DetallePrenda> {
                 subtitle: Text(v['disponible'] == true ? '${v['cantidad']} disponible(s)' : 'Agotada'),
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('Bs ${v['precio_final']}'),
-                  IconButton(icon: const Icon(Icons.add_shopping_cart), onPressed: v['disponible'] == true ? () => _agregar(v) : null),
+                  IconButton(tooltip: 'Agregar a mi reserva', icon: const Icon(Icons.bookmark_add_outlined), onPressed: v['disponible'] == true ? () => _reservar(v) : null),
+                  IconButton(tooltip: 'Agregar al carrito', icon: const Icon(Icons.add_shopping_cart), onPressed: v['disponible'] == true ? () => _agregar(v) : null),
                 ]),
               ),
           ]),

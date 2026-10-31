@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart' show fechaCorta;
+import '../data/reserva_borrador.dart';
 import '../data/reservas_repository.dart';
+import 'mi_reserva_screen.dart';
 
-/// Reservas del cliente (CU-10): consulta y cancelación. Para reservar prendas (con o sin conexión) se usa «Modo sin conexión».
+/// Reservas del cliente (CU-10): consulta y cancelación con motivo. «Mi reserva» confirma una reserva nueva; sin conexión se reserva desde «Modo sin conexión».
 class ReservasScreen extends StatefulWidget {
   const ReservasScreen({super.key});
 
@@ -34,9 +36,31 @@ class _ReservasScreenState extends State<ReservasScreen> {
     }
   }
 
+  Future<String?> _pedirMotivo() {
+    final motivo = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar reserva'),
+        content: TextField(controller: motivo, maxLength: 200, decoration: const InputDecoration(labelText: 'Motivo (opcional)')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Volver')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, motivo.text), child: const Text('Cancelar reserva')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _nuevaReserva() async {
+    await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const MiReservaScreen()));
+    await _cargar();
+  }
+
   Future<void> _cancelar(Map<String, dynamic> r) async {
+    final motivo = await _pedirMotivo();
+    if (motivo == null) return; // el cliente se arrepintió
     try {
-      await _repo.cancelar(r['id'] as int);
+      await _repo.cancelar(r['id'] as int, motivo: motivo);
       await _cargar();
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
@@ -47,6 +71,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mis reservas')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _nuevaReserva,
+        icon: const Icon(Icons.bookmark_add_outlined),
+        label: Text('Mi reserva (${context.watch<ReservaBorrador>().total})'),
+      ),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(padding: const EdgeInsets.all(16), children: [

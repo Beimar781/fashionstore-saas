@@ -11,6 +11,7 @@ import 'features/notificaciones/data/proveedor_push.dart';
 import 'features/notificaciones/data/push_repository.dart';
 import 'features/notificaciones/presentation/push_controller.dart';
 import 'features/offline/presentation/offline_controller.dart';
+import 'primer_parcial/reservas/data/reserva_borrador.dart';
 
 final _mensajero = GlobalKey<ScaffoldMessengerState>();
 
@@ -36,6 +37,11 @@ class FashionStoreApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
           create: (_) => OfflineController(OfflineRepository(authRepo.api))..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8))),
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
+        ),
+        // las prendas elegidas para reservar se guardan por usuario
+        ChangeNotifierProxyProvider<AuthController, ReservaBorrador>(
+          create: (_) => ReservaBorrador(),
+          update: (_, auth, borrador) => borrador!..usarUsuario(auth.sesion?.usuarioId),
         ),
         // avisos push: con Firebase el token de FCM se registra al iniciar sesión y la notificación es nativa; sin Firebase (modo simulado) los avisos se muestran en el inicio
         ChangeNotifierProxyProvider<AuthController, PushController>(
