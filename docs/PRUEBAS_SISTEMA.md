@@ -84,9 +84,13 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 5.4 | Móvil | Cliente EMP-A | Repetir con `4000 0000 0000 0002`. | La hoja de Stripe muestra que la tarjeta fue rechazada y permite reintentar; al cerrarla, la app dice que el pedido quedó pendiente de pago. No se cobra ni baja el stock. | ☐ |
 | 5.5 | Móvil | Cliente EMP-A | Repetir con `4000 0027 6000 3184` y completar la autenticación 3D Secure. | Pide la autenticación; al completarla, «✔ Pago aprobado». Si se rechaza la autenticación, no se cobra. | ☐ |
 | 5.6 | Móvil | Cliente EMP-A | Abrir la hoja de pago y cerrarla sin pagar. | «El pedido … quedó pendiente de pago.» Sin mensaje de error ni cobro. | ☐ |
-| 5.7 | Móvil | Cliente EMP-A | Al tocar «Pagar con tarjeta» se abre «Entrega y facturación». Dejar el NIT vacío y tocar «Continuar al pago». | «Ingrese su NIT o CI para la facturación.» | ☐ |
+| 5.7 | Móvil | Cliente EMP-A | Al tocar «Pagar con tarjeta» se abre «Entrega, facturación y pago». Dejar el NIT vacío y tocar «Continuar al pago». | «Ingrese su NIT o CI para la facturación.» | ☐ |
 | 5.8 | Móvil | Cliente EMP-A | Elegir «A domicilio» sin dirección y con NIT `1234567`. | «Ingrese la dirección de entrega.» | ☐ |
 | 5.9 | Móvil | Cliente EMP-A | Elegir «A domicilio», escribir la dirección, NIT `1234567` y razón social, y pagar con `4242 4242 4242 4242`. | Pago aprobado; en la web, la compra figura con entrega a domicilio, esa dirección y esos datos de facturación. | ☐ |
+| 5.10 | Web | Cliente EMP-A | En el pago con tarjeta, marcar «Guardar esta tarjeta para mis próximas compras» y pagar con `4242 4242 4242 4242`. | Pago aprobado. En la siguiente compra aparece «Visa terminada en 4242» entre las tarjetas guardadas. | ☐ |
+| 5.11 | Móvil | Cliente EMP-A | En «Entrega, facturación y pago», dejar «Usar otra tarjeta» con «Guardar esta tarjeta para mis próximas compras» marcado y pagar con `4242 4242 4242 4242` en la hoja de Stripe. | Pago aprobado. En la siguiente compra, en esa misma pantalla, aparece «Visa terminada en 4242 · vence …» y la tarjeta guardada en la web (5.10) también está. | ☐ |
+| 5.12 | Móvil | Cliente EMP-A | Elegir la tarjeta guardada y tocar «Continuar al pago». | No se pide la tarjeta de nuevo: Stripe confirma directamente y la app muestra «✔ Pago aprobado». | ☐ |
+| 5.13 | Móvil | Cliente EMP-A | Tocar el ícono de eliminar junto a una tarjeta guardada. | La tarjeta desaparece de la lista y también de la web. | ☐ |
 
 ## 6. Comprobante PDF
 
@@ -138,7 +142,6 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 
 - **Vestidor virtual:** solo en el móvil, por diseño.
 - **Reportes administrativos, caja, inventario y demás roles:** solo en la web.
-- **Tarjetas guardadas** (guardar la tarjeta al pagar y reutilizarla): solo en la web. La hoja de pago de Stripe del móvil necesita una clave efímera del cliente que el servidor no entrega.
 - **Comprobante de una compra hecha sin conexión:** una compra offline confirmada queda por pagar y todavía no tiene comprobante; el PDF existe cuando se paga con tarjeta.
 
 ## Si algo falla

@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import 'datos_entrega.dart';
+import 'medio_de_pago.dart';
 
 /// Acceso a la API del carrito (CU-08), las reservas del cliente (CU-10) y el pago de la compra digital (CU-11, CU-32).
 class ReservasRepository {
@@ -16,7 +17,11 @@ class ReservasRepository {
   Future<Map<String, dynamic>> checkout(DatosEntrega datos) => _api.post('/compras/checkout', datos.aCuerpo());
 
   /// Inicia el pago. Con Stripe devuelve la clave pública y el `client_secret` para la hoja de pago; con la pasarela simulada se confirma con una tarjeta de prueba.
-  Future<Map<String, dynamic>> iniciarPago(int pedidoId) => _api.post('/pagos/pedidos/$pedidoId/iniciar', {});
+  Future<Map<String, dynamic>> iniciarPago(int pedidoId, [MedioDePago medio = const MedioDePago()]) => _api.post('/pagos/pedidos/$pedidoId/iniciar', medio.aCuerpo());
+
+  // ---- tarjetas guardadas (las mismas que ve el cliente en la web) ----
+  Future<List<TarjetaGuardada>> tarjetasGuardadas() async => [for (final j in await _api.getLista('/pagos/tarjetas')) TarjetaGuardada.desdeJson(j as Map<String, dynamic>)];
+  Future<void> eliminarTarjeta(int id) async => _api.delete('/pagos/tarjetas/$id');
 
   /// Con Stripe la tarjeta ya se confirmó en la hoja de pago: `tarjeta` va vacía y el servidor lee el resultado en Stripe.
   Future<Map<String, dynamic>> confirmarPago(int pagoId, Map<String, dynamic>? tarjeta) => _api.post('/pagos/$pagoId/confirmar', {'tarjeta': tarjeta});

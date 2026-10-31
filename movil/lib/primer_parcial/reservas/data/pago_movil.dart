@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import 'datos_entrega.dart';
 import 'hoja_de_pago.dart';
+import 'medio_de_pago.dart';
 import 'reservas_repository.dart';
 
 enum TipoPago { aprobado, rechazado, pendiente, cancelado, error }
@@ -28,17 +29,26 @@ class PagoMovil {
   final HojaDePago _hoja;
 
   /// `pedirTarjeta` solo se usa con la pasarela simulada: muestra el formulario de la tarjeta de prueba (null si el cliente cancela).
-  Future<ResultadoPagoMovil> pagar({required DatosEntrega datos, required Future<Map<String, dynamic>?> Function(String monto) pedirTarjeta}) async {
+  Future<ResultadoPagoMovil> pagar({
+    required DatosEntrega datos,
+    MedioDePago medio = const MedioDePago(),
+    required Future<Map<String, dynamic>?> Function(String monto) pedirTarjeta,
+  }) async {
     try {
       final pedido = await _repo.checkout(datos);
-      final pago = await _repo.iniciarPago(pedido['id'] as int);
+      final pago = await _repo.iniciarPago(pedido['id'] as int, medio);
       final pendiente = ResultadoPagoMovil(TipoPago.cancelado, 'El pedido ${pedido['codigo']} quedó pendiente de pago.');
       if (pago['modo'] == 'stripe') {
-        final hoja = await _hoja.mostrar(clavePublica: pago['publishable_key'] as String, claveSecreta: pago['client_secret'] as String);
+        final clave = pago['publishable_key'] as String;
+        final secreto = pago['client_secret'] as String;
+        final hoja = medio.tarjetaGuardadaId == null
+            ? await _hoja.mostrar(clavePublica: clave, claveSecreta: secreto)
+            : await _hoja.confirmarGuardada(clavePublica: clave, claveSecreta: secreto);
         if (hoja.estado == EstadoHoja.cancelada) return pendiente;
         if (hoja.estado == EstadoHoja.error) return ResultadoPagoMovil(TipoPago.error, hoja.motivo);
         return await _confirmar(pago['pago_id'] as int, null, motivoStripe: hoja.motivo);
       }
+      if (medio.tarjetaGuardadaId != null) return await _confirmar(pago['pago_id'] as int, null); // pasarela simulada con tarjeta guardada
       final tarjeta = await pedirTarjeta(pago['monto'] as String);
       if (tarjeta == null) return pendiente;
       return await _confirmar(pago['pago_id'] as int, tarjeta);

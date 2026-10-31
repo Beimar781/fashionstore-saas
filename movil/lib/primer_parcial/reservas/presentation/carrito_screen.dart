@@ -6,7 +6,6 @@ import '../../../features/auth/data/auth_repository.dart';
 import '../../ventas/data/comprobante_movil.dart';
 import '../../ventas/data/ventas_repository.dart';
 import '../../ventas/presentation/boton_comprobante.dart';
-import '../data/datos_entrega.dart';
 import '../data/hoja_de_pago.dart';
 import '../data/pago_movil.dart';
 import '../data/reservas_repository.dart';
@@ -54,10 +53,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   Future<void> _pagar() async {
-    final datos = await Navigator.push<DatosEntrega>(context, MaterialPageRoute(builder: (_) => EntregaScreen(sucursal: _carrito?['sucursal'] as String?)));
-    if (datos == null || !mounted) return; // el cliente volvió sin continuar
+    final eleccion = await Navigator.push<EleccionDeCompra>(context, MaterialPageRoute(builder: (_) => EntregaScreen(repo: _repo, sucursal: _carrito?['sucursal'] as String?)));
+    if (eleccion == null || !mounted) return; // el cliente volvió sin continuar
     setState(() { _trabajando = true; _error = null; _resultado = null; });
-    await _mostrar(await _pago.pagar(datos: datos, pedirTarjeta: _pedirTarjeta));
+    await _mostrar(await _pago.pagar(datos: eleccion.datos, medio: eleccion.medio, pedirTarjeta: _pedirTarjeta));
   }
 
   Future<void> _verificar(int pagoId) async {

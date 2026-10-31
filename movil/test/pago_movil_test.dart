@@ -1,6 +1,7 @@
 import 'package:fashionstore_movil/core/network/api_client.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/datos_entrega.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/hoja_de_pago.dart';
+import 'package:fashionstore_movil/primer_parcial/reservas/data/medio_de_pago.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/pago_movil.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/reservas_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,10 +14,13 @@ class ApiFalsa extends ApiClient {
   ApiException? falloAlConfirmar;
   Map<String, dynamic>? respuestaConfirmar;
   final llamadas = <String>[];
+  final cuerpos = <String, Map<String, dynamic>>{};
+  List<Map<String, dynamic>> tarjetas = [];
 
   @override
   Future<Map<String, dynamic>> post(String ruta, Map<String, dynamic> cuerpo, {bool autenticado = true}) async {
     llamadas.add(ruta);
+    cuerpos[ruta] = cuerpo;
     if (ruta == '/compras/checkout') return {'id': 5, 'codigo': 'PED-5'};
     if (ruta.endsWith('/iniciar')) {
       return {'pago_id': 9, 'modo': modo, 'publishable_key': 'pk_test_falsa', 'client_secret': 'pi_falso_secret', 'monto': '120.00'};
@@ -25,6 +29,18 @@ class ApiFalsa extends ApiClient {
       if (falloAlConfirmar != null) throw falloAlConfirmar!;
       return respuestaConfirmar ?? _aprobado;
     }
+    return {};
+  }
+
+  @override
+  Future<List<dynamic>> getLista(String ruta) async {
+    llamadas.add(ruta);
+    return tarjetas;
+  }
+
+  @override
+  Future<Map<String, dynamic>> delete(String ruta) async {
+    llamadas.add('DELETE $ruta');
     return {};
   }
 
@@ -44,11 +60,21 @@ class HojaFalsa implements HojaDePago {
   final ResultadoHoja resultado;
   String? clavePublica;
   String? claveSecreta;
+  final usos = <String>[];
 
   @override
   Future<ResultadoHoja> mostrar({required String clavePublica, required String claveSecreta}) async {
     this.clavePublica = clavePublica;
     this.claveSecreta = claveSecreta;
+    usos.add('hoja');
+    return resultado;
+  }
+
+  @override
+  Future<ResultadoHoja> confirmarGuardada({required String clavePublica, required String claveSecreta}) async {
+    this.clavePublica = clavePublica;
+    this.claveSecreta = claveSecreta;
+    usos.add('guardada');
     return resultado;
   }
 }
@@ -141,5 +167,65 @@ void main() {
     final api = ApiFalsa()..modo = 'simulado';
     final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.cancelado);
+  });
+
+  test('Tarjeta nueva con «Guardar»: el servidor recibe guardar_tarjeta y se abre la hoja de Stripe', () async {
+    final api = ApiFalsa();
+    final hoja = HojaFalsa(const ResultadoHoja(EstadoHoja.completada));
+    final r = await _flujo(api, hoja).pagar(datos: _datos, medio: const MedioDePago(guardar: true), pedirTarjeta: _sinTarjeta);
+    expect(r.tipo, TipoPago.aprobado);
+    expect(api.cuerpos['/pagos/pedidos/5/iniciar'], {'tarjeta_guardada_id': null, 'guardar_tarjeta': true});
+    expect(hoja.usos, ['hoja']);
+  });
+
+  test('Sin marcar «Guardar» no se guarda nada', () async {
+    final api = ApiFalsa();
+    await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
+    expect(api.cuerpos['/pagos/pedidos/5/iniciar'], {'tarjeta_guardada_id': null, 'guardar_tarjeta': false});
+  });
+
+  test('Tarjeta guardada con Stripe: se envía su id y solo se confirma, sin abrir la hoja de pago', () async {
+    final api = ApiFalsa();
+    final hoja = HojaFalsa(const ResultadoHoja(EstadoHoja.completada));
+    final r = await _flujo(api, hoja).pagar(datos: _datos, medio: const MedioDePago(tarjetaGuardadaId: 4, guardar: true), pedirTarjeta: _sinTarjeta);
+    expect(r.tipo, TipoPago.aprobado);
+    expect(api.cuerpos['/pagos/pedidos/5/iniciar'], {'tarjeta_guardada_id': 4, 'guardar_tarjeta': false}); // una tarjeta ya guardada no se vuelve a guardar
+    expect(hoja.usos, ['guardada']);
+    expect(api.llamadas.last, '/pagos/9/confirmar');
+  });
+
+  test('Tarjeta guardada rechazada por el banco: se muestra el rechazo', () async {
+    final api = ApiFalsa()..falloAlConfirmar = ApiException('Pago rechazado.', statusCode: 402, motivo: 'Transacción denegada por su banco');
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.fallida, ''))).pagar(datos: _datos, medio: const MedioDePago(tarjetaGuardadaId: 4), pedirTarjeta: _sinTarjeta);
+    expect(r.tipo, TipoPago.rechazado);
+    expect(r.mensaje, contains('Motivo: Transacción denegada por su banco'));
+  });
+
+  test('Modo simulado con tarjeta guardada: no pide la tarjeta y confirma con la guardada', () async {
+    final api = ApiFalsa()..modo = 'simulado';
+    var pidioTarjeta = false;
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(
+      datos: _datos,
+      medio: const MedioDePago(tarjetaGuardadaId: 4),
+      pedirTarjeta: (_) async {
+        pidioTarjeta = true;
+        return null;
+      },
+    );
+    expect(r.tipo, TipoPago.aprobado);
+    expect(pidioTarjeta, isFalse);
+    expect(api.cuerpos['/pagos/9/confirmar'], {'tarjeta': null});
+  });
+
+  test('Las tarjetas guardadas se listan y se eliminan con los mismos endpoints de la web', () async {
+    final api = ApiFalsa()
+      ..tarjetas = [
+        {'id': 4, 'marca': 'Visa', 'ultimos4': '4242', 'exp_mes': 12, 'exp_anio': 2030}
+      ];
+    final repo = ReservasRepository(api);
+    final lista = await repo.tarjetasGuardadas();
+    expect(lista.single.descripcion, 'Visa terminada en 4242 · vence 12/2030');
+    await repo.eliminarTarjeta(4);
+    expect(api.llamadas, ['/pagos/tarjetas', 'DELETE /pagos/tarjetas/4']);
   });
 }
