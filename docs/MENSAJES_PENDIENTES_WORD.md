@@ -611,3 +611,31 @@ No hay mensajes HTTP nuevos: el móvil reutiliza los de CU-32 (402 «Transacció
 ## Para el Word
 
 CU-32 y CU-11: el flujo alterno «pago con tarjeta desde la app móvil» (Payment Sheet de Stripe en modo prueba; 3D Secure con la tarjeta `4000 0027 6000 3184`). Vista de despliegue y componentes: librería `flutter_stripe` en el móvil. Diagrama de secuencia del pago: añadir al actor «App móvil» junto a «Navegador web».
+
+# Prompt O · Paridad del Cliente en el móvil
+
+## Reglas y decisiones
+
+- **Decisión:** el Cliente tiene las mismas funciones en la web y en el móvil, salvo el vestidor virtual, que es solo móvil. Los reportes administrativos, la caja, el inventario y los demás roles son solo web.
+- **Comprobante PDF (CU-12):** el móvil descarga `GET /compras/{id}/comprobante` con el token de la sesión, lo guarda en la carpeta temporal del teléfono y lo abre con el visor de PDF (desde ahí se comparte o se guarda). El botón «Ver comprobante» está en «Mis compras» (lista y detalle) y en el resultado de un pago aprobado, muestra un indicador y no se puede tocar dos veces. Librerías nuevas: `path_provider` y `open_filex`.
+- **Entrega y facturación (CU-11):** antes de pagar, el móvil pide retiro en la sucursal o entrega a domicilio (con dirección), NIT o CI y razón social opcional, con las mismas reglas que la web. Antes enviaba siempre retiro, NIT `0` y «Sin nombre».
+- **Reservar en línea (CU-09):** «Agregar a mi reserva» desde la ficha de la prenda, pantalla «Mi reserva» (sucursal, día y hora aproximada, notas) y confirmación con `POST /reservas`, igual que la web. Las prendas elegidas se guardan en el teléfono, separadas por usuario, y se limitan a 10 por prenda y al stock que había al elegirla. Al cancelar una reserva se pide un motivo opcional de hasta 200 caracteres. El modo sin conexión no cambia.
+- **Asistente de compras (CU-07):** pantalla de chat con burbujas, prendas sugeridas que abren la ficha, botones de sugerencias y sucursal opcional. La entrada del menú aparece solo si el plan de la empresa incluye `reportes_ia` (dato que el móvil ya guarda con la sesión); con otro plan no aparece, y si se llamara igual el servidor responde 403. No se llevaron al móvil las recomendaciones, los outfits ni la privacidad.
+- **Crear cuenta (CU-01):** «Crear cuenta» en el login del móvil, con los mismos campos y el mismo endpoint (`POST /auth/registro`); al terminar vuelve al login con el código y el correo escritos.
+- **Diferencia conocida:** las tarjetas guardadas (guardar al pagar, reutilizar y eliminar) quedan solo en la web: la hoja de pago de Stripe del móvil necesitaría una clave efímera del cliente que el servidor no entrega, y agregarla complicaba el backend.
+- **Operación offline y comprobante:** una compra hecha sin conexión y confirmada queda por pagar y no tiene todavía comprobante, así que ahí no hay botón; la respuesta de sincronización tampoco trae el identificador del pedido.
+
+## Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Móvil sin conexión al ver el comprobante | «Sin conexión: no se puede descargar el comprobante. Inténtelo de nuevo cuando tenga red.» | — (solo en la app) | Pendiente |
+| El comprobante no existe o no es del cliente | «No se encontró el comprobante de esta compra.» | 404 / 403 (el servidor responde 404 si es de otra empresa) | Pendiente |
+| El teléfono no tiene visor de PDF | «No hay una aplicación para abrir PDF en este teléfono.» | — (solo en la app) | Pendiente |
+| Móvil sin conexión al usar el asistente | «Sin conexión: el asistente necesita Internet.» | — (solo en la app) | Pendiente |
+| Móvil sin conexión al reservar o al crear la cuenta | «Sin conexión: la reserva necesita Internet.» / «Sin conexión: crear la cuenta necesita Internet.» | — (solo en la app) | Pendiente |
+| Datos del formulario de crear cuenta | «Ingrese el código de la tienda.», «Ingrese su nombre.», «Ingrese un correo válido.» y «La contraseña debe tener al menos 8 caracteres.» (esta última es la del servidor) | — (validación en la app) | Pendiente |
+
+## Para el Word
+
+CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con las mismas pantallas y los mensajes de arriba. En el cuadro de requisitos, la regla de paridad: el Cliente tiene las mismas funciones en web y móvil salvo el vestidor (solo móvil); el resto de los roles, solo web. Librerías nuevas del móvil: `path_provider` y `open_filex`.

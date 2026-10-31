@@ -43,6 +43,8 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 1.5 | Web | Ídem | Abrir el enlace y definir una contraseña nueva. | «Contraseña restablecida»; el enlace ya no sirve una segunda vez. | ☐ |
 | 1.6 | Móvil | Cliente EMP-A | Iniciar sesión; probar mostrar/ocultar contraseña. | Entra; el ojito funciona. | ☐ |
 | 1.7 | Móvil | Ídem | En el login, escribir código y correo y tocar «¿Olvidó su contraseña?». | Aviso con el mensaje genérico del servidor; llega el correo con el enlace (que abre la web). | ☐ |
+| 1.8 | Móvil | Ninguna | En el login tocar «¿No tiene cuenta? Crear cuenta»; escribir `EMP-A`, nombre, apellidos, un correo nuevo y una contraseña de 8 o más caracteres. | La app vuelve al login con el código y el correo escritos y el aviso «Cuenta creada. Ingrese con su contraseña.»; se puede ingresar. | ☐ |
+| 1.9 | Móvil | Ninguna | Crear cuenta con una contraseña de menos de 8 caracteres y con un correo ya usado. | «La contraseña debe tener al menos 8 caracteres.» y «Este correo ya está en uso.» | ☐ |
 
 ## 2. Catálogo por empresa
 
@@ -59,6 +61,9 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 3.1 | Web | Cliente EMP-B | Pedir «una camisa para el trabajo». | Respuesta con prendas reales de EMP-B; el origen es `IA` (la API lo devuelve en `origen`). | ☐ |
 | 3.2 | Web | Cliente EMP-A | Llamar al asistente (con la API `/docs` o la pantalla, si se ve). | **403** «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» | ☐ |
 | 3.3 | Web | Cliente EMP-B | Si la IA falla (clave o límite), repetir el pedido. | Responde igual con reglas locales (origen `REGLAS`); el motivo queda en el registro del backend. | ☐ |
+| 3.4 | Móvil | Cliente EMP-B (plan Profesional) | En el inicio aparece «Asistente de compras». Pedir «una camisa para el trabajo»; tocar una prenda sugerida y un botón de sugerencia; elegir una sucursal. | Burbujas de conversación, prendas con su precio que abren la ficha de la prenda y sugerencias que envían otra consulta. | ☐ |
+| 3.5 | Móvil | Cliente EMP-A (plan Básico) | Mirar el inicio. | **No** aparece «Asistente de compras». | ☐ |
+| 3.6 | Móvil | Cliente EMP-B | Con modo avión, pedir algo al asistente. | «Sin conexión: el asistente necesita Internet.» | ☐ |
 
 ## 4. Vestidor virtual
 
@@ -79,6 +84,9 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 5.4 | Móvil | Cliente EMP-A | Repetir con `4000 0000 0000 0002`. | La hoja de Stripe muestra que la tarjeta fue rechazada y permite reintentar; al cerrarla, la app dice que el pedido quedó pendiente de pago. No se cobra ni baja el stock. | ☐ |
 | 5.5 | Móvil | Cliente EMP-A | Repetir con `4000 0027 6000 3184` y completar la autenticación 3D Secure. | Pide la autenticación; al completarla, «✔ Pago aprobado». Si se rechaza la autenticación, no se cobra. | ☐ |
 | 5.6 | Móvil | Cliente EMP-A | Abrir la hoja de pago y cerrarla sin pagar. | «El pedido … quedó pendiente de pago.» Sin mensaje de error ni cobro. | ☐ |
+| 5.7 | Móvil | Cliente EMP-A | Al tocar «Pagar con tarjeta» se abre «Entrega y facturación». Dejar el NIT vacío y tocar «Continuar al pago». | «Ingrese su NIT o CI para la facturación.» | ☐ |
+| 5.8 | Móvil | Cliente EMP-A | Elegir «A domicilio» sin dirección y con NIT `1234567`. | «Ingrese la dirección de entrega.» | ☐ |
+| 5.9 | Móvil | Cliente EMP-A | Elegir «A domicilio», escribir la dirección, NIT `1234567` y razón social, y pagar con `4242 4242 4242 4242`. | Pago aprobado; en la web, la compra figura con entrega a domicilio, esa dirección y esos datos de facturación. | ☐ |
 
 ## 6. Comprobante PDF
 
@@ -86,6 +94,10 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 |---|---|---|---|---|---|
 | 6.1 | Web | Cliente EMP-A | «Mis compras» → la compra de 5.1 → descargar comprobante. | PDF con el número `CMP-…`, las prendas, el IVA y el total. | ☐ |
 | 6.2 | Móvil | Cliente EMP-A | «Mis compras» → ver el detalle. | Muestra el número de comprobante de la compra. | ☐ |
+| 6.3 | Móvil | Cliente EMP-A | Tras un pago aprobado, tocar «Ver comprobante» en el resultado. | El botón muestra «Descargando…» y no se puede tocar dos veces; se abre el PDF en el visor del teléfono (desde ahí se comparte o se guarda). | ☐ |
+| 6.4 | Móvil | Cliente EMP-A | «Mis compras» → «Ver comprobante» de una compra pagada. | Se abre el mismo PDF. Las compras sin pagar no tienen el botón. | ☐ |
+| 6.5 | Móvil | Cliente EMP-A | Con modo avión, tocar «Ver comprobante». | «Sin conexión: no se puede descargar el comprobante. Inténtelo de nuevo cuando tenga red.» La app no se cierra. | ☐ |
+| 6.6 | Móvil | Cliente EMP-A | En un teléfono sin visor de PDF, tocar «Ver comprobante». | «No hay una aplicación para abrir PDF en este teléfono.» | ☐ |
 
 ## 7. Reservas
 
@@ -93,6 +105,9 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 |---|---|---|---|---|---|
 | 7.1 | Web | Cliente EMP-A | Reservar una prenda en una sucursal. | Reserva creada; el stock disponible baja. | ☐ |
 | 7.2 | Móvil | Cliente EMP-A | «Mis reservas» → cancelar la reserva. | La reserva se cancela y el stock se libera. | ☐ |
+| 7.3 | Móvil | Cliente EMP-A | En el catálogo, abrir una prenda y tocar el marcador «Agregar a mi reserva» de una talla y color con stock (junto al carrito). | Mensaje de que la prenda se agregó a su reserva. | ☐ |
+| 7.4 | Móvil | Cliente EMP-A | «Mis reservas» → botón «Mi reserva (n)». Elegir sucursal, día y hora, y «Confirmar reserva». | «Reserva … confirmada. Presente ese código en la tienda.»; la reserva aparece en «Mis reservas» y el stock se aparta. | ☐ |
+| 7.5 | Móvil | Cliente EMP-A | En «Mis reservas», cancelar una reserva. | Pide un motivo opcional (hasta 200 caracteres); al confirmar, la reserva queda cancelada. | ☐ |
 
 ## 8. Devolución y aviso push al cliente
 
@@ -118,6 +133,13 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 10.1 | Web | Administrador EMP-A | Abrir la bitácora. | Aparecen los inicios de sesión, la venta y la devolución de las pruebas anteriores, solo de EMP-A. Sin contraseñas ni datos de tarjeta. | ☐ |
 | 10.2 | Web | SuperAdmin | Abrir el panel y la bitácora general. | Ve las dos empresas, sus planes y suscripciones, y la bitácora de toda la plataforma. | ☐ |
 | 10.3 | Web | Administrador EMP-A | Intentar abrir una ruta de la plataforma (`/api/plataforma/empresas`). | **403**: solo el SuperAdmin entra. | ☐ |
+
+## Diferencias conocidas entre la web y el móvil
+
+- **Vestidor virtual:** solo en el móvil, por diseño.
+- **Reportes administrativos, caja, inventario y demás roles:** solo en la web.
+- **Tarjetas guardadas** (guardar la tarjeta al pagar y reutilizarla): solo en la web. La hoja de pago de Stripe del móvil necesita una clave efímera del cliente que el servidor no entrega.
+- **Comprobante de una compra hecha sin conexión:** una compra offline confirmada queda por pagar y todavía no tiene comprobante; el PDF existe cuando se paga con tarjeta.
 
 ## Si algo falla
 
