@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import 'datos_entrega.dart';
 
 /// Acceso a la API del carrito (CU-08), las reservas del cliente (CU-10) y el pago de la compra digital (CU-11, CU-32).
 class ReservasRepository {
@@ -12,7 +13,7 @@ class ReservasRepository {
   Future<Map<String, dynamic>> quitar(int itemId) => _api.delete('/carrito/items/$itemId');
 
   // ---- compra digital: checkout y pago con tarjeta de prueba (CU-11, CU-32) ----
-  Future<Map<String, dynamic>> checkout() => _api.post('/compras/checkout', {'tipo_entrega': 'RETIRO', 'nit_ci': '0', 'razon_social': 'Sin nombre'});
+  Future<Map<String, dynamic>> checkout(DatosEntrega datos) => _api.post('/compras/checkout', datos.aCuerpo());
 
   /// Inicia el pago. Con Stripe devuelve la clave pública y el `client_secret` para la hoja de pago; con la pasarela simulada se confirma con una tarjeta de prueba.
   Future<Map<String, dynamic>> iniciarPago(int pedidoId) => _api.post('/pagos/pedidos/$pedidoId/iniciar', {});

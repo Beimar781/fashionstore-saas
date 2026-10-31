@@ -1,4 +1,5 @@
 import 'package:fashionstore_movil/core/network/api_client.dart';
+import 'package:fashionstore_movil/primer_parcial/reservas/data/datos_entrega.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/hoja_de_pago.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/pago_movil.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/reservas_repository.dart';
@@ -52,6 +53,8 @@ class HojaFalsa implements HojaDePago {
   }
 }
 
+const _datos = DatosEntrega(nitCi: '1234567');
+
 Future<Map<String, dynamic>?> _sinTarjeta(String monto) async => null;
 Future<Map<String, dynamic>?> _tarjetaDePrueba(String monto) async => {'numero': '4242 4242 4242 4242', 'mes': 12, 'anio': 2030, 'cvc': '123', 'titular': 'Cliente'};
 
@@ -61,7 +64,7 @@ void main() {
   test('Stripe aprobado: la hoja se abre con la clave del backend, se confirma y se muestra el comprobante', () async {
     final api = ApiFalsa();
     final hoja = HojaFalsa(const ResultadoHoja(EstadoHoja.completada));
-    final r = await _flujo(api, hoja).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, hoja).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.aprobado);
     expect(r.mensaje, contains('Pago aprobado'));
     expect(r.mensaje, contains('Visa terminada en 4242'));
@@ -72,7 +75,7 @@ void main() {
 
   test('Stripe rechazado (402): muestra el motivo del banco y que no se cobró nada', () async {
     final api = ApiFalsa()..falloAlConfirmar = ApiException('Pago rechazado.', statusCode: 402, motivo: 'Transacción denegada por su banco');
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.rechazado);
     expect(r.mensaje, contains('Pago rechazado'));
     expect(r.mensaje, contains('Motivo: Transacción denegada por su banco'));
@@ -81,14 +84,14 @@ void main() {
 
   test('Stripe falló en la hoja: se confirma igual y el motivo de Stripe tiene prioridad', () async {
     final api = ApiFalsa()..falloAlConfirmar = ApiException('Pago rechazado.', statusCode: 402, motivo: 'Transacción denegada por su banco');
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.fallida, 'Su tarjeta fue rechazada.'))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.fallida, 'Su tarjeta fue rechazada.'))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.rechazado);
     expect(r.mensaje, contains('Motivo: Su tarjeta fue rechazada.'));
   });
 
   test('Stripe cancelado: el pedido queda pendiente de pago, sin confirmar y sin error', () async {
     final api = ApiFalsa();
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.cancelada))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.cancelada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.cancelado);
     expect(r.mensaje, 'El pedido PED-5 quedó pendiente de pago.');
     expect(api.llamadas.any((l) => l.endsWith('/confirmar')), isFalse);
@@ -104,7 +107,7 @@ void main() {
         'pedido': {},
       };
     final flujo = _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada)));
-    final r = await flujo.pagar(pedirTarjeta: _sinTarjeta);
+    final r = await flujo.pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.pendiente);
     expect(r.pagoId, 9);
     expect(r.mensaje, contains('Pendiente de confirmación'));
@@ -115,28 +118,28 @@ void main() {
 
   test('Si la hoja de pago no se puede abrir se avisa y no se confirma nada', () async {
     final api = ApiFalsa();
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.error, 'No se pudo abrir la hoja de pago. Intente nuevamente.'))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.error, 'No se pudo abrir la hoja de pago. Intente nuevamente.'))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.error);
     expect(api.llamadas.any((l) => l.endsWith('/confirmar')), isFalse);
   });
 
   test('Sin stock al pagar (409): el mensaje del servidor llega tal cual', () async {
     final api = ApiFalsa()..falloAlConfirmar = ApiException('La prenda se agotó.', statusCode: 409);
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect((r.tipo, r.mensaje), (TipoPago.error, 'La prenda se agotó.'));
   });
 
   test('Modo simulado: sigue pidiendo la tarjeta de prueba y no abre la hoja de Stripe', () async {
     final api = ApiFalsa()..modo = 'simulado';
     final hoja = HojaFalsa(const ResultadoHoja(EstadoHoja.completada));
-    final r = await _flujo(api, hoja).pagar(pedirTarjeta: _tarjetaDePrueba);
+    final r = await _flujo(api, hoja).pagar(datos: _datos, pedirTarjeta: _tarjetaDePrueba);
     expect(r.tipo, TipoPago.aprobado);
     expect(hoja.clavePublica, isNull);
   });
 
   test('Modo simulado: si el cliente cierra el formulario, el pedido queda pendiente de pago', () async {
     final api = ApiFalsa()..modo = 'simulado';
-    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(pedirTarjeta: _sinTarjeta);
+    final r = await _flujo(api, HojaFalsa(const ResultadoHoja(EstadoHoja.completada))).pagar(datos: _datos, pedirTarjeta: _sinTarjeta);
     expect(r.tipo, TipoPago.cancelado);
   });
 }

@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import 'datos_entrega.dart';
 import 'hoja_de_pago.dart';
 import 'reservas_repository.dart';
 
@@ -27,9 +28,9 @@ class PagoMovil {
   final HojaDePago _hoja;
 
   /// `pedirTarjeta` solo se usa con la pasarela simulada: muestra el formulario de la tarjeta de prueba (null si el cliente cancela).
-  Future<ResultadoPagoMovil> pagar({required Future<Map<String, dynamic>?> Function(String monto) pedirTarjeta}) async {
+  Future<ResultadoPagoMovil> pagar({required DatosEntrega datos, required Future<Map<String, dynamic>?> Function(String monto) pedirTarjeta}) async {
     try {
-      final pedido = await _repo.checkout();
+      final pedido = await _repo.checkout(datos);
       final pago = await _repo.iniciarPago(pedido['id'] as int);
       final pendiente = ResultadoPagoMovil(TipoPago.cancelado, 'El pedido ${pedido['codigo']} quedó pendiente de pago.');
       if (pago['modo'] == 'stripe') {
