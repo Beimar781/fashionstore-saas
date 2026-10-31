@@ -1,26 +1,61 @@
 # FashionStore SaaS
 
-Plataforma de comercio electrónico **multitenant** para tiendas de ropa. Proyecto de Sistemas de Información 2 (Grupo 20).
+Plataforma de comercio electrónico **multitenant** para tiendas de ropa: cada empresa (tenant) tiene su catálogo, sucursales, inventario, ventas, usuarios y plan de suscripción, aislados por `empresa_id`. Incluye panel web (PWA), aplicación móvil Android y backend REST.
+
+Proyecto de **Sistemas de Información 2** (INF 412-SA, UAGRM) · Grupo 20.
+
+**En producción (Railway)**
+
+- Web: <https://frontend-production-13a8.up.railway.app>
+- API: <https://fashionstore-saas-production.up.railway.app> (documentación en `/docs`, estado en `/salud`)
+- APK: se compila en GitHub Actions (ver [Aplicación móvil](#aplicación-móvil-apk))
+
+## Contexto del sistema
+
+| Actor | Qué hace |
+|---|---|
+| **SuperAdministrador** | Gestiona las empresas, los planes (Prueba gratuita, Básico, Profesional), las suscripciones y la bitácora de la plataforma |
+| **Administrador** | Gestiona su empresa: sucursales, usuarios, catálogo, promociones, proveedores, reportes, indicadores, plan y bitácora |
+| **Encargado / Cajero** | Operan la sucursal: inventario, recepción de mercadería, reservas en mostrador, punto de venta, devoluciones y cambios, cierre de caja |
+| **Cliente** | Consulta el catálogo, usa el vestidor virtual, arma su carrito, paga con tarjeta, reserva prendas y descarga sus comprobantes |
+| **Proveedor** | Portal para ver y atender los pedidos de abastecimiento |
+
+**Funciones principales**
+
+- Multitenancia con roles y permisos; las funciones disponibles dependen del plan de la empresa (por ejemplo, la IA solo en el plan Profesional).
+- Catálogo con variantes (color × talla), existencias por sucursal, promociones y fotografías.
+- Carrito, compra con retiro o entrega a domicilio, pago con tarjeta (Stripe en modo de prueba), comprobante en PDF.
+- Reservas en sucursal con código y avisos (campana y notificaciones push).
+- Punto de venta, devoluciones y cambios, cierre de caja.
+- **Modo sin conexión** en web y móvil: catálogo descargado, reservas, compras y ventas de contado en una cola que se sincroniza sola al volver la red, con estados y manejo de conflictos.
+- **Vestidor virtual** en el móvil: prueba de la prenda con la cámara (detección de pose en el dispositivo).
+- IA: asistente de compras, reportes generativos (escritos o por voz) y analítica con ML; con respaldo por reglas si no hay clave de IA.
+- Bitácora de auditoría y notificaciones push (web y móvil).
+
+**Estado:** los casos de uso del enunciado están implementados y desplegados. En curso: vestidor virtual también en la web, funciones del Cliente completas sin conexión, exportación de reportes y nueva navegación del móvil.
+
+## Tecnología
 
 | Carpeta | Contenido | Tecnología |
 |---|---|---|
-| `backend/` | API REST, reglas de negocio y migraciones | Python · FastAPI · SQLAlchemy · Alembic · PostgreSQL |
-| `frontend/` | Paneles web (SuperAdmin y Administrador), PWA instalable | Angular · Service Worker · IndexedDB |
-| `movil/` | Aplicación móvil con almacenamiento local | Flutter · Dart · SQLite |
-| `docs/` | Trazabilidad de casos de uso y pendientes | — |
+| `backend/` | API REST, reglas de negocio y migraciones | Python 3.13 · FastAPI · SQLAlchemy · Alembic · PostgreSQL |
+| `frontend/` | Paneles web y tienda, PWA instalable | Angular 21 · Service Worker · IndexedDB |
+| `movil/` | Aplicación móvil para el Cliente y el personal de tienda | Flutter · Dart · SQLite · ML Kit |
+| `docs/` | Despliegue, guía de pruebas, trazabilidad de casos de uso | — |
+| `.github/workflows/` | Compilación del APK | GitHub Actions |
 
-**Despliegue en la nube (Railway):** la guía paso a paso, con la tabla de claves, está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+Servicios externos (todos con plan gratuito o modo de prueba): Brevo (correo), Stripe (pagos de prueba), Google Gemini (IA), Firebase Cloud Messaging (push móvil).
 
-## Requisitos
+## Cómo correr el sistema en local
+
+Los comandos son para Windows (PowerShell). Se usan **dos terminales**: una para el backend y otra para la web.
+
+### Requisitos
 
 - [Python 3.13](https://www.python.org/downloads/)
 - [Node.js 22 o superior](https://nodejs.org/) (incluye npm)
-- [PostgreSQL 16 o superior](https://www.postgresql.org/download/) en marcha (con o sin pgAdmin)
-- Para la app móvil: Flutter y Android Studio (ver [`movil/README.md`](movil/README.md))
-
-## Instalación
-
-Los comandos son para Windows (PowerShell). Se usan **dos terminales**: una para el backend y otra para la web.
+- [PostgreSQL 16 o superior](https://www.postgresql.org/download/) en marcha
+- Para el móvil: Flutter y Android Studio (ver [`movil/README.md`](movil/README.md))
 
 ### 1. Clonar
 
@@ -39,20 +74,21 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Abre `backend/.env` y cambia **tu usuario y contraseña de PostgreSQL** en `DATABASE_URL`
-(por ejemplo `postgresql+psycopg://postgres:MI_CLAVE@localhost:5432/fashionstore_saas`).
-En `SECRET_KEY` escribe cualquier texto largo.
+Abre `backend/.env` y ajusta:
 
-Luego, con el entorno virtual activado:
+- `DATABASE_URL`: tu usuario y contraseña de PostgreSQL, por ejemplo `postgresql+psycopg://postgres:MI_CLAVE@localhost:5432/fashionstore_saas`.
+- `SECRET_KEY`: cualquier texto largo.
+
+Con el entorno virtual activado:
 
 ```powershell
 python scripts/crear_bd.py      # crea la base de datos
 alembic upgrade head            # crea las tablas
-python -m app.seed              # carga roles, planes, SuperAdmin y dos empresas de ejemplo (con catálogo y existencias)
+python -m app.seed              # roles, planes, SuperAdmin y dos empresas de ejemplo con catálogo, existencias y datos de demostración
 uvicorn app.main:app --reload   # inicia la API
 ```
 
-La API queda en <http://localhost:8000> y su documentación en <http://localhost:8000/docs>.
+API en <http://localhost:8000> · documentación en <http://localhost:8000/docs>.
 
 ### 3. Web (terminal 2)
 
@@ -64,70 +100,81 @@ npm start
 
 Abre <http://localhost:4200>.
 
-## Cuentas iniciales
+### 4. Móvil (opcional)
+
+Con el backend en marcha y un emulador Android o un celular con depuración USB:
+
+```powershell
+cd movil
+flutter pub get
+flutter run
+```
+
+El emulador usa `http://10.0.2.2:8000/api` por defecto. Para un celular físico en la misma red Wi‑Fi: `flutter run --dart-define=API_URL=http://192.168.X.X:8000/api`. Detalles en [`movil/README.md`](movil/README.md).
+
+### Pruebas automáticas
+
+```powershell
+cd backend ; python -m pytest -q          # API y reglas de negocio
+cd frontend ; npm run build               # compila la web de producción
+cd movil ; flutter analyze ; flutter test # análisis y pruebas del móvil
+```
+
+### Opcionales (sin ellos todo funciona con modos simulados)
+
+Se definen en `backend/.env` (el archivo nunca se sube a git; la lista completa está en `backend/.env.example`):
+
+| Variable | Para qué |
+|---|---|
+| `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | Pagos con Stripe en modo de prueba (`sk_test_…`, `pk_test_…`). Sin ellas el pago es simulado |
+| `GEMINI_API_KEY` (o `IA_PROVEEDOR=anthropic` + `ANTHROPIC_API_KEY`) | IA real. Sin clave se usan reglas de respaldo |
+| `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | Envío real de correos. Sin ellas el enlace de recuperar contraseña se imprime en la terminal del backend |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Push web (se generan con `python scripts/generar_vapid.py`) |
+| `FCM_PROYECTO`, `FCM_CREDENCIALES` | Push nativo del móvil (Firebase) |
+| `CARGAR_DATOS_DEMO=true` | Carga el seed solo si la base está vacía (se usa en Railway) |
+
+## Cuentas de demostración
 
 El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
 
 | Rol | Código de empresa | Correo | Contraseña |
 |---|---|---|---|
 | SuperAdministrador | *(vacío)* | superadmin@fashionstore.com | Super2026* |
-| Administrador | EMP-A | admin@modaurbana.com | Demo2026* |
-| Administrador | EMP-B | admin@estiloandino.com | Demo2026* |
+| Administrador | EMP-A (plan Básico) | admin@modaurbana.com | Demo2026* |
+| Administrador | EMP-B (plan Profesional) | admin@estiloandino.com | Demo2026* |
 | Encargado | EMP-A o EMP-B | encargado@tienda.com | Demo2026* |
 | Cajero | EMP-A o EMP-B | cajero@tienda.com | Demo2026* |
 | Cliente | EMP-A | cliente@emp-a.com | Demo2026* |
+| Cliente | EMP-B | cliente@emp-b.com | Demo2026* |
 | Proveedor (portal) | EMP-A o EMP-B | proveedor@tienda.com | Demo2026* |
 
-## Catálogo de ejemplo
+EMP-A tiene el plan **Básico** (sin IA: los reportes con IA, la analítica con ML y el asistente salen bloqueados). EMP-B tiene el plan **Profesional** (todo habilitado).
 
-El seed crea para EMP-A (Moda Urbana) y EMP-B (Estilo Andino) categorías, tallas, colores, una temporada, una colección, productos con
-variantes, existencias por sucursal y una promoción. El Administrador gestiona todo en **Productos**, **Categorías, tallas y colores**,
-**Temporadas y colecciones** y **Promociones**; el Cliente lo ve en **Catálogo**. Un cliente nuevo se registra en `/registro` con el código de la tienda.
-También deja dos reservas del cliente demo en la primera sucursal (una pendiente y una preparada): el Encargado las ve en **Reservas** y las atiende con su código en **Atención en mostrador**; el cliente las ve en **Mis reservas**, y la campana 🔔 muestra los avisos (RF11).
-También deja en cada empresa una compra pagada del cliente demo (con su comprobante y su tarjeta guardada) y un carrito listo para pagar.
-**Pago con tarjeta:** sin claves de Stripe, el pago es simulado y se prueba con las tarjetas de prueba que muestra la pantalla de pago (por ejemplo
-`4242 4242 4242 4242` aprueba y `4000 0000 0000 9995` rechaza por fondos insuficientes). Para usar Stripe en modo de prueba, agregue en `backend/.env`
-`STRIPE_SECRET_KEY=sk_test_...` y `STRIPE_PUBLISHABLE_KEY=pk_test_...` (claves de prueba, nunca reales) y reinicie el backend.
-**Punto de venta:** `cajero@tienda.com` entra a **Caja** (escanear o buscar prendas, cobrar en efectivo o con tarjeta de prueba, imprimir el comprobante) y
-`encargado@tienda.com` a **Ventas de la sucursal** (resumen del día, cierre de caja y tickets). El seed deja ventas de caja de ejemplo. Para ver el comprobante interno
-temporal de la ficha CU-30, agregue `IMPUESTOS_SIMULAR_FALLA=true` en `backend/.env` y reinicie el backend.
-**Devoluciones y cambios (CU-41):** `cajero@tienda.com` o `encargado@tienda.com` entran a **Devoluciones y cambios**, escriben el N.° de comprobante de una venta (por ejemplo el que
-muestra el ticket de **Caja**), eligen las prendas y registran la devolución o el cambio (si la prenda nueva cuesta más, el cliente paga la diferencia en efectivo o con tarjeta de prueba); la prenda vuelve al inventario de su sucursal y se imprime la nota. El Administrador
-fija el plazo (15 días por defecto) y consulta todas las notas en **Devoluciones y cambios**. El seed deja una devolución de ejemplo por empresa.
-**Reportes, IA y plan (Fase G):** el seed deja 10 semanas de ventas de demostración. EMP-A (`admin@modaurbana.com`) tiene el plan **Básico**: ve **Reportes**, **Indicadores** y **Mi plan**, y
-**Reportes con IA**, **Analítica con ML** y el **Asistente** del cliente salen bloqueados (🔒). EMP-B (`admin@estiloandino.com`, plan **Profesional**) tiene todo: pida un reporte escrito o dictado con el micrófono
-(Chrome o Edge), vea el pronóstico de demanda y, como `cliente@emp-b.com`, pruebe el **Asistente de compras**. El asistente aprende de lo que el cliente compra, busca y mira (el seed ya deja búsquedas y prendas vistas del cliente demo), y el cliente puede apagarlo o borrarlo en **Mi privacidad**. Sin clave de IA todo funciona con reglas de respaldo; para usar la IA real agregue
-`GEMINI_API_KEY=` (Google Gemini, gratis y sin tarjeta; es el proveedor por defecto) o `IA_PROVEEDOR=anthropic` con `ANTHROPIC_API_KEY=` (Claude) en `backend/.env` (la clave nunca va en el código ni se sube a git) y reinicie el backend.
-**Modo sin conexión (Fase H):** el Cajero (`cajero@tienda.com`), el Encargado y el Cliente tienen **Modo sin conexión**: descargue el catálogo con Internet, apague la red (en Chrome: F12 → Network → Offline),
-registre una venta de contado (o una reserva, como cliente) y vuelva a conectar: se envía sola y pasa de «Registrada» a «Confirmada». El seed deja una venta que no alcanzó en el inventario: el Encargado la ve en
-**Conflictos de sincronización** y la reintenta o la descarta. En el móvil (`flutter run`) es la misma pantalla «Modo sin conexión»; el catálogo descargado también se usa si no hay Internet.
-**Bitácora (Fase J):** el Administrador (`admin@modaurbana.com`) entra a **Bitácora** y ve solo lo de su empresa; el SuperAdministrador (`superadmin@fashionstore.com`) ve la de todas las empresas con la columna **Empresa**
-y las operaciones de la plataforma. Cada inicio y cierre de sesión, cada intento fallido y cada alta, cambio, cobro o devolución queda registrado con quién, qué, cuándo y la IP; las consultas no. Se puede filtrar y buscar, y no se puede
-editar ni borrar. El seed deja unas 40 filas de ejemplo.
-**Plan de prueba y avisos push (Fase K):** el SuperAdministrador ve tres planes; **Prueba gratuita** dura 1 mes, una sola vez por empresa, sin IA. Los avisos push funcionan en modo simulado sin claves: como cliente, abra la campana 🔔 y
-pulse **Activar avisos**; cuando el Cajero registre una devolución o cambio de una venta vinculada a su correo, le llega el aviso (campana y registro en `push_envios`). Para Web Push de verdad ejecute `python scripts/generar_vapid.py`
-(agrega las claves VAPID a `backend/.env` sin imprimirlas) y reinicie el backend; para el móvil real se necesita una cuenta de servicio de Firebase (`FCM_CREDENCIALES` y `FCM_PROYECTO` en `backend/.env`).
-**Compra sin conexión (Fase K):** como cliente, en **Modo sin conexión** elija «Comprar», descargue el catálogo, apague la red y registre la compra; al volver la conexión se verifica el stock: si alcanza, queda un pedido por pagar (avisa la campana, el push y un mensaje emergente) y se paga con
-tarjeta en **Mis compras**; si la prenda se agotó, el aviso dice que no se cobró nada. Para ver el conflicto: deje una sola unidad, compre esa prenda con otro cliente y sincronice la compra sin conexión del primero; el Encargado la ve en **Conflictos de sincronización**
-y, si fue una venta de contado ya cobrada en caja, puede **descartarla devolviendo el dinero** (se revisa la prenda y la devolución pasa por el inventario con su talla y color). En **Devoluciones y cambios** el Cajero ahora marca la revisión de la prenda (sin daños, sin desgaste, con etiquetas).
-**Vestidor virtual (Fase I):** el Administrador (`admin@modaurbana.com` o `admin@estiloandino.com`) abre un producto en **Catálogo → Productos**: en «Vestidor virtual (móvil)» sube, por color, el PNG recortado de la prenda y ajusta el anclaje (solo camisas, polos, chaquetas y similares).
-El seed ya deja PNG de demostración, dibujados por código, para las prendas superiores de las dos empresas. El cliente se prueba la prenda en el móvil: en **Catálogo**, abre la prenda y pulsa **Probar en el vestidor**. La cámara y los FPS solo se pueden comprobar en un celular real (APK de GitHub Actions); el botón del insecto muestra FPS, latencia y el tiempo hasta ver la prenda.
-El seed también deja un proveedor con acceso al portal, un lote en tránsito (el Encargado lo recibe en **Recepción de mercadería**) y una propuesta de producto por revisar (**Abastecimiento**).
-Las fotografías de los productos se guardan en `backend/media/` (una carpeta por empresa); si actualizó el proyecto, ejecute de nuevo
-`pip install -r requirements.txt` y `alembic upgrade head`.
+**Tarjetas de prueba de Stripe** (cualquier fecha futura y cualquier CVC): `4242 4242 4242 4242` aprueba · `4000 0000 0000 0002` rechaza · `4000 0027 6000 3184` pide 3D Secure.
 
-## Recuperar contraseña
+## Aplicación móvil (APK)
 
-En el inicio de sesión, **¿Olvidaste tu contraseña?** pide el correo y genera un enlace de un solo uso.
-Sin configurar un servicio de correo, el enlace aparece en la terminal del backend; copia esa dirección en el navegador.
+El APK se compila en GitHub: **Actions → «Compilar APK» → Run workflow**. Al terminar, en la ejecución se descarga el artefacto `fashionstore-apk` (un `.zip` con `app-release.apk`, disponible 14 días). Se instala en Android permitiendo «instalar apps de orígenes desconocidos». El flujo incluye una prueba de arranque en un emulador. El APK se conecta al backend de Railway por HTTPS. Configuración (variable `API_URL`, secreto de Firebase) en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md), apartado 3.6.
 
-## Aplicación móvil
+## Despliegue en la nube
 
-Instrucciones en [`movil/README.md`](movil/README.md). Requiere el backend en ejecución.
+Guía paso a paso (Railway, Volume de imágenes, Brevo, Stripe, Gemini, Firebase y la tabla de variables): [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). El despliegue es automático con cada `git push` a `main`; las migraciones corren al arrancar el backend. La prueba de humo del despliegue es `python scripts/humo_produccion.py <URL del backend>`.
+
+## Documentación
+
+| Archivo | Contenido |
+|---|---|
+| [`docs/PRUEBAS_SISTEMA.md`](docs/PRUEBAS_SISTEMA.md) | Guía de pruebas manuales por rol, en web y móvil |
+| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Despliegue en Railway, claves y APK |
+| [`docs/TRAZABILIDAD.md`](docs/TRAZABILIDAD.md) | Casos de uso → código → pruebas |
+| [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Avance por lotes |
+| [`docs/MENSAJES_PENDIENTES_WORD.md`](docs/MENSAJES_PENDIENTES_WORD.md) | Mensajes y reglas para el documento del proyecto |
+| [`CLAUDE.md`](CLAUDE.md) | Convenciones del código del repositorio |
 
 ## Problemas frecuentes
 
 - **`password authentication failed`**: la contraseña de `DATABASE_URL` no es la de tu PostgreSQL.
-- **`.venv\Scripts\Activate.ps1` no se puede ejecutar**: abre PowerShell y ejecuta `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+- **`.venv\Scripts\Activate.ps1` no se puede ejecutar**: en PowerShell, `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 - **La web carga pero no inicia sesión**: confirma que el backend sigue corriendo en el puerto 8000.
-- **Para empezar de cero**: elimina la base `fashionstore_saas` desde pgAdmin y repite los pasos `crear_bd`, `alembic` y `seed`.
+- **Empezar de cero**: elimina la base `fashionstore_saas` (pgAdmin o `psql`) y repite `crear_bd`, `alembic upgrade head` y `app.seed`.
+- **El APK no abre o no conecta**: debe instalarse la versión más reciente del artefacto; el APK solo habla con el backend por HTTPS.
