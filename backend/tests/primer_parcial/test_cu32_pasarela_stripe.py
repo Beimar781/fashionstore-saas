@@ -166,3 +166,27 @@ def test_10_las_tarjetas_de_otra_pasarela_no_se_usan(inv, mundo, client, db, pas
 
     with pytest.raises(NoEncontrado):
         servicio.iniciar(p["id"], schemas.IniciarIn(tarjeta_guardada_id=t.id))
+
+
+# ---- el pago desde la app móvil (Payment Sheet): mismo servidor, el SDK nativo confirma el PaymentIntent ----
+def test_11_si_el_cliente_cierra_la_hoja_de_pago_el_nuevo_intento_anula_el_anterior(inv, mundo, client, db, pasarela, stripe_falso):
+    p = _pedido(inv, mundo, client)
+    servicio = _servicio(db, mundo, pasarela)
+    primero = servicio.iniciar(p["id"], schemas.IniciarIn())  # la hoja se abrió y el cliente la cerró: el móvil no llama a confirmar
+    ref1 = db.get(Pago, primero.pago_id).referencia_externa
+    segundo = servicio.iniciar(p["id"], schemas.IniciarIn())
+    assert stripe_falso.hizo("cancelar") == [("cancelar", ref1)] and db.get(Pago, primero.pago_id).estado == "CANCELADO"
+    assert db.get(Pedido, p["id"]).estado == "PENDIENTE_PAGO"
+    stripe_falso.autorizar(db.get(Pago, segundo.pago_id).referencia_externa)  # esta vez el SDK nativo deja el pago en requires_capture
+    r = servicio.confirmar(segundo.pago_id, schemas.ConfirmarIn())
+    assert r.aprobado and r.pedido.estado == "PAGADO" and len(stripe_falso.hizo("capturar")) == 1
+
+
+def test_12_3d_secure_sin_completar_no_cobra_y_el_pedido_sigue_por_pagar(inv, mundo, client, db, pasarela, stripe_falso):
+    p = _pedido(inv, mundo, client)
+    servicio = _servicio(db, mundo, pasarela)
+    i = servicio.iniciar(p["id"], schemas.IniciarIn())
+    stripe_falso.intentos[db.get(Pago, i.pago_id).referencia_externa].status = "requires_action"  # el cliente abandonó la autenticación 3D Secure
+    with pytest.raises(PagoRechazado):
+        servicio.confirmar(i.pago_id, schemas.ConfirmarIn())
+    assert stripe_falso.hizo("capturar") == [] and db.get(Pedido, p["id"]).estado == "PENDIENTE_PAGO"
