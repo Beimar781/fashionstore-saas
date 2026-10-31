@@ -136,6 +136,8 @@ Con `CARGAR_DATOS_DEMO=true`, al arrancar el backend: aplica las migraciones →
 2. Para los avisos push nativos: pestaña **Secrets → New repository secret**: nombre `GOOGLE_SERVICES_JSON`, valor = el **contenido completo** de `google-services.json` (ver tabla). Sin este secreto el APK se compila igual, pero **sin Firebase** (los avisos se ven dentro de la app).
 3. **Cómo obtener el APK:** en GitHub → **Actions → «Compilar APK» → Run workflow**. Al terminar, entra a la ejecución y descarga el artefacto `fashionstore-apk` (un `.zip` con `app-release.apk`; se conserva **14 días**). Pásalo al celular e instálalo permitiendo **orígenes desconocidos**. El flujo falla a propósito si `API_URL` no empieza con `https://` y termina en `/api`.
 
+El pago con tarjeta del APK usa **Stripe en modo prueba** (hoja de pago de Stripe): la clave pública se la da el backend, no hay que configurar nada en GitHub. Tarjetas de prueba en `docs/PRUEBAS_SISTEMA.md`. Con la `flutter_stripe` el APK pesa unos 104 MB.
+
 El APK solo habla por **https**: ya no admite `http://`. Para probar contra el backend de tu PC por Wi‑Fi, usa una compilación de depuración (`flutter run`), que sí lo permite.
 
 ## 4. Costos

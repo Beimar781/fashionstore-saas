@@ -14,7 +14,13 @@ Lista de verificación para probar FashionStore completo, con la web y el APK a 
 | Administrador | EMP-B | `admin@estiloandino.com` |
 | Cliente | EMP-B | `cliente@emp-b.com` |
 
-**Tarjeta de prueba:** `4242 4242 4242 4242`, cualquier fecha futura y cualquier CVC. Para ver un rechazo: `4000 0000 0000 9995` (fondos insuficientes).
+**Tarjetas de prueba de Stripe** (cualquier fecha futura y cualquier CVC; sirven igual en la web y en el móvil):
+
+| Tarjeta | Resultado |
+|---|---|
+| `4242 4242 4242 4242` | Aprueba |
+| `4000 0000 0000 0002` | Rechaza (tarjeta declinada por el banco) |
+| `4000 0027 6000 3184` | Pide autenticación 3D Secure: al completarla aprueba; si se rechaza o se abandona, no se cobra |
 
 **Antes de empezar**, corre la prueba de humo (revisa salud, inicios de sesión, catálogo, pagos, asistente de EMP-A y de EMP-B):
 
@@ -69,7 +75,10 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 |---|---|---|---|---|---|
 | 5.1 | Web | Cliente EMP-A | Agregar una prenda al carrito, elegir retiro en tienda y pagar con `4242 4242 4242 4242`. | Pago aprobado; se muestra el comprobante `CMP-<sucursal>-<número>`; el stock baja. | ☐ |
 | 5.2 | Web | Cliente EMP-A | Repetir con `4000 0000 0000 9995`. | «Transacción denegada por su banco»; no se cobra ni baja el stock. | ☐ |
-| 5.3 | Móvil | Cliente EMP-A | Agregar al carrito y tocar «Pagar con tarjeta». | **El despliegue usa Stripe:** el pedido queda pendiente y la app indica que el pago se termina desde la versión web. Completar ahí el pago (5.1) y volver a abrir el carrito del móvil. | ☐ |
+| 5.3 | Móvil | Cliente EMP-A | Agregar al carrito y tocar «Pagar con tarjeta». Se abre la hoja de pago de Stripe: escribir `4242 4242 4242 4242`, fecha futura y CVC. | La hoja se cierra y la app muestra «✔ Pago aprobado» con la marca, los últimos 4 dígitos y el N.° de comprobante. En «Mis compras» el pedido figura como pagado. | ☐ |
+| 5.4 | Móvil | Cliente EMP-A | Repetir con `4000 0000 0000 0002`. | La hoja de Stripe muestra que la tarjeta fue rechazada y permite reintentar; al cerrarla, la app dice que el pedido quedó pendiente de pago. No se cobra ni baja el stock. | ☐ |
+| 5.5 | Móvil | Cliente EMP-A | Repetir con `4000 0027 6000 3184` y completar la autenticación 3D Secure. | Pide la autenticación; al completarla, «✔ Pago aprobado». Si se rechaza la autenticación, no se cobra. | ☐ |
+| 5.6 | Móvil | Cliente EMP-A | Abrir la hoja de pago y cerrarla sin pagar. | «El pedido … quedó pendiente de pago.» Sin mensaje de error ni cobro. | ☐ |
 
 ## 6. Comprobante PDF
 

@@ -579,7 +579,7 @@ Google Gemini con respaldo local. El `usesCleartextTraffic` y las demás notas d
 - **Despliegue en Railway (lo aprendido en la práctica):** cada servicio necesita su Root Directory (`/backend` y `/frontend`); el dominio público apunta al puerto de destino 8080 con `PORT=8080`; el health check `/salud` se configura en la interfaz de Railway; `CORS_ORIGINS` lleva el dominio literal del frontend; las variables se cargan en bloque con el Raw Editor. Plan Hobby: unos 5 USD al mes más el uso. URLs reales y cuentas de demostración en `docs/DESPLIEGUE.md`.
 - **Cómo se obtiene el APK:** GitHub → Actions → «Compilar APK» → Run workflow → descargar el artefacto `fashionstore-apk` (zip con `app-release.apk`, 14 días) e instalarlo permitiendo orígenes desconocidos. El flujo se detiene si `API_URL` no empieza con `https://` y no termina en `/api` (el APK de release no admite tráfico sin cifrar).
 - **Móvil, recuperación de contraseña:** la pantalla de inicio de sesión tiene «¿Olvidó su contraseña?», que usa el mismo `POST /api/auth/olvide-password` de la web (CU-02); el enlace del correo abre la web.
-- **Móvil, pago con tarjeta:** con la pasarela simulada el móvil pide la tarjeta de prueba; con Stripe (el despliegue real) el pedido queda pendiente y el pago se termina desde la web, porque los datos de la tarjeta los captura Stripe.js en el navegador y nunca pasan por nuestro servidor.
+- **Móvil, pago con tarjeta:** ver «Prompt N» más abajo: el pago con Stripe en modo prueba también se hace dentro de la app.
 - **Móvil, rendimiento del vestidor:** al mantener presionado el título del vestidor aparece un contador con los FPS actuales y el promedio de la pantalla (medidos con los tiempos de cuadro de Flutter), para documentar el rendimiento en un celular real. Oculto, no consume nada.
 - **Prueba de humo y guía de pruebas:** `scripts/humo_produccion.py` revisa el sistema desplegado (salud, inicios de sesión, catálogo, pagos en modo Stripe, asistente con IA en EMP-B y bloqueo 403 en EMP-A) y `docs/PRUEBAS_SISTEMA.md` es la lista de verificación web y móvil.
 
@@ -590,3 +590,24 @@ No hay mensajes HTTP nuevos ni cambiados en este bloque. Se reutilizan los ya ex
 ## Para el Word
 
 Vista de despliegue: URLs reales, puertos y Root Directory de cada servicio. Requisitos no funcionales: modelo de IA configurable, tiempo de espera de 20 s y respaldo con reglas locales con registro del motivo; el APK solo acepta HTTPS. Pruebas: agregar la guía `docs/PRUEBAS_SISTEMA.md` y la prueba de humo, y los FPS medidos en el celular real (tomados con el contador del vestidor).
+
+# Prompt N · Pago con Stripe dentro de la app móvil
+
+## Reglas y decisiones
+
+- **Decisión:** el pago con tarjeta se hace con **Stripe en modo prueba tanto en la web como en el móvil**. El móvil usa la hoja de pago de Stripe (Payment Sheet) con la librería `flutter_stripe`; con la pasarela simulada (sin claves de Stripe en el backend) conserva el formulario de la tarjeta de prueba.
+- **Hoja de pago y no campo de tarjeta:** la Payment Sheet ya trae el campo de tarjeta, las validaciones, los mensajes en español y la autenticación 3D Secure, y Stripe la mantiene; un campo de tarjeta propio habría obligado a resolver el 3D Secure a mano.
+- **Flujo del móvil (igual que la web, CU-32):** checkout → `POST /pagos/pedidos/{id}/iniciar` (devuelve `publishable_key` y `client_secret`; la clave pública no está escrita en la app) → hoja de pago de Stripe → `POST /pagos/{id}/confirmar` con `tarjeta` vacía → el servidor lee el estado del `PaymentIntent` en Stripe (`requires_capture`), descuenta el stock y recién entonces cobra. El número de la tarjeta no pasa por nuestro servidor ni por nuestro código.
+- **El servidor no cambió:** `confirmar` solo lee el estado del `PaymentIntent`, así que da igual que lo confirme Stripe.js (web) o el SDK nativo (móvil). Se agregaron pruebas de los casos propios del móvil: hoja cerrada sin pagar (el nuevo intento anula el anterior) y 3D Secure abandonado.
+- **Cliente cierra la hoja de pago:** la app no llama a `confirmar`; el pedido queda «pendiente de pago» y la app lo dice sin error. Al volver a pagar, el nuevo intento anula el anterior en Stripe.
+- **Resultados en el móvil (mismos textos que la web):** «✔ Pago aprobado» con marca, últimos 4 y N.° de comprobante; «✖ Pago rechazado» con «Motivo: …» y «No se cobró nada. Pruebe con otra tarjeta.» (402); «⏳ Pendiente de confirmación» con el botón «Verificar estado del pago» (`POST /pagos/{id}/reconciliar`).
+- **Móvil, compilación Android:** `MainActivity` pasa a `FlutterFragmentActivity` y el tema base a AppCompat (lo exige la hoja de pago). Se desactiva solo la revisión lint de release (`lintVital`) porque `stripe_android` declara una dependencia opcional (`play-services-tapandpay`) que no está en el Maven público; no afecta al APK. El APK de release pesa ahora unos 104 MB.
+- **Comprobante PDF:** el PDF del comprobante se descarga desde la web; el móvil muestra el número de comprobante en «Mis compras», igual que antes.
+
+## Mensajes nuevos
+
+No hay mensajes HTTP nuevos: el móvil reutiliza los de CU-32 (402 «Transacción denegada por su banco» con su motivo, 409 sin stock, pendiente de confirmación).
+
+## Para el Word
+
+CU-32 y CU-11: el flujo alterno «pago con tarjeta desde la app móvil» (Payment Sheet de Stripe en modo prueba; 3D Secure con la tarjeta `4000 0027 6000 3184`). Vista de despliegue y componentes: librería `flutter_stripe` en el móvil. Diagrama de secuencia del pago: añadir al actor «App móvil» junto a «Navegador web».
