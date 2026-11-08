@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
+import '../../../features/offline/presentation/offline_controller.dart';
 import '../data/comprobante_movil.dart';
 import '../data/ventas_repository.dart';
 import '../../reservas/data/hoja_de_pago.dart';
@@ -39,7 +40,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
   Future<void> _cargar() async {
     try {
-      final c = await _repo.compras();
+      final vistas = await _repo.compras();
+      final c = await _conPendientes(vistas);
+      final sesion = context.read<OfflineController>().sesion;
+      if (sesion?.empresaId != null) {
+        await context
+            .read<OfflineController>()
+            .repo
+            .guardarComprasVistas(vistas, sesion!.usuarioId, sesion.empresaId!);
+      }
       if (mounted) {
         setState(() {
           _compras = c;
@@ -47,15 +56,85 @@ class _PedidosScreenState extends State<PedidosScreen> {
         });
       }
     } on ApiException catch (e) {
+      final offline = context.read<OfflineController>();
+      final sesion = offline.sesion;
+      final vistas = sesion?.empresaId == null
+          ? <Map<String, dynamic>>[]
+          : await offline.repo
+              .comprasVistas(sesion!.usuarioId, sesion.empresaId!);
+      final locales = await _conPendientes(vistas);
       if (mounted) {
         setState(() => _error = e.sinConexion
-            ? 'Sin conexión: no se puede consultar el historial.'
+            ? (locales.isNotEmpty
+                ? null
+                : 'Sin conexión: todavía no se descargó el historial de compras.')
             : e.mensaje);
+        if (locales.isNotEmpty) _compras = locales;
       }
     }
   }
 
+  Future<List<Map<String, dynamic>>> _conPendientes(
+      List<Map<String, dynamic>> compras) async {
+    final offline = context.read<OfflineController>();
+    final sesion = offline.sesion;
+    if (sesion == null || sesion.empresaId == null) return compras;
+    final operaciones =
+        await offline.repo.operaciones(sesion.usuarioId, sesion.empresaId!);
+    final pendientes =
+        operaciones.where((o) => o.tipo == 'COMPRA' && o.pendiente);
+    if (pendientes.isEmpty) return compras;
+    final prendas = await offline.repo.buscar('', limite: 1000);
+    final sucursales = await offline.repo.sucursales();
+    final resultado = [...compras];
+    for (final operacion in pendientes) {
+      final items = (operacion.payload['items'] as List? ?? const [])
+          .cast<Map<String, dynamic>>();
+      final total = items.fold<double>(0, (suma, item) {
+        final variante = prendas
+            .where((p) => p.variante.id == item['variante_id'])
+            .firstOrNull
+            ?.variante;
+        final precio = double.tryParse(variante?.precioFinal ?? '') ?? 0;
+        return suma + precio * (item['cantidad'] as int? ?? 1);
+      });
+      resultado.add({
+        'id': operacion.id,
+        'codigo': operacion.referencia ??
+            'Compra local ${operacion.id.substring(0, 8)}',
+        'estado': operacion.estado,
+        'fecha': operacion.creadoEn,
+        'sucursal': sucursales
+                .where((s) => s.id == operacion.sucursalId)
+                .firstOrNull
+                ?.nombre ??
+            'Sucursal',
+        'total': total.toStringAsFixed(2),
+        'total_unidades': items.fold<int>(
+            0, (suma, item) => suma + (item['cantidad'] as int? ?? 1)),
+        'comprobante_numero': null,
+        'pendiente_local': true,
+        'resumen': operacion.resumen,
+      });
+    }
+    return resultado;
+  }
+
   Future<void> _ver(Map<String, dynamic> c) async {
+    if (c['pendiente_local'] == true) {
+      await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+                  title: const Text('Compra pendiente de sincronizar'),
+                  content: Text(
+                      '${c['resumen']}\nEstado: ${c['estado']}\nSe enviará al recuperar la conexión.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cerrar'))
+                  ]));
+      return;
+    }
     try {
       final p = await _repo.detalle(c['id'] as int);
       if (!mounted) return;
@@ -192,7 +271,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                             pedidoId: c['id'] as int,
                             numero: '${c['comprobante_numero']}'),
                     subtitle: Text(
-                        '${c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
+                        '${c['pendiente_local'] == true ? 'Pendiente de sincronizar · ' : ''}${c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
                     isThreeLine: c['comprobante_numero'] != null,
                   ),
                 ),

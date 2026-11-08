@@ -141,6 +141,19 @@ void main() {
     expect((await repo.clientes()).single.email, 'ana@tienda.com');
   });
 
+  test('CU-12: el historial de compras visto se conserva en SQLite', () async {
+    final compras = [
+      {
+        'id': 12,
+        'codigo': 'COM-12',
+        'estado': 'PENDIENTE_PAGO',
+        'total': '80.00'
+      }
+    ];
+    await repo.guardarComprasVistas(compras, 5, 1);
+    expect(await repo.comprasVistas(5, 1), compras);
+  });
+
   test('CU-08: el carrito cliente y los datos de entrega sobreviven en SQLite',
       () async {
     final carrito = {

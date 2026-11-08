@@ -311,6 +311,31 @@ class OfflineRepository {
     return [for (final f in filas) OperacionLocal.desdeFila(f)];
   }
 
+  Future<void> guardarComprasVistas(
+      List<Map<String, dynamic>> compras, int usuarioId, int empresaId) async {
+    await (await _db).insert(
+        'meta',
+        {
+          'clave': 'compras_vistas_${empresaId}_$usuarioId',
+          'valor': jsonEncode(compras)
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> comprasVistas(
+      int usuarioId, int empresaId) async {
+    final filas = await (await _db).query('meta',
+        where: 'clave = ?',
+        whereArgs: ['compras_vistas_${empresaId}_$usuarioId']);
+    if (filas.isEmpty) return [];
+    try {
+      return (jsonDecode(filas.first['valor'] as String) as List)
+          .cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// CU-38: envía por lote lo pendiente, en el orden en que ocurrió, y actualiza el estado de cada operación con la respuesta.
   Future<ResumenSync> sincronizar(int usuarioId, int empresaId) async {
     final resumen = ResumenSync();
