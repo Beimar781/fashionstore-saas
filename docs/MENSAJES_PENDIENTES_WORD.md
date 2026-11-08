@@ -643,3 +643,9 @@ CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con
 # Prompt S · Arranque del APK
 
 - **Decisión de construcción:** el APK de release se compila sin reducción de código (R8 apagado): R8 quitaba una clase de WorkManager y la app se cerraba al abrir. Se agrega al flujo de GitHub una prueba de arranque en un emulador Android (API 34) que instala el APK, lo abre y falla si se cierra. No hay mensajes ni casos de uso nuevos.
+
+# Prompt Ñ · Navegación e inicio del Cliente en el móvil
+
+- **Decisión de interfaz:** el móvil del Cliente se organiza en barra inferior con Inicio, Promociones, Reservas, Compras y Perfil. Campana y carrito quedan arriba a la derecha; el asistente aparece solo en Inicio cuando el plan incluye IA. La suscripción restringida deja visible únicamente Perfil.
+- **Mensajes de interfaz sin código HTTP:** «No se encontraron prendas.» y «No se pudo cargar el catálogo. Intente de nuevo.»; sin conexión, Inicio informa «Sin conexión · Datos al …». Son estados locales del catálogo, no respuestas nuevas de la API.
+- **Imágenes del catálogo:** las rutas `/media/...` se resuelven desde el origen de `API_URL` sin `/api`; una caché de archivos del dispositivo permite reutilizar fotos descargadas sin conexión.

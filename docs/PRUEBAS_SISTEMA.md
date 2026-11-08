@@ -138,6 +138,18 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 10.2 | Web | SuperAdmin | Abrir el panel y la bitácora general. | Ve las dos empresas, sus planes y suscripciones, y la bitácora de toda la plataforma. | ☐ |
 | 10.3 | Web | Administrador EMP-A | Intentar abrir una ruta de la plataforma (`/api/plataforma/empresas`). | **403**: solo el SuperAdmin entra. | ☐ |
 
+## 11. Navegación y catálogo del móvil
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 11.1 | Móvil | Cliente EMP-B | Abrir Inicio y cambiar entre Inicio, Promociones, Reservas, Compras y Perfil. | La barra inferior conserva la pestaña elegida y las listas no vuelven al principio al cambiar. La campana y el carrito están arriba a la derecha; sus globos desaparecen cuando el conteo es cero. | ☐ |
+| 11.2 | Móvil | Cliente EMP-B | En Inicio, cambiar sucursal, buscar texto, filtrar una categoría y tocar una prenda. | Se muestran fotos y una rejilla de dos columnas; el detalle abre la prenda y las acciones fijas quedan visibles debajo. La sucursal elegida se recuerda al volver a abrir la app. | ☐ |
+| 11.3 | Móvil | Cliente EMP-B | Abrir Promociones y tocar una tarjeta del carrusel. | Solo se muestran prendas con promoción; el carrusel avanza cada cinco segundos y abre el detalle. | ☐ |
+| 11.4 | Móvil | Cliente EMP-B | Tocar la campana, marcar un aviso como leído y luego «Marcar todos». | Se muestra «Avisos» y el número de avisos pendientes se actualiza. | ☐ |
+| 11.5 | Móvil | Cliente EMP-A | Iniciar sesión con suscripción restringida. | Solo aparece Perfil para consultar el plan; no se muestran pestañas del catálogo ni el asistente. | ☐ |
+| 11.6 | Móvil | Cliente EMP-B | Descargar el catálogo desde Perfil → Modo sin conexión, abrir Inicio y activar modo avión. | La franja indica «Sin conexión · Datos al …» y se conservan las fotos descargadas, incluso las que no se habían abierto antes. | ☐ |
+| 11.7 | Móvil | Cliente EMP-B | En Android, probar el inicio, carrito, entrega y vestidor tanto con navegación por gestos como con tres botones. | El contenido final y los selectores de color y talla quedan por encima de la barra del sistema; el video no queda oculto bajo la barra de gestos. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - **Vestidor virtual:** solo en el móvil, por diseño.
