@@ -1,9 +1,13 @@
 import 'dart:typed_data';
+import 'dart:io';
+import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:sqflite/sqflite.dart';
 
 import '../../../../core/network/url_imagen.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/db/local_database.dart';
 import '../domain/anclaje.dart';
 
 /// Un color de la prenda con su imagen para el vestidor.
@@ -15,7 +19,8 @@ class ColorVestidor {
       required this.imagenUrl,
       required this.anclaje,
       this.ancho,
-      this.alto});
+      this.alto,
+      this.archivoLocal});
 
   factory ColorVestidor.desdeJson(Map<String, dynamic> j) => ColorVestidor(
         id: j['color_id'] as int,
@@ -24,6 +29,7 @@ class ColorVestidor {
         imagenUrl: j['imagen_url'] as String?,
         ancho: j['ancho'] as int?,
         alto: j['alto'] as int?,
+        archivoLocal: j['archivo_local'] as String?,
         anclaje: j['anclaje'] == null
             ? null
             : Anclaje.desdeJson(j['anclaje'] as Map<String, dynamic>),
@@ -36,6 +42,7 @@ class ColorVestidor {
   final Anclaje? anclaje;
   final int? ancho;
   final int? alto;
+  final String? archivoLocal;
 
   bool get listo =>
       imagenUrl != null &&
@@ -107,20 +114,45 @@ class VestidorRepository {
     if (!forzar && _productos.containsKey(productoId)) {
       return _productos[productoId]!;
     }
-    final p = VestidorProducto.desdeJson(
-        await _api.get('/vestidor/productos/$productoId'));
-    return _productos[productoId] = p;
+    if (!forzar) {
+      try {
+        final filas = await (await LocalDatabase.instance.database).query(
+            'vestidor_local',
+            where: 'producto_id = ?',
+            whereArgs: [productoId]);
+        if (filas.isNotEmpty) {
+          return _productos[productoId] = VestidorProducto.desdeJson(
+              jsonDecode(filas.first['producto_json'] as String)
+                  as Map<String, dynamic>);
+        }
+      } catch (_) {}
+    }
+    final datos = await _api.get('/vestidor/productos/$productoId');
+    final prenda = VestidorProducto.desdeJson(datos);
+    try {
+      await (await LocalDatabase.instance.database).insert('vestidor_local',
+          {'producto_id': productoId, 'producto_json': jsonEncode(datos)},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
+    return _productos[productoId] = prenda;
   }
 
-  Future<Uint8List> imagen(String ruta) async =>
-      _imagenes[ruta] ??= await _descargar(urlDeImagen(ruta));
+  Future<Uint8List> imagen(String ruta, {String? archivoLocal}) async {
+    if (_imagenes.containsKey(ruta)) return _imagenes[ruta]!;
+    if (archivoLocal != null) {
+      try {
+        return _imagenes[ruta] = await File(archivoLocal).readAsBytes();
+      } catch (_) {}
+    }
+    return _imagenes[ruta] = await _descargar(urlDeImagen(ruta));
+  }
 
   /// Se llama al abrir la ficha del producto: deja en memoria la información y los PNG para que el vestidor muestre la prenda de inmediato. Nunca falla.
   Future<void> precargar(int productoId) async {
     try {
       final p = await producto(productoId);
       for (final c in p.colores.where((c) => c.listo)) {
-        await imagen(c.imagenUrl!);
+        await imagen(c.imagenUrl!, archivoLocal: c.archivoLocal);
       }
     } catch (_) {}
   }

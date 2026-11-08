@@ -1,9 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/db/local_database.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/url_imagen.dart';
+import '../../../core/network/imagen_prenda.dart';
 import '../../../core/util/uuid.dart';
 import 'modelos.dart';
 
@@ -23,6 +29,53 @@ class OfflineRepository {
   Future<void> descargarCatalogo() async {
     final c = await _api.get('/offline/catalogo');
     await guardarCatalogo(c);
+    final rutas = <String?>[];
+    for (final producto
+        in (c['productos'] as List).cast<Map<String, dynamic>>()) {
+      rutas.add(producto['imagen'] as String?);
+      for (final imagen in (producto['imagenes'] as List? ?? const [])) {
+        rutas.add((imagen as Map<String, dynamic>)['url'] as String?);
+      }
+    }
+    await precalentarImagenes(rutas);
+    await _descargarVestidor(c['productos'] as List);
+  }
+
+  Future<void> _descargarVestidor(List productos) async {
+    final db = await _db;
+    final dir = Directory(
+        p.join((await getApplicationSupportDirectory()).path, 'vestidor'));
+    await dir.create(recursive: true);
+    for (final producto in productos.cast<Map<String, dynamic>>()) {
+      try {
+        final datos = await _api.get('/vestidor/productos/${producto['id']}');
+        final colores = (datos['colores'] as List).cast<Map<String, dynamic>>();
+        for (var i = 0; i < colores.length; i++) {
+          final ruta = colores[i]['imagen_url'] as String?;
+          if (ruta == null || colores[i]['anclaje'] == null) continue;
+          final url = urlImagen(ruta);
+          if (url == null) continue;
+          try {
+            final r = await http
+                .get(Uri.parse(url))
+                .timeout(const Duration(seconds: 15));
+            if (r.statusCode == 200) {
+              final archivo = p.join(dir.path, '${producto['id']}_$i.png');
+              await File(archivo).writeAsBytes(r.bodyBytes, flush: true);
+              colores[i]['archivo_local'] = archivo;
+            }
+          } catch (_) {
+            /* Una imagen no disponible no invalida el resto del catálogo. */
+          }
+        }
+        datos['colores'] = colores;
+        await db.insert('vestidor_local',
+            {'producto_id': producto['id'], 'producto_json': jsonEncode(datos)},
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (_) {
+        /* Solo se conservan productos vestibles que el servidor haya descrito. */
+      }
+    }
   }
 
   /// Guarda en SQLite lo que devolvió `GET /offline/catalogo` (separado para poder probarlo sin red).
@@ -31,25 +84,53 @@ class OfflineRepository {
     final empresaId = c['empresa_id'] as int;
     final ahora = DateTime.now().toIso8601String();
     await db.transaction((tx) async {
-      for (final t in ['productos_locales', 'sucursales_autorizadas', 'clientes_locales']) {
+      for (final t in [
+        'productos_locales',
+        'sucursales_autorizadas',
+        'clientes_locales'
+      ]) {
         await tx.delete(t);
       }
       for (final s in (c['sucursales'] as List).cast<Map<String, dynamic>>()) {
         await tx.insert('sucursales_autorizadas', {
-          'id': s['id'], 'empresa_id': empresaId, 'nombre': s['nombre'], 'ciudad': s['ciudad'], 'direccion': s['direccion'], 'horario': s['horario'],
+          'id': s['id'],
+          'empresa_id': empresaId,
+          'nombre': s['nombre'],
+          'ciudad': s['ciudad'],
+          'direccion': s['direccion'],
+          'horario': s['horario'],
         });
       }
       for (final p in (c['productos'] as List).cast<Map<String, dynamic>>()) {
         await tx.insert('productos_locales', {
-          'id': p['id'], 'empresa_id': empresaId, 'nombre': p['nombre'], 'categoria': p['categoria'], 'genero': p['genero'], 'imagen': p['imagen'],
-          'variantes_json': jsonEncode(p['variantes']), 'descargado_en': ahora,
+          'id': p['id'],
+          'empresa_id': empresaId,
+          'nombre': p['nombre'],
+          'categoria': p['categoria'],
+          'genero': p['genero'],
+          'imagen': p['imagen'],
+          'variantes_json': jsonEncode(p['variantes']),
+          'descargado_en': ahora,
         });
       }
       for (final cl in (c['clientes'] as List).cast<Map<String, dynamic>>()) {
-        await tx.insert('clientes_locales', {'id': cl['id'], 'empresa_id': empresaId, 'nombre': cl['nombre'], 'email': cl['email']});
+        await tx.insert('clientes_locales', {
+          'id': cl['id'],
+          'empresa_id': empresaId,
+          'nombre': cl['nombre'],
+          'email': cl['email']
+        });
       }
-      await tx.insert('meta', {'clave': 'catalogo_generado_en', 'valor': c['generado_en'] as String}, conflictAlgorithm: ConflictAlgorithm.replace);
-      await tx.insert('meta', {'clave': 'ultima_sincronizacion', 'valor': ahora}, conflictAlgorithm: ConflictAlgorithm.replace);
+      await tx.insert(
+          'meta',
+          {
+            'clave': 'catalogo_generado_en',
+            'valor': c['generado_en'] as String
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
+      await tx.insert(
+          'meta', {'clave': 'ultima_sincronizacion', 'valor': ahora},
+          conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 
@@ -57,12 +138,14 @@ class OfflineRepository {
   Future<String?> ultimaSincronizacion() => _meta('ultima_sincronizacion');
 
   Future<String?> _meta(String clave) async {
-    final f = await (await _db).query('meta', where: 'clave = ?', whereArgs: [clave]);
+    final f =
+        await (await _db).query('meta', where: 'clave = ?', whereArgs: [clave]);
     return f.isEmpty ? null : f.first['valor'] as String;
   }
 
   Future<List<ProductoLocal>> _productos() async {
-    final filas = await (await _db).query('productos_locales', orderBy: 'nombre');
+    final filas =
+        await (await _db).query('productos_locales', orderBy: 'nombre');
     return [
       for (final f in filas)
         ProductoLocal(
@@ -71,49 +154,87 @@ class OfflineRepository {
           categoria: f['categoria'] as String,
           genero: f['genero'] as String?,
           imagen: f['imagen'] as String?,
-          variantes: [for (final v in jsonDecode(f['variantes_json'] as String) as List) VarianteLocal.fromJson(v as Map<String, dynamic>)],
+          variantes: [
+            for (final v in jsonDecode(f['variantes_json'] as String) as List)
+              VarianteLocal.fromJson(v as Map<String, dynamic>)
+          ],
         ),
     ];
   }
 
-  Future<bool> hayCatalogo() async => Sqflite.firstIntValue(await (await _db).rawQuery('SELECT COUNT(*) FROM productos_locales'))! > 0;
+  Future<bool> hayCatalogo() async =>
+      Sqflite.firstIntValue(await (await _db)
+          .rawQuery('SELECT COUNT(*) FROM productos_locales'))! >
+      0;
 
   /// Búsqueda local por nombre, categoría, SKU o código de barras.
   Future<List<PrendaLocal>> buscar(String texto, {int limite = 60}) async {
     final q = texto.trim().toLowerCase();
     final salida = <PrendaLocal>[];
     for (final p in await _productos()) {
-      final coincideProducto = q.isEmpty || p.nombre.toLowerCase().contains(q) || p.categoria.toLowerCase().contains(q);
+      final coincideProducto = q.isEmpty ||
+          p.nombre.toLowerCase().contains(q) ||
+          p.categoria.toLowerCase().contains(q);
       for (final v in p.variantes) {
-        if (coincideProducto || v.sku.toLowerCase().contains(q) || (v.codigoBarras ?? '').toLowerCase() == q) salida.add(PrendaLocal(p, v));
+        if (coincideProducto ||
+            v.sku.toLowerCase().contains(q) ||
+            (v.codigoBarras ?? '').toLowerCase() == q) {
+          salida.add(PrendaLocal(p, v));
+        }
       }
     }
     return salida.take(limite).toList();
   }
 
   Future<List<SucursalLocal>> sucursales() async {
-    final filas = await (await _db).query('sucursales_autorizadas', orderBy: 'nombre');
-    return [for (final f in filas) SucursalLocal(id: f['id'] as int, nombre: f['nombre'] as String, ciudad: f['ciudad'] as String?, horario: f['horario'] as String?)];
+    final filas =
+        await (await _db).query('sucursales_autorizadas', orderBy: 'nombre');
+    return [
+      for (final f in filas)
+        SucursalLocal(
+            id: f['id'] as int,
+            nombre: f['nombre'] as String,
+            ciudad: f['ciudad'] as String?,
+            horario: f['horario'] as String?)
+    ];
   }
 
   Future<List<ClienteLocal>> clientes() async {
-    final filas = await (await _db).query('clientes_locales', orderBy: 'nombre');
-    return [for (final f in filas) ClienteLocal(id: f['id'] as int, nombre: f['nombre'] as String, email: f['email'] as String)];
+    final filas =
+        await (await _db).query('clientes_locales', orderBy: 'nombre');
+    return [
+      for (final f in filas)
+        ClienteLocal(
+            id: f['id'] as int,
+            nombre: f['nombre'] as String,
+            email: f['email'] as String)
+    ];
   }
 
   /// Al registrar sin conexión se descuenta del stock local lo comprometido; el servidor vuelve a validar al sincronizar.
-  Future<void> comprometerStock(List<Map<String, dynamic>> items, int sucursalId) async {
+  Future<void> comprometerStock(
+      List<Map<String, dynamic>> items, int sucursalId) async {
     final db = await _db;
     for (final p in await _productos()) {
       var cambio = false;
       for (final v in p.variantes) {
         for (final it in items.where((i) => i['variante_id'] == v.id)) {
-          v.stock[sucursalId] = ((v.stock[sucursalId] ?? 0) - (it['cantidad'] as int)).clamp(0, 1 << 30).toInt();
+          v.stock[sucursalId] =
+              ((v.stock[sucursalId] ?? 0) - (it['cantidad'] as int))
+                  .clamp(0, 1 << 30)
+                  .toInt();
           cambio = true;
         }
       }
       if (cambio) {
-        await db.update('productos_locales', {'variantes_json': jsonEncode([for (final v in p.variantes) v.toJson()])}, where: 'id = ?', whereArgs: [p.id]);
+        await db.update(
+            'productos_locales',
+            {
+              'variantes_json':
+                  jsonEncode([for (final v in p.variantes) v.toJson()])
+            },
+            where: 'id = ?',
+            whereArgs: [p.id]);
       }
     }
   }
@@ -148,12 +269,15 @@ class OfflineRepository {
   }
 
   Future<void> _guardar(OperacionLocal o) async =>
-      (await _db).insert('operaciones_pendientes', o.aFila(), conflictAlgorithm: ConflictAlgorithm.replace);
+      (await _db).insert('operaciones_pendientes', o.aFila(),
+          conflictAlgorithm: ConflictAlgorithm.replace);
 
   /// Las operaciones del usuario en este dispositivo, de la más reciente a la más antigua.
   Future<List<OperacionLocal>> operaciones(int usuarioId, int empresaId) async {
     final filas = await (await _db).query('operaciones_pendientes',
-        where: 'usuario_id = ? AND empresa_id = ?', whereArgs: [usuarioId, empresaId], orderBy: 'creado_en DESC');
+        where: 'usuario_id = ? AND empresa_id = ?',
+        whereArgs: [usuarioId, empresaId],
+        orderBy: 'creado_en DESC');
     return [for (final f in filas) OperacionLocal.desdeFila(f)];
   }
 
@@ -161,7 +285,8 @@ class OfflineRepository {
   Future<ResumenSync> sincronizar(int usuarioId, int empresaId) async {
     final resumen = ResumenSync();
     final todas = await operaciones(usuarioId, empresaId);
-    final lote = todas.where((o) => o.pendiente).toList()..sort((a, b) => a.creadoEn.compareTo(b.creadoEn));
+    final lote = todas.where((o) => o.pendiente).toList()
+      ..sort((a, b) => a.creadoEn.compareTo(b.creadoEn));
     if (lote.isEmpty) {
       await refrescarEstados(usuarioId, empresaId);
       return resumen;
@@ -175,15 +300,24 @@ class OfflineRepository {
     try {
       final r = await _api.post('/offline/sincronizar', {
         'operaciones': [
-          for (final o in lote) {'id': o.id, 'tipo': o.tipo, 'creada_en': o.creadoEn, 'sucursal_id': o.sucursalId, 'payload': o.payload},
+          for (final o in lote)
+            {
+              'id': o.id,
+              'tipo': o.tipo,
+              'creada_en': o.creadoEn,
+              'sucursal_id': o.sucursalId,
+              'payload': o.payload
+            },
         ],
       });
-      for (final res in (r['resultados'] as List).cast<Map<String, dynamic>>()) {
+      for (final res
+          in (r['resultados'] as List).cast<Map<String, dynamic>>()) {
         final o = lote.where((x) => x.id == res['id']).firstOrNull;
         if (o == null) continue;
         final estado = res['estado'] as String;
         if (estado == 'ERROR') {
-          o.estado = Estado.registradaLocal; // el servidor no pudo procesarla ahora: se conserva y se reintenta (RNF06)
+          o.estado = Estado
+              .registradaLocal; // el servidor no pudo procesarla ahora: se conserva y se reintenta (RNF06)
           resumen.reintentar++;
         } else {
           o.estado = estado;
@@ -205,7 +339,9 @@ class OfflineRepository {
         await _guardar(o);
       }
       resumen.sinConexion = e.sinConexion;
-      resumen.error = e.sinConexion ? 'Sin conexión con el servidor: las operaciones siguen guardadas y se reintentarán.' : e.mensaje;
+      resumen.error = e.sinConexion
+          ? 'Sin conexión con el servidor: las operaciones siguen guardadas y se reintentarán.'
+          : e.mensaje;
       return resumen;
     }
     await refrescarEstados(usuarioId, empresaId);
@@ -217,20 +353,25 @@ class OfflineRepository {
     if (o.tipo == 'VENTA_CONTADO') return;
     final nombre = o.tipo == 'COMPRA' ? 'compra' : 'reserva';
     if (o.estado == Estado.enConflicto) {
-      resumen.avisos.add('Su $nombre no se pudo realizar porque la prenda se agotó. No se le cobró nada.');
+      resumen.avisos.add(
+          'Su $nombre no se pudo realizar porque la prenda se agotó. No se le cobró nada.');
     } else if (o.estado == Estado.rechazada) {
       resumen.avisos.add('Su $nombre no se pudo realizar: $mensaje');
     } else if (o.estado == Estado.confirmada && o.tipo == 'COMPRA') {
-      resumen.avisos.add('Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».');
+      resumen.avisos.add(
+          'Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».');
     }
   }
 
   /// CU-39: una operación que quedó en conflicto y el Encargado resolvió cambia de estado también aquí.
   Future<void> refrescarEstados(int usuarioId, int empresaId) async {
-    final enConflicto = (await operaciones(usuarioId, empresaId)).where((o) => o.estado == Estado.enConflicto).toList();
+    final enConflicto = (await operaciones(usuarioId, empresaId))
+        .where((o) => o.estado == Estado.enConflicto)
+        .toList();
     if (enConflicto.isEmpty) return;
     try {
-      final servidor = (await _api.getLista('/offline/operaciones')).cast<Map<String, dynamic>>();
+      final servidor = (await _api.getLista('/offline/operaciones'))
+          .cast<Map<String, dynamic>>();
       for (final s in servidor) {
         final o = enConflicto.where((x) => x.id == s['id']).firstOrNull;
         if (o != null && s['estado'] != Estado.enConflicto) {
@@ -248,10 +389,12 @@ class OfflineRepository {
   }
 
   Future<void> _poner(String clave, String valor) async =>
-      (await _db).insert('meta', {'clave': clave, 'valor': valor}, conflictAlgorithm: ConflictAlgorithm.replace);
+      (await _db).insert('meta', {'clave': clave, 'valor': valor},
+          conflictAlgorithm: ConflictAlgorithm.replace);
 
   /// Solo se pueden quitar del dispositivo las operaciones que el servidor ya confirmó o rechazó (RN12).
-  Future<int> limpiarTerminadas(int usuarioId, int empresaId) async => (await _db).delete(
+  Future<int> limpiarTerminadas(int usuarioId, int empresaId) async =>
+      (await _db).delete(
         'operaciones_pendientes',
         where: 'usuario_id = ? AND empresa_id = ? AND estado IN (?, ?)',
         whereArgs: [usuarioId, empresaId, Estado.confirmada, Estado.rechazada],

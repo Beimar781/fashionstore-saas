@@ -13,7 +13,8 @@ import '../domain/metricas.dart';
 /// Estado del vestidor: la prenda elegida (color y talla), la pose suavizada, el bloqueo y las métricas. No sabe nada de la cámara:
 /// la pantalla le entrega cada pose detectada, y así toda esta lógica se prueba sin teléfono.
 class VestidorController extends ChangeNotifier {
-  VestidorController(this._repo, this.productoId, {MedidorRendimiento? metricas, BloqueoPose? bloqueo})
+  VestidorController(this._repo, this.productoId,
+      {MedidorRendimiento? metricas, BloqueoPose? bloqueo})
       : metricas = metricas ?? MedidorRendimiento(),
         _bloqueo = bloqueo ?? BloqueoPose();
 
@@ -34,8 +35,12 @@ class VestidorController extends ChangeNotifier {
 
   Guia get guia => _bloqueo.ultimaGuia;
   bool get prendaVisible => _bloqueo.bloqueado && _pose != null && png != null;
-  List<ColorVestidor> get coloresListos => [for (final c in producto?.colores ?? const <ColorVestidor>[]) if (c.listo) c];
-  List<String> get tallas => (producto?.escalaTallas.keys.toList() ?? <String>[])..sort();
+  List<ColorVestidor> get coloresListos => [
+        for (final c in producto?.colores ?? const <ColorVestidor>[])
+          if (c.listo) c
+      ];
+  List<String> get tallas =>
+      (producto?.escalaTallas.keys.toList() ?? <String>[])..sort();
 
   Future<void> cargar({String? tallaInicial}) async {
     cargando = true;
@@ -44,8 +49,12 @@ class VestidorController extends ChangeNotifier {
     try {
       producto = await _repo.producto(productoId);
       final listos = coloresListos;
-      talla = (tallaInicial != null && tallas.contains(tallaInicial)) ? tallaInicial : (tallas.isNotEmpty ? tallas.first : null);
-      if (producto!.admite && listos.isNotEmpty) await elegirColor(listos.first);
+      talla = (tallaInicial != null && tallas.contains(tallaInicial))
+          ? tallaInicial
+          : (tallas.isNotEmpty ? tallas.first : null);
+      if (producto!.admite && listos.isNotEmpty) {
+        await elegirColor(listos.first);
+      }
     } on ApiException catch (e) {
       error = e.mensaje;
     }
@@ -55,7 +64,9 @@ class VestidorController extends ChangeNotifier {
 
   Future<void> elegirColor(ColorVestidor c) async {
     color = c;
-    png = await _repo.imagen(c.imagenUrl!);  // casi siempre ya está en memoria: se precarga al abrir la ficha del producto
+    png = await _repo.imagen(c.imagenUrl!,
+        archivoLocal: c
+            .archivoLocal); // casi siempre ya está en memoria: se precarga al abrir la ficha del producto
     notifyListeners();
   }
 
@@ -70,10 +81,12 @@ class VestidorController extends ChangeNotifier {
   }
 
   /// La proporción del cuadro (ancho / alto) se conoce cuando la cámara está lista.
-  void usarProporcionCuadro(double proporcion) => _bloqueo = BloqueoPose(proporcionCuadro: proporcion);
+  void usarProporcionCuadro(double proporcion) =>
+      _bloqueo = BloqueoPose(proporcionCuadro: proporcion);
 
   /// Cada detección terminada: se anota para las métricas, se suaviza y se decide si la prenda ya se puede mostrar. `instante` en segundos.
-  void registrarDeteccion(PoseCuerpo? pose, Duration latencia, double instante) {
+  void registrarDeteccion(
+      PoseCuerpo? pose, Duration latencia, double instante) {
     metricas.registrarCuadro(latencia);
     final suave = pose == null ? null : _filtro.filtrar(pose, instante);
     if (_bloqueo.registrar(suave)) metricas.prendaVisible();

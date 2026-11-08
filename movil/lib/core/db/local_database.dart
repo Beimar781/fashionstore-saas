@@ -10,7 +10,7 @@ class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const version = 3;
+  static const version = 4;
 
   Database? _db;
   String? _rutaPrueba;
@@ -25,7 +25,8 @@ class LocalDatabase {
   }
 
   Future<Database> _abrir() async {
-    final ruta = _rutaPrueba ?? join(await getDatabasesPath(), 'fashionstore.db');
+    final ruta =
+        _rutaPrueba ?? join(await getDatabasesPath(), 'fashionstore.db');
     return openDatabase(
       ruta,
       version: version,
@@ -40,21 +41,33 @@ class LocalDatabase {
             actualizado_en TEXT NOT NULL
           )''');
         await _crearTablasOffline(db);
+        await db.execute(
+            'CREATE TABLE vestidor_local (producto_id INTEGER PRIMARY KEY, producto_json TEXT NOT NULL)');
       },
       onUpgrade: (db, anterior, nueva) async {
         if (anterior < 2) {
           // la versión 1 solo tenía tablas vacías para el catálogo y las operaciones: se rehacen conservando la sesión
-          for (final t in ['operaciones_pendientes', 'productos_locales', 'sucursales_autorizadas']) {
+          for (final t in [
+            'operaciones_pendientes',
+            'productos_locales',
+            'sucursales_autorizadas'
+          ]) {
             await db.execute('DROP TABLE IF EXISTS $t');
           }
           await _crearTablasOffline(db);
         } else if (anterior < 3) {
           // la versión 3 admite la operación COMPRA del cliente: SQLite no cambia un CHECK, así que la tabla se rehace SIN perder lo pendiente de sincronizar
-          await db.execute('ALTER TABLE operaciones_pendientes RENAME TO operaciones_pendientes_v2');
+          await db.execute(
+              'ALTER TABLE operaciones_pendientes RENAME TO operaciones_pendientes_v2');
           await db.execute('DROP INDEX IF EXISTS ix_operaciones_estado');
           await _crearOperaciones(db);
-          await db.execute('INSERT INTO operaciones_pendientes SELECT * FROM operaciones_pendientes_v2');
+          await db.execute(
+              'INSERT INTO operaciones_pendientes SELECT * FROM operaciones_pendientes_v2');
           await db.execute('DROP TABLE operaciones_pendientes_v2');
+        }
+        if (anterior < 4) {
+          await db.execute(
+              'CREATE TABLE vestidor_local (producto_id INTEGER PRIMARY KEY, producto_json TEXT NOT NULL)');
         }
       },
     );
@@ -88,7 +101,8 @@ class LocalDatabase {
         nombre TEXT NOT NULL,
         email TEXT NOT NULL
       )''');
-    await db.execute('CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
+    await db.execute(
+        'CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
     await _crearOperaciones(db);
   }
 
@@ -111,6 +125,7 @@ class LocalDatabase {
         resumen TEXT NOT NULL DEFAULT '',
         creado_en TEXT NOT NULL
       )''');
-    await db.execute('CREATE INDEX ix_operaciones_estado ON operaciones_pendientes (empresa_id, usuario_id, estado)');
+    await db.execute(
+        'CREATE INDEX ix_operaciones_estado ON operaciones_pendientes (empresa_id, usuario_id, estado)');
   }
 }
