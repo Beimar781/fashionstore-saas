@@ -7,6 +7,9 @@ import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
 import '../data/comprobante_movil.dart';
 import '../data/ventas_repository.dart';
+import '../../reservas/data/hoja_de_pago.dart';
+import '../../reservas/data/pago_movil.dart';
+import '../../reservas/data/reservas_repository.dart';
 import 'boton_comprobante.dart';
 
 /// Historial de compras del cliente (CU-12): compras digitales y de mostrador, con su estado y comprobante.
@@ -22,6 +25,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
   late final VentasRepository _repo =
       VentasRepository(context.read<AuthRepository>().api);
   late final ComprobanteMovil _comprobante = ComprobanteMovil(_repo);
+  late final ReservasRepository _reservas =
+      ReservasRepository(context.read<AuthRepository>().api);
+  late final PagoMovil _pago = PagoMovil(_reservas, HojaDePagoStripe());
   List<Map<String, dynamic>>? _compras;
   String? _error;
 
@@ -72,6 +78,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
                   Text('Comprobante ${p['comprobante_numero']}'),
               ]),
           actions: [
+            if (p['estado'] == 'PENDIENTE_PAGO')
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _pagar(p);
+                },
+                icon: const Icon(Icons.credit_card),
+                label: const Text('Pagar con tarjeta'),
+              ),
             if (p['comprobante_numero'] != null)
               BotonComprobante(
                   comprobante: _comprobante,
@@ -86,6 +101,64 @@ class _PedidosScreenState extends State<PedidosScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
     }
+  }
+
+  Future<void> _pagar(Map<String, dynamic> pedido) async {
+    final resultado = await _pago.pagarPedido(
+      pedidoId: pedido['id'] as int,
+      pedidoCodigo: pedido['codigo'] as String?,
+      pedirTarjeta: _pedirTarjeta,
+    );
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Pago de la compra'),
+        content: Text(resultado.mensaje),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar'))
+        ],
+      ),
+    );
+    await _cargar();
+  }
+
+  Future<Map<String, dynamic>?> _pedirTarjeta(String total) {
+    final numero = TextEditingController(text: '4242 4242 4242 4242');
+    final cvc = TextEditingController(text: '123');
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Pagar Bs $total'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Pasarela de pruebas: no se cobra dinero real.'),
+          TextField(
+              controller: numero,
+              keyboardType: TextInputType.number,
+              decoration:
+                  const InputDecoration(labelText: 'Número de tarjeta')),
+          TextField(
+              controller: cvc,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'CVC')),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, {
+                    'numero': numero.text,
+                    'mes': 12,
+                    'anio': DateTime.now().year + 3,
+                    'cvc': cvc.text,
+                    'titular': 'Cliente'
+                  }),
+              child: const Text('Pagar')),
+        ],
+      ),
+    );
   }
 
   @override

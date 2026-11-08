@@ -7,7 +7,8 @@ import 'reservas_repository.dart';
 enum TipoPago { aprobado, rechazado, pendiente, cancelado, error }
 
 class ResultadoPagoMovil {
-  const ResultadoPagoMovil(this.tipo, this.mensaje, {this.pagoId, this.pedidoId, this.comprobante});
+  const ResultadoPagoMovil(this.tipo, this.mensaje,
+      {this.pagoId, this.pedidoId, this.comprobante});
 
   final TipoPago tipo;
   final String mensaje;
@@ -36,24 +37,53 @@ class PagoMovil {
   }) async {
     try {
       final pedido = await _repo.checkout(datos);
-      final pago = await _repo.iniciarPago(pedido['id'] as int, medio);
-      final pendiente = ResultadoPagoMovil(TipoPago.cancelado, 'El pedido ${pedido['codigo']} quedó pendiente de pago.');
+      return await pagarPedido(
+          pedidoId: pedido['id'] as int,
+          pedidoCodigo: pedido['codigo'] as String?,
+          medio: medio,
+          pedirTarjeta: pedirTarjeta);
+    } on ApiException catch (e) {
+      return ResultadoPagoMovil(TipoPago.error, e.mensaje);
+    }
+  }
+
+  /// Reutiliza la pasarela del checkout para cobrar un pedido que se sincronizó después de estar offline.
+  Future<ResultadoPagoMovil> pagarPedido(
+      {required int pedidoId,
+      String? pedidoCodigo,
+      MedioDePago medio = const MedioDePago(),
+      required Future<Map<String, dynamic>?> Function(String monto)
+          pedirTarjeta}) async {
+    try {
+      final pago = await _repo.iniciarPago(pedidoId, medio);
+      final pendiente = ResultadoPagoMovil(TipoPago.cancelado,
+          'El pedido ${pedidoCodigo ?? pedidoId} quedó pendiente de pago.',
+          pedidoId: pedidoId);
       if (pago['modo'] == 'stripe') {
-        final clave = pago['publishable_key'] as String;
-        final secreto = pago['client_secret'] as String;
         final hoja = medio.tarjetaGuardadaId == null
-            ? await _hoja.mostrar(clavePublica: clave, claveSecreta: secreto)
-            : await _hoja.confirmarGuardada(clavePublica: clave, claveSecreta: secreto);
-        if (hoja.estado == EstadoHoja.cancelada) return pendiente;
-        if (hoja.estado == EstadoHoja.error) return ResultadoPagoMovil(TipoPago.error, hoja.motivo);
-        return await _confirmar(pago['pago_id'] as int, null, motivoStripe: hoja.motivo);
+            ? await _hoja.mostrar(
+                clavePublica: pago['publishable_key'] as String,
+                claveSecreta: pago['client_secret'] as String)
+            : await _hoja.confirmarGuardada(
+                clavePublica: pago['publishable_key'] as String,
+                claveSecreta: pago['client_secret'] as String);
+        if (hoja.estado == EstadoHoja.cancelada) {
+          return pendiente;
+        }
+        if (hoja.estado == EstadoHoja.error) {
+          return ResultadoPagoMovil(TipoPago.error, hoja.motivo);
+        }
+        return await _confirmar(pago['pago_id'] as int, null,
+            motivoStripe: hoja.motivo);
       }
-      if (medio.tarjetaGuardadaId != null) return await _confirmar(pago['pago_id'] as int, null); // pasarela simulada con tarjeta guardada
+      if (medio.tarjetaGuardadaId != null) {
+        return await _confirmar(pago['pago_id'] as int, null);
+      }
       final tarjeta = await pedirTarjeta(pago['monto'] as String);
       if (tarjeta == null) return pendiente;
       return await _confirmar(pago['pago_id'] as int, tarjeta);
     } on ApiException catch (e) {
-      return ResultadoPagoMovil(TipoPago.error, e.mensaje);
+      return _desdeError(e, '');
     }
   }
 
@@ -66,7 +96,9 @@ class PagoMovil {
     }
   }
 
-  Future<ResultadoPagoMovil> _confirmar(int pagoId, Map<String, dynamic>? tarjeta, {String motivoStripe = ''}) async {
+  Future<ResultadoPagoMovil> _confirmar(
+      int pagoId, Map<String, dynamic>? tarjeta,
+      {String motivoStripe = ''}) async {
     try {
       return _desdeRespuesta(await _repo.confirmarPago(pagoId, tarjeta));
     } on ApiException catch (e) {
@@ -86,12 +118,16 @@ class PagoMovil {
         comprobante: comprobante as String?,
       );
     }
-    return ResultadoPagoMovil(TipoPago.pendiente, '⏳ Pendiente de confirmación\n${r['mensaje']}', pagoId: (r['pago'] as Map<String, dynamic>)['id'] as int);
+    return ResultadoPagoMovil(
+        TipoPago.pendiente, '⏳ Pendiente de confirmación\n${r['mensaje']}',
+        pagoId: (r['pago'] as Map<String, dynamic>)['id'] as int);
   }
 
   /// 402 = la pasarela rechazó la tarjeta; el resto de los errores (sin stock 409, sin conexión...) llegan con su mensaje.
   ResultadoPagoMovil _desdeError(ApiException e, String motivoStripe) {
-    if (e.statusCode != 402) return ResultadoPagoMovil(TipoPago.error, e.mensaje);
+    if (e.statusCode != 402) {
+      return ResultadoPagoMovil(TipoPago.error, e.mensaje);
+    }
     final motivo = motivoStripe.isNotEmpty ? motivoStripe : e.motivo;
     return ResultadoPagoMovil(
       TipoPago.rechazado,

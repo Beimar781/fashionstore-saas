@@ -15,7 +15,7 @@ import { ConnectivityService } from '../../../core/offline/connectivity.service'
   template: `
     <div class="page" style="max-width:980px">
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
-      @if (compraPendiente()) { <div class="alert warn" role="status">Compra guardada en este dispositivo. Se enviará al recuperar la conexión; la tarjeta se pagará luego desde Mis compras.<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
+      @if (compraPendiente()) { <div class="alert warn" role="status">Compra guardada en este dispositivo. Se pagará con tarjeta al recuperar la conexión, desde Mis compras.<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
 
       @if (!carrito()) { <div class="empty">Cargando…</div> }
       @else if (!carrito()!.items.length && !pedido()) { <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }

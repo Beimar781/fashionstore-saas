@@ -4,11 +4,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ComprasApi } from '../../../core/api/compras.api';
 import { CLASE_ESTADO_PEDIDO, Pedido, TEXTO_ESTADO_PEDIDO } from '../../../core/compras.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { PagoTarjetaComponent } from './pago-tarjeta.component';
 
 /** CU-12 · Detalle de una compra: prendas, totales, entrega, facturación, pagos y descarga del comprobante. */
 @Component({
   selector: 'app-compra-detalle',
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:900px">
       <a routerLink="/tienda/compras" class="small">← Mis compras</a>
@@ -19,6 +20,12 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
           @if (p.estado === 'PENDIENTE_CONFIRMACION') { <button class="btn primary" (click)="verificar(p)" [disabled]="verificando()">{{ verificando() ? 'Verificando…' : 'Verificar estado del pago' }}</button> }
         </div>
         @if (p.estado === 'PENDIENTE_CONFIRMACION') { <div class="alert warn" role="status" style="margin-bottom:1rem">Su pago está pendiente de confirmación: el banco aún no respondió. No se le cobrará dos veces.</div> }
+        @if (p.estado === 'PENDIENTE_PAGO') {
+          <section class="card pad stack" style="margin-bottom:1rem">
+            <h2>Pagar compra</h2><p class="small muted">Se pagará con tarjeta al recuperar la conexión, desde Mis compras.</p>
+            <app-pago-tarjeta [pedidoId]="p.id" [total]="p.total" (listo)="pagoCompletado($event)" (sinStock)="sinStock($event)" />
+          </section>
+        }
 
         <section class="card table-wrap">
           <table>
@@ -71,6 +78,9 @@ export class CompraDetallePage implements OnInit {
   private cargar() {
     this.api.compra(Number(this.ruta.snapshot.paramMap.get('id'))).subscribe({ next: (p) => this.pedido.set(p), error: (e) => this.toast.error(mensajeError(e)) });
   }
+
+  pagoCompletado(r: import('../../../core/compras.models').ResultadoPago) { this.pedido.set(r.pedido); this.toast.ok(r.aprobado ? 'Pago aprobado.' : r.mensaje); }
+  sinStock(mensaje: string) { this.toast.error(mensaje); this.cargar(); }
 
   descargar(p: Pedido) {
     this.api.comprobante(p.id).subscribe({
