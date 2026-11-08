@@ -53,4 +53,20 @@ class CarritoOut(BaseModel):
     avisos: list[str]
 
 
+class ItemFusionIn(BaseModel):
+    variante_id: int
+    cantidad: int = Field(ge=1, le=50)
+
+
+class FusionLocalIn(BaseModel):
+    fusion_id: str = Field(min_length=36, max_length=36)
+    sucursal_id: int
+    items: list[ItemFusionIn] = Field(min_length=1, max_length=60)
+
+
+class FusionLocalOut(BaseModel):
+    carrito: CarritoOut
+    rechazadas: list[dict]
+
+
 CERO = Decimal("0.00")

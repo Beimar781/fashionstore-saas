@@ -14,6 +14,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 import { VestidorApi } from '../../core/api/vestidor.api';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { ProductoLocal } from '../../core/offline.models';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
 @Component({
@@ -121,6 +122,7 @@ export class PrendaPage implements OnInit {
   private api = inject(CatalogoApi);
   private vestidorApi = inject(VestidorApi);
   private catalogoLocal = inject(CatalogoLocalService);
+  private red = inject(ConnectivityService);
   private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
@@ -198,9 +200,16 @@ export class PrendaPage implements OnInit {
   agregarAlCarrito(p: PrendaDetalle) {
     const v = this.variante(), sucursal = this.sucursalParaCarrito();
     if (!v || !sucursal) return;
+    if (!this.red.online()) {
+      void this.carrito.agregarLocal(v.variante_id, sucursal).then(() => this.toast.ok(`${p.nombre} agregada al carrito guardado en este dispositivo.`)).catch((e) => this.toast.error(mensajeError(e)));
+      return;
+    }
     this.compras.agregar(v.variante_id, 1, sucursal).subscribe({
       next: (c) => { this.carrito.fijar(c); this.toast.ok(`${p.nombre} (${v.talla}, ${v.color}) agregada al carrito.`); this.cargar(); },
-      error: (e) => this.toast.error(mensajeError(e)),
+      error: (e) => {
+        if (e.status === 0) void this.carrito.agregarLocal(v.variante_id, sucursal).then(() => this.toast.ok(`${p.nombre} agregada al carrito guardado en este dispositivo.`)).catch((local) => this.toast.error(mensajeError(local)));
+        else this.toast.error(mensajeError(e));
+      },
     });
   }
 

@@ -211,6 +211,36 @@ class OfflineRepository {
     ];
   }
 
+  Future<void> guardarCarritoCliente(
+      Map<String, dynamic> carrito, int empresaId, int usuarioId) async {
+    await (await _db).insert(
+        'meta',
+        {
+          'clave': 'carrito_cliente_${empresaId}_$usuarioId',
+          'valor': jsonEncode(carrito)
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, dynamic>?> carritoClienteLocal(
+      int empresaId, int usuarioId) async {
+    final filas = await (await _db).query('meta',
+        where: 'clave = ?',
+        whereArgs: ['carrito_cliente_${empresaId}_$usuarioId']);
+    if (filas.isEmpty) return null;
+    try {
+      return jsonDecode(filas.first['valor'] as String) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> limpiarCarritoCliente(int empresaId, int usuarioId) async {
+    await (await _db).delete('meta',
+        where: 'clave = ?',
+        whereArgs: ['carrito_cliente_${empresaId}_$usuarioId']);
+  }
+
   /// Al registrar sin conexión se descuenta del stock local lo comprometido; el servidor vuelve a validar al sincronizar.
   Future<void> comprometerStock(
       List<Map<String, dynamic>> items, int sucursalId) async {

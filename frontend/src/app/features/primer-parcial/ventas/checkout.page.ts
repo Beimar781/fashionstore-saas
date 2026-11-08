@@ -6,6 +6,7 @@ import { CarritoEstadoService } from '../../../core/carrito/carrito-estado.servi
 import { Carrito, Pedido, ResultadoPago } from '../../../core/compras.models';
 import { mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
 
 /** CU-11 · Checkout (entrega y facturación). El pago con tarjeta (CU-32) lo resuelve el componente compartido `app-pago-tarjeta`. */
 @Component({
@@ -14,6 +15,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
   template: `
     <div class="page" style="max-width:980px">
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
+      @if (compraPendiente()) { <div class="alert warn" role="status">Compra guardada en este dispositivo. Se enviará al recuperar la conexión; la tarjeta se pagará luego desde Mis compras.<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
 
       @if (!carrito()) { <div class="empty">Cargando…</div> }
       @else if (!carrito()!.items.length && !pedido()) { <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }
@@ -35,7 +37,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
                 </div>
               </fieldset>
               @if (errorDatos()) { <div class="alert danger" role="alert">{{ errorDatos() }}</div> }
-              @if (!pedido()) { <div><button class="btn primary" [disabled]="creando() || !carrito()!.puede_pagar">{{ creando() ? 'Preparando…' : 'Continuar al pago' }}</button>
+                @if (!pedido()) { <div><button class="btn primary" [disabled]="creando() || !carrito()!.puede_pagar">{{ creando() ? 'Preparando…' : red.online() ? 'Continuar al pago' : 'Guardar compra para sincronizar' }}</button>
                 @if (!carrito()!.puede_pagar) { <span class="small muted" style="margin-left:.6rem">Revise su carrito: hay prendas sin stock.</span> }</div> }
             </form>
 
@@ -75,6 +77,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
 export class CheckoutPage implements OnInit {
   private api = inject(ComprasApi);
   private estado = inject(CarritoEstadoService);
+  readonly red = inject(ConnectivityService);
 
   readonly carrito = signal<Carrito | null>(null);
   readonly pedido = signal<Pedido | null>(null);
@@ -82,12 +85,28 @@ export class CheckoutPage implements OnInit {
   readonly creando = signal(false);
   readonly agotado = signal(false);
   readonly errorDatos = signal('');
-  form = { tipo_entrega: 'RETIRO', direccion_entrega: '', nit_ci: '', razon_social: '' };
+  readonly compraPendiente = signal(false);
+  form: { tipo_entrega: 'RETIRO' | 'DELIVERY'; direccion_entrega: string; nit_ci: string; razon_social: string } = { tipo_entrega: 'RETIRO', direccion_entrega: '', nit_ci: '', razon_social: '' };
 
-  ngOnInit() { this.api.carrito().subscribe((c) => { this.carrito.set(c); this.estado.fijar(c); }); }
+  async ngOnInit() {
+    if (!this.red.online()) { await this.estado.cargarLocal(); this.carrito.set(this.estado.carritoLocal()); return; }
+    await this.estado.cargarLocal();
+    await this.estado.refrescar();
+    if (this.estado.carritoLocal()?.items.length) this.carrito.set(this.estado.carritoLocal());
+    else this.api.carrito().subscribe({ next: (c) => { this.carrito.set(c); this.estado.fijar(c); }, error: (e) => { if (e.status === 0) void this.estado.cargarLocal().then(() => this.carrito.set(this.estado.carritoLocal())); else this.errorDatos.set(mensajeError(e)); } });
+  }
 
   // ---- CU-11: del carrito al pedido ----
   crearPedido() {
+    if (!this.red.online()) {
+      if (this.carrito() && !this.estado.carritoLocal()) void this.estado.guardarLocal(this.carrito()!);
+      this.errorDatos.set('');
+      if (this.form.nit_ci.trim().length < 3) { this.errorDatos.set('Ingrese su NIT o CI para la facturación.'); return; }
+      if (this.form.tipo_entrega === 'DELIVERY' && !this.form.direccion_entrega.trim()) { this.errorDatos.set('Ingrese la dirección de entrega.'); return; }
+      this.creando.set(true);
+      void (async () => { if (this.carrito() && !this.estado.carritoLocal()) await this.estado.guardarLocal(this.carrito()!); await this.estado.registrarCompraLocal(this.form); })().then(() => { this.creando.set(false); this.compraPendiente.set(true); this.carrito.set(null); }).catch((e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); });
+      return;
+    }
     this.creando.set(true); this.errorDatos.set('');
     this.api.checkout(this.form).subscribe({
       next: (p) => { this.creando.set(false); this.pedido.set(p); },

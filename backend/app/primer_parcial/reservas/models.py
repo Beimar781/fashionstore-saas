@@ -1,7 +1,7 @@
 """P6 · Reservas — carrito (CU-08) del primer parcial, ahora por cliente y por empresa."""
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,6 +17,7 @@ class Carrito(Base):
     empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
     cliente_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
     sucursal_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sucursales.id"))
+    ultima_fusion_id: Mapped[str | None] = mapped_column(String(36))
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     items: Mapped[list["CarritoItem"]] = relationship(back_populates="carrito", cascade="all, delete-orphan", order_by="CarritoItem.id")

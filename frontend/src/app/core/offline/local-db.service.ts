@@ -14,6 +14,7 @@ interface FashionDB extends DBSchema {
   catalogo: { key: number; value: ProductoLocal };
   operaciones: { key: string; value: OperacionLocal };
   cache_meta: { key: string; value: unknown };
+  carrito_local: { key: string; value: unknown };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,12 +22,13 @@ export class LocalDbService {
   private dbPromise: Promise<IDBPDatabase<FashionDB>> | null = null;
 
   private db(): Promise<IDBPDatabase<FashionDB>> {
-    this.dbPromise ??= openDB<FashionDB>('fashionstore', 1, {
+    this.dbPromise ??= openDB<FashionDB>('fashionstore', 2, {
       upgrade(db) {
         db.createObjectStore('sesion');
         db.createObjectStore('catalogo', { keyPath: 'id' });
         db.createObjectStore('operaciones', { keyPath: 'id' });
         db.createObjectStore('cache_meta');
+        if (!db.objectStoreNames.contains('carrito_local')) db.createObjectStore('carrito_local');
       },
     });
     return this.dbPromise;
@@ -73,6 +75,10 @@ export class LocalDbService {
       await db.delete('cache_meta', 'catalogo');
     } catch { /* noop */ }
   }
+
+  async guardarCarritoLocal(clave: string, valor: unknown): Promise<void> { await (await this.db()).put('carrito_local', valor, clave); }
+  async leerCarritoLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('carrito_local', clave)) as T | undefined; } catch { return undefined; } }
+  async borrarCarritoLocal(clave: string): Promise<void> { try { await (await this.db()).delete('carrito_local', clave); } catch { /* noop */ } }
 
   // ---- CU-38 y CU-39: cola de operaciones ----
   async guardarOperacion(o: OperacionLocal): Promise<void> { await (await this.db()).put('operaciones', o); }

@@ -17,6 +17,7 @@ export class ComprasApi {
   quitar(itemId: number) { return this.http.delete<Carrito>(`${API_URL}/carrito/items/${itemId}`); }
   elegirSucursal(sucursalId: number) { return this.http.put<Carrito>(`${API_URL}/carrito/sucursal`, { sucursal_id: sucursalId }); }
   vaciar() { return this.http.delete<Carrito>(`${API_URL}/carrito`); }
+  fusionarCarritoLocal(datos: { fusion_id: string; sucursal_id: number; items: { variante_id: number; cantidad: number }[] }) { return this.http.put<{ carrito: Carrito; rechazadas: { variante_id: number; mensaje: string }[] }>(`${API_URL}/carrito/fusionar`, datos); }
 
   // CU-11
   checkout(body: unknown) { return this.http.post<Pedido>(`${API_URL}/compras/checkout`, body); }

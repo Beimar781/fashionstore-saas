@@ -63,8 +63,9 @@ class Ejecutor:
         descuentos = descuentos_vigentes(self.db, self.ctx.empresa_id)
         lineas = [Linea(v.id, v.sku, v.producto.nombre, v.talla.codigo, v.color.nombre, pedidas[v.id], v.precio, descuentos.precio_final(v.producto, v.precio)[0]) for v in variantes.values()]
         pedido = CompraService(self.db, self.ctx).crear_pedido(
-            sucursal_id=datos.sucursal_id, canal="DIGITAL", tipo_entrega="EN_TIENDA", lineas=lineas, cliente_id=self.ctx.usuario.id,
-            nit_ci=datos.nit_ci.strip() or "0", razon_social=datos.razon_social.strip() or "Sin nombre",
+            sucursal_id=datos.sucursal_id, canal="DIGITAL", tipo_entrega=datos.tipo_entrega, lineas=lineas, cliente_id=self.ctx.usuario.id,
+            nit_ci=datos.nit_ci.strip(), razon_social=datos.razon_social.strip() or "Sin nombre",
+            direccion=datos.direccion_entrega if datos.tipo_entrega == "DELIVERY" else "",
         )
         self.db.flush()
         return Resultado(pedido.codigo, None, pedido_id=pedido.id)

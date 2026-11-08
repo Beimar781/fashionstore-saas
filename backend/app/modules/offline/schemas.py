@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA")
 
@@ -28,9 +28,17 @@ class CompraOfflineIn(BaseModel):
     """Compra del cliente armada sin conexión: un pedido por pagar; la tarjeta se cobra en línea cuando sincroniza (no se guardan datos de tarjeta)."""
 
     sucursal_id: int
+    tipo_entrega: Literal["DELIVERY", "RETIRO"] = "RETIRO"
+    direccion_entrega: str = Field(default="", max_length=300)
     items: list[LineaOfflineIn] = Field(min_length=1, max_length=60)
     nit_ci: str = Field(default="0", max_length=20)
     razon_social: str = Field(default="Sin nombre", max_length=120)
+
+    @model_validator(mode="after")
+    def validar_entrega(self):
+        if self.tipo_entrega == "DELIVERY" and not self.direccion_entrega.strip():
+            raise ValueError("Ingrese la dirección de entrega.")
+        return self
 
 
 class OperacionIn(BaseModel):

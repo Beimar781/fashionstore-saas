@@ -15,10 +15,10 @@ MSG_CONDICION = "La prenda no cumple las condiciones de devolución: debe estar 
 CONDICION_OK = {"sin_danos": True, "sin_desgaste": True, "con_etiquetas": True}
 
 
-def op_compra(inv, items, id_=None, segundos=0, sucursal=None):
+def op_compra(inv, items, id_=None, segundos=0, sucursal=None, tipo_entrega="RETIRO", direccion_entrega="", nit_ci="0", razon_social="Sin nombre"):
     """Compra del cliente armada sin conexión (pedido por pagar; no lleva datos de tarjeta)."""
     sucursal = sucursal or inv.centro
-    payload = {"sucursal_id": sucursal.id, "items": [{"variante_id": v["id"], "cantidad": c} for v, c in items]}
+    payload = {"sucursal_id": sucursal.id, "items": [{"variante_id": v["id"], "cantidad": c} for v, c in items], "tipo_entrega": tipo_entrega, "direccion_entrega": direccion_entrega, "nit_ci": nit_ci, "razon_social": razon_social}
     return {"id": str(id_ or uuid.uuid4()), "tipo": "COMPRA", "creada_en": ahora_iso(segundos), "payload": payload, "sucursal_id": sucursal.id}
 
 
@@ -58,7 +58,7 @@ def test_01_con_stock_la_compra_queda_como_pedido_por_pagar_y_el_cliente_la_paga
     r = sincronizar_ok(client, h2, op_compra(inv, [(inv.v_sm_rojo, 2)]))[0]
     assert r["estado"] == "CONFIRMADA" and r["referencia"] and r["comprobante"] is None
     pedido = db.execute(text("SELECT id, estado, canal, tipo_entrega, total, comprobante_numero FROM pedidos WHERE cliente_id = :c"), {"c": u2.id}).one()
-    assert (pedido.estado, pedido.canal, pedido.tipo_entrega, str(pedido.total), pedido.comprobante_numero) == ("PENDIENTE_PAGO", "DIGITAL", "EN_TIENDA", "200.00", None)
+    assert (pedido.estado, pedido.canal, pedido.tipo_entrega, str(pedido.total), pedido.comprobante_numero) == ("PENDIENTE_PAGO", "DIGITAL", "RETIRO", "200.00", None)
     assert existencias_de(db, inv.v_sm_rojo, inv.centro) == 10  # nada se descontó ni se cobró: la tarjeta se cobra en línea
     assert db.execute(text("SELECT count(*) FROM pagos WHERE pedido_id = :p"), {"p": pedido.id}).scalar() == 0
     aviso = _avisos(client, h2)[0]
@@ -68,6 +68,16 @@ def test_01_con_stock_la_compra_queda_como_pedido_por_pagar_y_el_cliente_la_paga
     ok = client.post(f"/api/pagos/{pago['pago_id']}/confirmar", json={"tarjeta": tarjeta()}, headers=h2).json()
     assert ok["aprobado"] and ok["pedido"]["estado"] == "PAGADO"
     assert existencias_de(db, inv.v_sm_rojo, inv.centro) == 8  # recién al pagar se descuenta
+
+
+def test_01b_compra_offline_con_delivery_y_datos_de_facturacion(inv, mundo, datos, client, db):
+    stock_listo(inv, mundo)
+    u2, h2 = _cliente2(datos, mundo)
+    op = op_compra(inv, [(inv.v_sm_rojo, 1)], tipo_entrega="DELIVERY", direccion_entrega="Av. Siempre Viva 123", nit_ci="123456789", razon_social="Ana Pérez")
+    respuesta = sincronizar_ok(client, h2, op)[0]
+    assert respuesta["estado"] == "CONFIRMADA"
+    pedido = db.execute(text("SELECT estado, tipo_entrega, direccion_entrega, nit_ci, razon_social FROM pedidos WHERE cliente_id = :c"), {"c": u2.id}).one()
+    assert tuple(pedido) == ("PENDIENTE_PAGO", "DELIVERY", "Av. Siempre Viva 123", "123456789", "Ana Pérez")
 
 
 def test_02_el_reenvio_de_la_misma_compra_no_la_duplica(inv, mundo, datos, client, db):

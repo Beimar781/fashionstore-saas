@@ -158,3 +158,20 @@ def test_16_solo_el_cliente_usa_el_carrito(inv, client):
     for h in (inv.h_enc_centro, inv.h_cajero, inv.h_admin, inv.h_prov):
         assert client.get("/api/carrito", headers=h).status_code == 403
     assert client.get("/api/carrito").status_code == 401
+
+
+def test_17_fusionar_carrito_local_revalida_stock_y_es_idempotente(inv, mundo, client):
+    import uuid
+
+    stock_listo(inv, mundo, centro=2)
+    datos = {"fusion_id": str(uuid.uuid4()), "sucursal_id": inv.centro.id, "items": [{"variante_id": inv.v_sm_rojo["id"], "cantidad": 1}]}
+    primera = client.put("/api/carrito/fusionar", json=datos, headers=inv.h_cliente)
+    assert primera.status_code == 200, primera.text
+    assert primera.json()["carrito"]["total_unidades"] == 1
+    repetida = client.put("/api/carrito/fusionar", json=datos, headers=inv.h_cliente)
+    assert repetida.json()["carrito"]["total_unidades"] == 1
+    datos["fusion_id"] = str(uuid.uuid4())
+    datos["items"][0]["cantidad"] = 2
+    sin_stock = client.put("/api/carrito/fusionar", json=datos, headers=inv.h_cliente).json()
+    assert sin_stock["carrito"]["total_unidades"] == 1
+    assert sin_stock["rechazadas"][0]["variante_id"] == inv.v_sm_rojo["id"]

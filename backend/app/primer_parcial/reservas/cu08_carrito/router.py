@@ -23,6 +23,11 @@ def agregar_prenda(datos: schemas.ItemIn, ctx: Contexto = Depends(solo_cliente),
     return CarritoService(db, ctx.empresa_id).agregar(ctx.usuario.id, datos)
 
 
+@router.put("/fusionar", response_model=schemas.FusionLocalOut)
+def fusionar_carrito_local(datos: schemas.FusionLocalIn, ctx: Contexto = Depends(solo_cliente), db: Session = Depends(get_db)):
+    return CarritoService(db, ctx.empresa_id).fusionar_local(ctx.usuario.id, datos)
+
+
 @router.put("/items/{item_id}", response_model=schemas.CarritoOut)
 def cambiar_cantidad(item_id: int, datos: schemas.CantidadIn, ctx: Contexto = Depends(solo_cliente), db: Session = Depends(get_db)):
     return CarritoService(db, ctx.empresa_id).cambiar_cantidad(ctx.usuario.id, item_id, datos.cantidad)

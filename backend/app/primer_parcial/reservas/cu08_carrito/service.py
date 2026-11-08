@@ -47,6 +47,34 @@ class CarritoService:
             self.carritos.agregar_item(carrito, variante.id, datos.cantidad)
         return self._guardar(carrito)
 
+    def fusionar_local(self, cliente_id: int, datos: schemas.FusionLocalIn) -> schemas.FusionLocalOut:
+        carrito = self.carritos.de_cliente(cliente_id) or self.carritos.crear(cliente_id)
+        if carrito.ultima_fusion_id == datos.fusion_id:
+            return schemas.FusionLocalOut(carrito=self._salida(carrito), rechazadas=[])
+        if carrito.items:
+            self._fijar_sucursal(carrito, datos.sucursal_id)
+        else:
+            if datos_de_sucursal_activa(self.db, self.empresa_id, datos.sucursal_id) is None:
+                raise NoEncontrado("Sucursal no encontrada.")
+            carrito.sucursal_id = datos.sucursal_id
+        rechazadas = []
+        for linea in datos.items:
+            try:
+                variante = self._habilitada(linea.variante_id)
+                existente = next((i for i in carrito.items if i.variante_id == variante.id), None)
+                cantidad_total = (existente.cantidad if existente else 0) + linea.cantidad
+                self._verificar_stock(variante.id, cantidad_total, carrito.sucursal_id)
+                if existente:
+                    existente.cantidad = cantidad_total
+                else:
+                    self.carritos.agregar_item(carrito, variante.id, linea.cantidad)
+            except (DatosInvalidos, Conflicto, NoEncontrado) as error:
+                rechazadas.append({"variante_id": linea.variante_id, "mensaje": error.message})
+        carrito.ultima_fusion_id = datos.fusion_id
+        self.db.flush()
+        salida = self._guardar(carrito)
+        return schemas.FusionLocalOut(carrito=salida, rechazadas=rechazadas)
+
     # ---- paso 3 de la prueba: modificar la cantidad ----
     def cambiar_cantidad(self, cliente_id: int, item_id: int, cantidad: int) -> schemas.CarritoOut:
         carrito, item = self._item(cliente_id, item_id)
