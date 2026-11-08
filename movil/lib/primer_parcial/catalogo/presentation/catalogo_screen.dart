@@ -678,28 +678,43 @@ class _DetallePrenda extends StatefulWidget {
 }
 
 class _DetallePrendaState extends State<_DetallePrenda> {
-  late final VestidorRepository _vestidor = VestidorRepository(context.read<AuthRepository>().api);
+  late final VestidorRepository _vestidor =
+      VestidorRepository(context.read<AuthRepository>().api);
   int? _sucursalId;
   Map<String, dynamic>? _opciones;
+  Map<String, dynamic>? _detallePrenda;
+  Map<String, dynamic>? _varianteElegida;
   String? _mensaje;
 
   @override
   void initState() {
     super.initState();
     _cargar();
-    _vestidor.precargar(widget.prenda['id'] as int);  // el PNG del vestidor queda listo mientras el cliente mira la ficha
+    _vestidor.precargar(widget.prenda['id']
+        as int); // el PNG del vestidor queda listo mientras el cliente mira la ficha
   }
 
   void _probar() {
     Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => VestidorScreen(repo: _vestidor, productoId: widget.prenda['id'] as int, nombre: '${widget.prenda['nombre']}'),
+      builder: (_) => VestidorScreen(
+          repo: _vestidor,
+          productoId: widget.prenda['id'] as int,
+          nombre: '${widget.prenda['nombre']}'),
     ));
   }
 
   Future<void> _cargar() async {
     try {
-      final o = await widget.repo.opciones(widget.prenda['id'] as int, _sucursalId);
+      final o =
+          await widget.repo.opciones(widget.prenda['id'] as int, _sucursalId);
       if (mounted) setState(() => _opciones = o);
+      try {
+        final detalle = await widget.repo
+            .detalle(widget.prenda['id'] as int, sucursalId: _sucursalId);
+        if (mounted) setState(() => _detallePrenda = detalle);
+      } on ApiException {
+        // La ficha conserva su imagen principal si no se puede cargar la galería.
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _mensaje = e.mensaje);
     }
@@ -714,13 +729,18 @@ class _DetallePrendaState extends State<_DetallePrenda> {
           color: '${v['color']}',
           max: v['cantidad'] as int,
         ));
-    setState(() => _mensaje = '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada a su reserva. Confírmela en «Mis reservas».');
+    setState(() => _mensaje =
+        '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada a su reserva. Confírmela en «Mis reservas».');
   }
 
   Future<void> _agregar(Map<String, dynamic> v) async {
     try {
-      await widget.repo.agregarAlCarrito(v['variante_id'] as int, 1, _sucursalId);
-      if (mounted) setState(() => _mensaje = '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada al carrito.');
+      await widget.repo
+          .agregarAlCarrito(v['variante_id'] as int, 1, _sucursalId);
+      if (mounted) {
+        setState(() => _mensaje =
+            '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada al carrito.');
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _mensaje = e.mensaje);
     }
@@ -728,45 +748,130 @@ class _DetallePrendaState extends State<_DetallePrenda> {
 
   @override
   Widget build(BuildContext context) {
-    final variantes = ((_opciones?['variantes'] as List?) ?? const []).cast<Map<String, dynamic>>();
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${widget.prenda['nombre']}', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: _probar, icon: const Icon(Icons.checkroom), label: const Text('Probar en el vestidor'))),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<int?>(
-          initialValue: _sucursalId,
-          decoration: const InputDecoration(labelText: 'Disponibilidad en'),
-          items: [const DropdownMenuItem<int?>(value: null, child: Text('Todas las sucursales')), for (final s in widget.sucursales) DropdownMenuItem<int?>(value: s['id'] as int, child: Text('${s['nombre']}'))],
-          onChanged: (v) {
-            setState(() {
-              _sucursalId = v;
-              _opciones = null;
-            });
-            _cargar();
-          },
-        ),
-        const SizedBox(height: 8),
-        if (_opciones == null) const Center(child: CircularProgressIndicator()),
-        Flexible(
-          child: ListView(shrinkWrap: true, children: [
-            for (final v in variantes)
-              ListTile(
-                dense: true,
-                title: Text('${v['talla']} · ${v['color']}'),
-                subtitle: Text(v['disponible'] == true ? '${v['cantidad']} disponible(s)' : 'Agotada'),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('Bs ${v['precio_final']}'),
-                  IconButton(tooltip: 'Agregar a mi reserva', icon: const Icon(Icons.bookmark_add_outlined), onPressed: v['disponible'] == true ? () => _reservar(v) : null),
-                  IconButton(tooltip: 'Agregar al carrito', icon: const Icon(Icons.add_shopping_cart), onPressed: v['disponible'] == true ? () => _agregar(v) : null),
+    final variantes = ((_opciones?['variantes'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    final todasLasImagenes =
+        ((_detallePrenda?['imagenes'] as List?) ?? const [])
+            .cast<Map<String, dynamic>>();
+    final colorSeleccionado = _varianteElegida?['color_id'];
+    final imagenesColor = colorSeleccionado == null
+        ? todasLasImagenes
+        : todasLasImagenes
+            .where((i) => i['color_id'] == colorSeleccionado)
+            .toList();
+    final imagenes = imagenesColor.isEmpty ? todasLasImagenes : imagenesColor;
+    return ConstrainedBox(
+      constraints:
+          BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .9),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.viewInsetsOf(context).bottom +
+                MediaQuery.viewPaddingOf(context).bottom +
+                16),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (imagenes.isNotEmpty)
+                SizedBox(
+                    height: 150,
+                    width: double.infinity,
+                    child: PageView(children: [
+                      for (final imagen in imagenes)
+                        ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: ImagenPrenda(ruta: imagen['url'] as String?))
+                    ]))
+              else if (widget.prenda['imagen'] is String)
+                SizedBox(
+                    height: 150,
+                    width: double.infinity,
+                    child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: ImagenPrenda(
+                            ruta: widget.prenda['imagen'] as String?))),
+              Text('${widget.prenda['nombre']}',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                      onPressed: _probar,
+                      icon: const Icon(Icons.checkroom),
+                      label: const Text('Probar en el vestidor'))),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<int?>(
+                initialValue: _sucursalId,
+                decoration:
+                    const InputDecoration(labelText: 'Disponibilidad en'),
+                items: [
+                  const DropdownMenuItem<int?>(
+                      value: null, child: Text('Todas las sucursales')),
+                  for (final s in widget.sucursales)
+                    DropdownMenuItem<int?>(
+                        value: s['id'] as int, child: Text('${s['nombre']}'))
+                ],
+                onChanged: (v) {
+                  setState(() {
+                    _sucursalId = v;
+                    _opciones = null;
+                    _varianteElegida = null;
+                  });
+                  _cargar();
+                },
+              ),
+              const SizedBox(height: 8),
+              if (_opciones == null)
+                const Center(child: CircularProgressIndicator()),
+              Flexible(
+                child: ListView(shrinkWrap: true, children: [
+                  for (final v in variantes)
+                    ListTile(
+                      dense: true,
+                      selected:
+                          _varianteElegida?['variante_id'] == v['variante_id'],
+                      onTap: () => setState(() => _varianteElegida = v),
+                      title: Text('${v['talla']} · ${v['color']}'),
+                      subtitle: Text(v['disponible'] == true
+                          ? '${v['cantidad']} disponible(s)'
+                          : 'Agotada'),
+                      trailing: Text('Bs ${v['precio_final']}'),
+                    ),
                 ]),
               ),
-          ]),
-        ),
-        if (_mensaje != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_mensaje!)),
-      ]),
+              if (_mensaje != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_mensaje!)),
+              const Divider(),
+              Row(children: [
+                IconButton(
+                    tooltip: 'Probar en el vestidor',
+                    onPressed: _probar,
+                    icon: const Icon(Icons.checkroom)),
+                Expanded(
+                    child: OutlinedButton.icon(
+                        onPressed: _varianteElegida == null ||
+                                _varianteElegida!['disponible'] != true
+                            ? null
+                            : () => _reservar(_varianteElegida!),
+                        icon: const Icon(Icons.bookmark_add_outlined),
+                        label: const Text('Reservar'))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: FilledButton.icon(
+                        onPressed: _varianteElegida == null ||
+                                _varianteElegida!['disponible'] != true
+                            ? null
+                            : () => _agregar(_varianteElegida!),
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('Agregar'))),
+              ]),
+            ]),
+      ),
     );
   }
 }
