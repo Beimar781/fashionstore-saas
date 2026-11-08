@@ -12,6 +12,8 @@ import { Disponibilidad } from '../../core/inventario.models';
 import { ReservaBorradorService } from '../../core/reservas/reserva-borrador.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 import { VestidorApi } from '../../core/api/vestidor.api';
+import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
+import { ProductoLocal } from '../../core/offline.models';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
 @Component({
@@ -118,6 +120,7 @@ import { VestidorApi } from '../../core/api/vestidor.api';
 export class PrendaPage implements OnInit {
   private api = inject(CatalogoApi);
   private vestidorApi = inject(VestidorApi);
+  private catalogoLocal = inject(CatalogoLocalService);
   private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
@@ -164,12 +167,29 @@ export class PrendaPage implements OnInit {
   }
 
   cargar() {
-    this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: (e) => this.toast.error(mensajeError(e)) });
+    this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: (e) => {
+      const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
+      if (p) this.prenda.set(this.detalleLocal(p)); else this.toast.error(mensajeError(e));
+    } });
     this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.toast.error(mensajeError(e)) });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
-      error: (e) => this.toast.error(mensajeError(e)),
+      error: (e) => {
+        const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
+        if (p) {
+          const variantes = p.variantes.map((v) => { const cantidad = this.sucursalId() === null ? Object.values(v.stock).reduce((a, b) => a + b, 0) : (v.stock[String(this.sucursalId())] ?? 0); return { variante_id: v.id, sku: v.sku, talla_id: v.talla_id ?? 0, talla: v.talla, color_id: v.color_id ?? 0, color: v.color, precio: v.precio, precio_final: v.precio_final, disponible: cantidad > 0, cantidad, orden: 0 }; });
+          const colores = [...new Map(variantes.map((v) => [v.color_id, { id: v.color_id, nombre: v.color, codigo_hex: p.variantes.find((x) => x.color_id === v.color_id)?.color_hex ?? '#999999', disponible: variantes.some((x) => x.color_id === v.color_id && x.disponible) }])).values()];
+          const tallas = [...new Map(variantes.map((v) => [v.talla, { id: v.talla_id, codigo: v.talla, orden: 0, disponible: variantes.some((x) => x.talla === v.talla && x.disponible) }])).values()];
+          const o: Opciones = { producto_id: p.id, sucursal_id: this.sucursalId(), colores, tallas, variantes };
+          this.opciones.set(o); this.ajustarSeleccion(o);
+        } else this.toast.error(mensajeError(e));
+      },
     });
+  }
+
+  private detalleLocal(p: ProductoLocal): PrendaDetalle {
+    const v = p.variantes[0];
+    return { id: p.id, publico_id: p.publico_id ?? String(p.id), nombre: p.nombre, slug: p.slug ?? String(p.id), categoria: p.categoria, marca: p.marca ?? null, genero: p.genero as PrendaDetalle['genero'], coleccion: p.coleccion ?? '', temporada: p.temporada ?? '', precio: v?.precio ?? '0', precio_final: v?.precio_final ?? '0', promocion: v?.promocion ?? null, imagen: p.imagen, colores: [...new Map(p.variantes.map((x) => [x.color_id, { id: x.color_id ?? 0, nombre: x.color, codigo_hex: x.color_hex ?? '#999999' }])).values()], tallas: [...new Set(p.variantes.map((x) => x.talla))], disponible: p.variantes.some((x) => Object.values(x.stock).some((n) => n > 0)), descripcion: p.descripcion ?? '', material: p.material ?? '', cuidado: p.cuidado ?? '', imagenes: (p.imagenes ?? []).map((x) => ({ id: x.id, color_id: x.color_id, url: x.url, texto_alt: x.texto_alt, principal: x.principal })) };
   }
 
   /** El carrito es de una sola sucursal: la del carrito si ya tiene prendas, o la que se esté mirando. */

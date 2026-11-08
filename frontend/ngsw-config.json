@@ -8,6 +8,11 @@
   ],
   "dataGroups": [
     {
+      "name": "imagenes-prendas",
+      "urls": ["http://localhost:8000/media/**", "http://127.0.0.1:8000/media/**", "https://*.up.railway.app/media/**", "/media/**"],
+      "cacheConfig": { "strategy": "performance", "maxSize": 500, "maxAge": "30d" }
+    },
+    {
       "name": "api-consultas",
       "urls": ["http://localhost:8000/api/**", "http://127.0.0.1:8000/api/**", "https://*.up.railway.app/api/**", "/api/**"],
       "cacheConfig": { "strategy": "freshness", "maxSize": 100, "maxAge": "1d", "timeout": "5s" }

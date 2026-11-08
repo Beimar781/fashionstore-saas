@@ -22,6 +22,9 @@ class VarianteLocalOut(BaseModel):
     precio: Dinero
     precio_final: Dinero  # con la promoción vigente al descargar
     promocion: str | None
+    talla_id: int
+    color_id: int
+    color_hex: str
     stock: dict[int, int]  # sucursal → disponibles; el personal recibe solo la de su sucursal
 
 
@@ -31,6 +34,15 @@ class ProductoLocalOut(BaseModel):
     categoria: str
     genero: str
     imagen: str | None
+    publico_id: str
+    slug: str
+    descripcion: str
+    marca: str | None
+    coleccion: str
+    temporada: str
+    material: str
+    cuidado: str
+    imagenes: list[dict]
     variantes: list[VarianteLocalOut]
 
 

@@ -45,10 +45,16 @@ class CatalogoOfflineService:
                 final, promocion = descuentos.precio_final(p, v.precio)
                 variantes.append(schemas.VarianteLocalOut(
                     id=v.id, sku=v.sku, codigo_barras=v.codigo_barras, talla=v.talla.codigo, color=v.color.nombre, precio=v.precio, precio_final=final,
-                    promocion=promocion.nombre if promocion else None, stock=stock.get(v.id, {}),
+                    promocion=promocion.nombre if promocion else None, talla_id=v.talla_id, color_id=v.color_id, color_hex=v.color.codigo_hex, stock=stock.get(v.id, {}),
                 ))
             if variantes:
                 principal = next((i for i in p.imagenes if i.principal), p.imagenes[0] if p.imagenes else None)
-                salida.append(schemas.ProductoLocalOut(id=p.id, nombre=p.nombre, categoria=p.categoria.nombre, genero=p.genero, imagen=principal.url if principal else None, variantes=variantes))
+                salida.append(schemas.ProductoLocalOut(
+                    id=p.id, nombre=p.nombre, categoria=p.categoria.nombre, genero=p.genero, imagen=principal.ruta if principal else None,
+                    publico_id=str(p.publico_id), slug=p.slug, descripcion=p.descripcion, marca=p.marca.nombre if p.marca else None,
+                    coleccion=p.coleccion.nombre, temporada=p.coleccion.temporada.nombre, material=p.material, cuidado=p.cuidado,
+                    imagenes=[{"id": i.id, "color_id": i.color_id, "url": i.ruta, "texto_alt": i.texto_alt, "principal": i.principal} for i in sorted(p.imagenes, key=lambda x: x.orden)],
+                    variantes=variantes,
+                ))
         clientes = [] if self.ctx.rol == CLIENTE else [schemas.ClienteLocalOut(id=i, nombre=n, email=e) for i, n, e in nombres_y_correos_de_clientes(self.db, self.empresa_id)]
         return schemas.CatalogoLocalOut(generado_en=ahora(), empresa_id=self.empresa_id, sucursales=[schemas.SucursalLocalOut(**s) for s in sucursales], productos=salida, clientes=clientes)

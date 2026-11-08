@@ -20,7 +20,9 @@ def test_01_el_personal_descarga_el_catalogo_de_su_sucursal_con_clientes(inv, mu
     assert c["empresa_id"] == mundo.a.id and c["generado_en"] and [s["nombre"] for s in c["sucursales"]] == ["Centro"]  # RN10: solo su sucursal
     camisa = next(p for p in c["productos"] if p["nombre"] == "Camisa Oxford")
     assert (camisa["categoria"], camisa["genero"], len(camisa["variantes"])) == ("Camisas", "UNISEX", 4)
+    assert camisa["publico_id"] and camisa["slug"] and "descripcion" in camisa and "imagenes" in camisa
     v = next(v for v in camisa["variantes"] if v["id"] == inv.v_sm_rojo["id"])
+    assert v["talla_id"] and v["color_id"] and v["color_hex"].startswith("#")
     assert (v["sku"], v["talla"], v["color"], v["precio"], v["precio_final"], v["promocion"]) == (inv.v_sm_rojo["sku"], "S", "Rojo", "100.00", "100.00", None)
     assert v["stock"] == {str(inv.centro.id): 10}  # solo el stock de su sucursal
     assert [x["email"] for x in c["clientes"]] == ["cliente@tienda.com"]  # datos mínimos de los clientes

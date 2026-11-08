@@ -1,4 +1,5 @@
 import { AprendizajeService } from '../../core/ia/aprendizaje.service';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,14 +8,17 @@ import { CatalogoAdminApi } from '../../core/api/catalogo-admin.api';
 import { CatalogoApi } from '../../core/api/catalogo.api';
 import { Categoria, ColorCatalogo, FiltrosCatalogo, GENEROS, Marca, Pagina, Prenda, SucursalCatalogo } from '../../core/catalogo.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 
 /** CU-03 · Consultar catálogo de prendas y CU-04 · Buscar y filtrar. Todos los filtros viajan al backend. */
 @Component({
   selector: 'app-catalogo',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Catálogo</h1><p>Encuentre su próxima prenda y revise la disponibilidad por sucursal.</p></div></div>
+      @if (!red.online() && local.meta(); as m) { <div class="alert warn small" role="status">Sin conexión · datos al {{ m.generado_en | date: 'dd/MM HH:mm' }}. Precios, promociones y stock pueden haber cambiado.</div> }
 
       <form class="card pad stack" style="margin-bottom:1.1rem" (ngSubmit)="buscar()">
         <div class="row">
@@ -77,6 +81,8 @@ export class CatalogoPage implements OnInit {
   private lecturas = inject(CatalogoAdminApi); // las listas de categorías, marcas, colores y tallas son de lectura para todos los roles
   private toast = inject(ToastService);
   private aprendizaje = inject(AprendizajeService);
+  readonly local = inject(CatalogoLocalService);
+  readonly red = inject(ConnectivityService);
 
   readonly media = MEDIA_URL;
   readonly generos = GENEROS;
@@ -96,6 +102,7 @@ export class CatalogoPage implements OnInit {
     this.lecturas.colores().subscribe((r) => this.colores.set(r));
     this.lecturas.grupos().subscribe((grupos) => this.tallas.set([...new Set(grupos.flatMap((g) => g.tallas.map((t) => t.codigo)))]));
     this.catalogo.sucursales().subscribe((r) => this.sucursales.set(r));
+    this.local.cargar().then(() => this.sucursales.set(this.local.meta()?.sucursales ?? this.sucursales()));
     this.buscar();
   }
 
@@ -104,7 +111,22 @@ export class CatalogoPage implements OnInit {
     this.cargando.set(true);
     this.catalogo.buscar({ ...this.f, q: this.f.q?.trim(), pagina }).subscribe({
       next: (r) => { this.datos.set(r); this.cargando.set(false); },
-      error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); },
+      error: (e) => {
+        const m = this.local.meta();
+        if (m && this.local.hayCatalogo()) {
+          const q = (this.f.q ?? '').trim().toLowerCase();
+          const items = this.local.productos().filter((p) => {
+            const variantes = p.variantes.filter((v) => (!this.f.talla || v.talla === this.f.talla) && (!this.f.color_id || v.color_id === this.f.color_id) && (!this.f.sucursal || (v.stock[String(this.f.sucursal)] ?? 0) > 0) && (!this.f.solo_disponibles || Object.values(v.stock).some((n) => n > 0)) && (!this.f.precio_min || Number(v.precio_final) >= this.f.precio_min) && (!this.f.precio_max || Number(v.precio_final) <= this.f.precio_max));
+            return variantes.length > 0 && (!q || `${p.nombre} ${p.categoria} ${p.marca ?? ''} ${p.descripcion ?? ''}`.toLowerCase().includes(q)) && (!this.f.genero || p.genero === this.f.genero) && (!this.f.categoria_id || this.categorias().find((c) => c.id === this.f.categoria_id)?.nombre === p.categoria) && (!this.f.marca_id || this.marcas().find((x) => x.id === this.f.marca_id)?.nombre === p.marca);
+          }).map((p) => {
+            const vs = p.variantes;
+            const stock = vs.some((v) => Object.values(v.stock).some((n) => n > 0));
+            return { id: p.id, publico_id: p.publico_id ?? String(p.id), nombre: p.nombre, slug: p.slug ?? String(p.id), categoria: p.categoria, marca: p.marca ?? null, genero: p.genero as Prenda['genero'], coleccion: p.coleccion ?? '', temporada: p.temporada ?? '', precio: vs[0]?.precio ?? '0', precio_final: vs[0]?.precio_final ?? '0', promocion: vs.find((v) => v.promocion)?.promocion ?? null, imagen: p.imagen, colores: [...new Map(vs.map((v) => [v.color_id ?? v.color, { id: v.color_id ?? 0, nombre: v.color, codigo_hex: v.color_hex ?? '#999999' }])).values()], tallas: [...new Set(vs.map((v) => v.talla))], disponible: stock } as Prenda;
+          });
+          this.datos.set({ total: items.length, pagina: 1, tamano: items.length || 20, items });
+        } else this.toast.error(mensajeError(e));
+        this.cargando.set(false);
+      },
     });
   }
   limpiar() { this.f = this.vacio(); this.buscar(); }

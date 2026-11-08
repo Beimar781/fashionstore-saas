@@ -3,9 +3,9 @@ export type EstadoLocal = 'REGISTRADA_LOCAL' | 'ENVIADA' | 'CONFIRMADA' | 'RECHA
 export type TipoOperacion = 'VENTA_CONTADO' | 'RESERVA' | 'COMPRA';
 
 export interface VarianteLocal {
-  id: number; sku: string; codigo_barras: string | null; talla: string; color: string; precio: string; precio_final: string; promocion: string | null; stock: Record<string, number>;
+  id: number; sku: string; codigo_barras: string | null; talla: string; color: string; talla_id?: number; color_id?: number; color_hex?: string; precio: string; precio_final: string; promocion: string | null; stock: Record<string, number>;
 }
-export interface ProductoLocal { id: number; empresa_id: number; nombre: string; categoria: string; genero: string; imagen: string | null; variantes: VarianteLocal[]; }
+export interface ProductoLocal { id: number; empresa_id: number; nombre: string; categoria: string; genero: string; imagen: string | null; publico_id?: string; slug?: string; descripcion?: string; marca?: string | null; coleccion?: string; temporada?: string; material?: string; cuidado?: string; imagenes?: { id: number; color_id: number | null; url: string; texto_alt: string; principal: boolean }[]; variantes: VarianteLocal[]; }
 export interface SucursalLocal { id: number; nombre: string; ciudad: string; direccion: string | null; horario: string | null; }
 export interface ClienteLocal { id: number; nombre: string; email: string; }
 export interface CatalogoDescargado { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }

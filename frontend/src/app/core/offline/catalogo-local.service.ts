@@ -37,6 +37,7 @@ export class CatalogoLocalService {
           const productos: ProductoLocal[] = c.productos.map((p) => ({ ...p, empresa_id: c.empresa_id }));
           const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes };
           await this.db.guardarCatalogo(productos, meta);
+          await this.guardarImagenesCatalogo(productos);
           if (this.auth.rol() === 'Cliente') await this.guardarImagenesVestidor(productos.map((p) => p.id));
           await this.db.marcarSincronizacion();
           this.productos.set(productos);
@@ -47,6 +48,16 @@ export class CatalogoLocalService {
         error: (e) => { this.descargando.set(false); rechazar(e); },
       });
     });
+  }
+
+  private async guardarImagenesCatalogo(productos: ProductoLocal[]) {
+    if (!('caches' in window)) return;
+    const cache = await caches.open('catalogo-productos');
+    const rutas = productos.flatMap((p) => (p.imagenes ?? [{ url: p.imagen ?? '' }]).map((i) => i.url).filter(Boolean));
+    await Promise.all(rutas.map(async (ruta) => {
+      const url = /^https?:/.test(ruta) ? ruta : MEDIA_URL + ruta;
+      try { if (!await cache.match(url)) { const r = await fetch(url); if (r.ok) await cache.put(url, r); } } catch { /* Las imágenes son opcionales durante una descarga interrumpida. */ }
+    }));
   }
 
   /** Descarga y conserva las imágenes vestibles para que acompañen al catálogo offline. */
