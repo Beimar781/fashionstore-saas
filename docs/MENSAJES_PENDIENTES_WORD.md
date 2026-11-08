@@ -638,8 +638,11 @@ CU-32 y CU-11: el flujo alterno «pago con tarjeta desde la app móvil» (Paymen
 | El comprobante no existe o no es del cliente | «No se encontró el comprobante de esta compra.» | 404 / 403 (el servidor responde 404 si es de otra empresa) | Pendiente |
 | El teléfono no tiene visor de PDF | «No hay una aplicación para abrir PDF en este teléfono.» | — (solo en la app) | Pendiente |
 | Móvil sin conexión al usar el asistente | «Sin conexión: el asistente necesita Internet.» | — (solo en la app) | Pendiente |
-| Móvil sin conexión al reservar o al crear la cuenta | «Sin conexión: la reserva necesita Internet.» / «Sin conexión: crear la cuenta necesita Internet.» | — (solo en la app) | Pendiente |
+| Móvil sin conexión al reservar | «Sin conexión: la reserva necesita Internet.» | — (solo en la app) | Pendiente |
 | Datos del formulario de crear cuenta | «Ingrese el código de la tienda.», «Ingrese su nombre.», «Ingrese un correo válido.» y «La contraseña debe tener al menos 8 caracteres.» (esta última es la del servidor) | — (validación en la app) | Pendiente |
+| Sin conexión al iniciar sesión por primera vez (web y móvil) | «Sin conexión: necesita Internet para iniciar sesión.» | — (pantalla) | Pendiente |
+| Sin conexión al crear una cuenta (web y móvil) | «Sin conexión: necesita Internet para crear su cuenta.» | — (pantalla) | Pendiente |
+| Sin conexión al solicitar o guardar una nueva contraseña (web y móvil) | «Sin conexión: necesita Internet para recuperar su contraseña.» | — (pantalla) | Pendiente |
 
 ## Para el Word
 
@@ -654,3 +657,7 @@ CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con
 - **Decisión de interfaz:** el móvil del Cliente se organiza en barra inferior con Inicio, Promociones, Reservas, Compras y Perfil. Campana y carrito quedan arriba a la derecha; el asistente aparece solo en Inicio cuando el plan incluye IA. La suscripción restringida deja visible únicamente Perfil.
 - **Mensajes de interfaz sin código HTTP:** «No se encontraron prendas.» y «No se pudo cargar el catálogo. Intente de nuevo.»; sin conexión, Inicio informa «Sin conexión · Datos al …». Son estados locales del catálogo, no respuestas nuevas de la API.
 - **Imágenes del catálogo:** las rutas `/media/...` se resuelven desde el origen de `API_URL` sin `/api`; una caché de archivos del dispositivo permite reutilizar fotos descargadas sin conexión.
+
+# Prompt Q · Autenticación del Cliente sin conexión (bloque 2)
+
+- **Regla:** crear una cuenta e iniciar o recuperar una contraseña necesitan Internet. La web y el móvil conservan el texto de los formularios tras un fallo de conexión y muestran el mensaje de la tabla; no guardan contraseñas ni tokens como operaciones pendientes.

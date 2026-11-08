@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/auth_repository.dart';
+import '../data/auth_offline.dart';
 import '../data/registro_cliente.dart';
 
 /// CU-01 · Crear cuenta de cliente. Al terminar vuelve al login con el código y el correo ya escritos.
@@ -34,7 +35,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   Future<void> _crear() async {
     if (!_formulario.currentState!.validate()) return;
-    setState(() { _creando = true; _error = null; });
+    setState(() {
+      _creando = true;
+      _error = null;
+    });
     try {
       await context.read<AuthRepository>().registrarCliente(RegistroCliente(
             codigoEmpresa: _codigo.text,
@@ -43,12 +47,20 @@ class _RegistroScreenState extends State<RegistroScreen> {
             email: _email.text,
             password: _password.text,
           ));
-      if (mounted) Navigator.pop(context, (_codigo.text.trim(), _email.text.trim()));
+      if (mounted) {
+        Navigator.pop(context, (_codigo.text.trim(), _email.text.trim()));
+      }
       return;
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: crear la cuenta necesita Internet.' : e.mensaje);
+      if (mounted) {
+        setState(() => _error = e.sinConexion
+            ? mensajeAuthSinConexion('crear su cuenta')
+            : e.mensaje);
+      }
     }
-    if (mounted) setState(() => _creando = false);
+    if (mounted) {
+      setState(() => _creando = false);
+    }
   }
 
   @override
@@ -64,51 +76,78 @@ class _RegistroScreenState extends State<RegistroScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Form(
                 key: _formulario,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  const Text('Pida el código de la tienda en la que desea comprar. Su cuenta solo existirá en esa tienda.'),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _codigo,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(labelText: 'Código de la tienda', hintText: 'EMP-A'),
-                    validator: RegistroCliente.validarCodigo,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _nombre, decoration: const InputDecoration(labelText: 'Nombre'), validator: RegistroCliente.validarNombre),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _apellidos, decoration: const InputDecoration(labelText: 'Apellidos')),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: 'Correo'),
-                    validator: RegistroCliente.validarEmail,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: _ocultar,
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña (mínimo 8 caracteres)',
-                      suffixIcon: IconButton(icon: Icon(_ocultar ? Icons.visibility : Icons.visibility_off), onPressed: () => setState(() => _ocultar = !_ocultar)),
-                    ),
-                    validator: RegistroCliente.validarPassword,
-                    onFieldSubmitted: (_) => _crear(),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: esquema.errorContainer, borderRadius: BorderRadius.circular(10)),
-                      child: Text(_error!, style: TextStyle(color: esquema.onErrorContainer)),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _creando ? null : _crear,
-                    child: _creando ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Crear cuenta'),
-                  ),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                          'Pida el código de la tienda en la que desea comprar. Su cuenta solo existirá en esa tienda.'),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _codigo,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                            labelText: 'Código de la tienda',
+                            hintText: 'EMP-A'),
+                        validator: RegistroCliente.validarCodigo,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                          controller: _nombre,
+                          decoration:
+                              const InputDecoration(labelText: 'Nombre'),
+                          validator: RegistroCliente.validarNombre),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                          controller: _apellidos,
+                          decoration:
+                              const InputDecoration(labelText: 'Apellidos')),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(labelText: 'Correo'),
+                        validator: RegistroCliente.validarEmail,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _ocultar,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña (mínimo 8 caracteres)',
+                          suffixIcon: IconButton(
+                              icon: Icon(_ocultar
+                                  ? Icons.visibility
+                                  : Icons.visibility_off),
+                              onPressed: () =>
+                                  setState(() => _ocultar = !_ocultar)),
+                        ),
+                        validator: RegistroCliente.validarPassword,
+                        onFieldSubmitted: (_) => _crear(),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                              color: esquema.errorContainer,
+                              borderRadius: BorderRadius.circular(10)),
+                          child: Text(_error!,
+                              style:
+                                  TextStyle(color: esquema.onErrorContainer)),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _creando ? null : _crear,
+                        child: _creando
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('Crear cuenta'),
+                      ),
+                    ]),
               ),
             ),
           ),

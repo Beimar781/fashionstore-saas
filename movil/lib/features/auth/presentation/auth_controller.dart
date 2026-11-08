@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/auth_repository.dart';
+import '../data/auth_offline.dart';
 import '../data/sesion.dart';
 
 /// Estado de autenticación de la app (CU-02) para la capa de presentación.
@@ -27,12 +28,16 @@ class AuthController extends ChangeNotifier {
     if (sesion != null) await actualizarContexto();
   }
 
-  Future<void> iniciarSesion({String? codigoEmpresa, required String email, required String password}) async {
+  Future<void> iniciarSesion(
+      {String? codigoEmpresa,
+      required String email,
+      required String password}) async {
     cargando = true;
     error = null;
     notifyListeners();
     try {
-      sesion = await _repo.iniciarSesion(codigoEmpresa: codigoEmpresa, email: email, password: password);
+      sesion = await _repo.iniciarSesion(
+          codigoEmpresa: codigoEmpresa, email: email, password: password);
       sinConexion = false;
     } on ApiException catch (e) {
       if (e.sinConexion) {
@@ -41,7 +46,7 @@ class AuthController extends ChangeNotifier {
           sesion = await _repo.sesionLocal();
           sinConexion = true;
         } else {
-          error = 'Se requiere conexión para el primer inicio de sesión.';
+          error = mensajeAuthSinConexion('iniciar sesión');
         }
       } else {
         error = e.mensaje;
