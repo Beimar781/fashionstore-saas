@@ -508,10 +508,11 @@ y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
 - **Un recurso por producto y color** (la talla solo cambia la escala): el Administrador sube un **PNG ya recortado** (con fondo transparente). **No hay recorte automático de fondo.** El servidor comprueba que sea un PNG de verdad (por su firma, no por el nombre del archivo), que tenga transparencia
   (al menos el 2 % de la imagen transparente: un PNG con fondo sólido se rechaza), lo reduce a **800 px de ancho** y lo guarda en la carpeta de imágenes de la empresa. Subir otra vez el mismo color reemplaza el anterior y borra el archivo viejo.
 - **Puntos de anclaje por prenda:** altura de la línea de hombros, ancho de hombros, altura de la cadera y ajuste fino de escala (valores de 0 a 1 dentro de rangos válidos). La **escala por talla** se da por código de talla (XS 0.92, S 0.96, M 1.0, L 1.05, XL 1.10...); las tallas numéricas u otras usan 1.0.
-- **La cámara y la detección de pose ocurren solo en el teléfono.** Se usa ML Kit (plan A) con la cámara a resolución media; ningún cuadro de la cámara se envía al servidor. Los puntos del cuerpo (hombros y caderas) pasan por una interfaz común para poder cambiar a MoveNet con tflite (plan B) sin tocar el anclaje.
+- **La cámara y la detección de pose ocurren en el dispositivo.** En móvil se usa ML Kit; en web se usa MediaPipe Pose Landmarker Lite en el navegador. Ningún cuadro de la cámara se envía al servidor. Los puntos del cuerpo (hombros y caderas) pasan por una interfaz común para usar el mismo anclaje.
 - **Metas de rendimiento:** prenda visible en menos de 1 segundo y 15 FPS o más en un teléfono de gama media. La pantalla tiene una vista de depuración (botón del insecto) que mide FPS, latencia y tiempo hasta ver la prenda.
 - **Guía en pantalla:** «Ponte frente a la cámara», «Sube la cámara hasta que se vean tus hombros», «Acércate un poco», «Aléjate un poco», «Ponte de frente a la cámara». Umbral de confianza 0.30 y bloqueo con 2 cuadros buenos.
 - **Quién usa qué:** el Administrador sube y quita las imágenes; el Cliente consulta lo que necesita para probarse la prenda (la información y el PNG se precargan al abrir la ficha del producto). Sin plan especial: no depende de la IA del plan Profesional.
+- **Decisión Prompt P:** el vestidor virtual funciona en móvil y en web con la cámara del dispositivo; el procesamiento se hace en el dispositivo y el video no se envía al servidor. En web usa MediaPipe Pose Landmarker Lite local, con recursos de MediaPipe y el PNG guardados por la PWA para la sesión sin conexión.
 - **Tabla nueva:** `ar_assets` (producto, color, ruta del PNG, medidas y anclaje). Un recurso por producto y color.
 
 ## Mensajes nuevos
@@ -527,11 +528,15 @@ y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
 | Quitar una imagen que no existe | «La prenda no tiene imagen de vestidor en ese color.» | 404 | Pendiente |
 | Prenda superior sin imagen en ese color (móvil) | «Esta prenda todavía no tiene imagen para el vestidor.» | (pantalla) | Pendiente |
 | Permiso de cámara denegado (móvil) | «Necesitamos la cámara para el vestidor. Permita el acceso en Ajustes → Aplicaciones → FashionStore → Permisos y vuelva a abrir el vestidor.» | (pantalla) | Pendiente |
+| Permiso de cámara denegado (web) | «Permita el acceso a la cámara para usar el vestidor.» | (pantalla) | Pendiente |
+| El dispositivo no tiene cámara (web) | «Este dispositivo no tiene cámara disponible.» | (pantalla) | Pendiente |
+| Navegador no compatible con el vestidor | «Este navegador no admite el vestidor virtual. Pruebe con Chrome o Edge.» | (pantalla) | Pendiente |
+| No se puede cargar el modelo del vestidor | «No se pudo cargar el modelo del vestidor.» | (pantalla) | Pendiente |
+| Catálogo offline sin recursos de vestidor | «Descargue el catálogo con conexión para usar el vestidor sin Internet.» | (pantalla) | Pendiente |
 
 ## Para el Word
 
-Completar el CU-06 con: flujo del Administrador (subir el PNG recortado por color y ajustar el anclaje), flujo del Cliente (abrir el vestidor desde la ficha de la prenda, guía en pantalla, elegir color y talla), la excepción «prenda no admitida», la tabla `ar_assets`,
-la regla de que el procesamiento de la cámara es local (privacidad) y las metas de rendimiento. Agregar la interfaz de detección (plan A: ML Kit; plan B: MoveNet con tflite) a la vista de arquitectura del móvil. Las rutas nuevas quedaron en la bitácora (regla 16).
+Completar el CU-06 con: flujo del Administrador (subir el PNG recortado por color y ajustar el anclaje), flujo del Cliente (web y móvil: abrir el vestidor desde la ficha de la prenda, guía en pantalla, elegir color y talla), la excepción «prenda no admitida», la tabla `ar_assets`, la regla de que el procesamiento de la cámara es local (privacidad) y las metas de rendimiento. En web se usa MediaPipe Pose Landmarker Lite; en móvil, ML Kit. Ningún video se envía al servidor. Las rutas nuevas quedaron en la bitácora (regla 16).
 
 ---
 

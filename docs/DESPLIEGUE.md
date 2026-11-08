@@ -178,3 +178,10 @@ El asistente (CU-07), los reportes generativos (CU-23) y el resto de funciones d
 | El navegador bloquea las llamadas a la API por CORS | `CORS_ORIGINS` quedó vacío (referencia `${{...}}` sin resolver): escribe el dominio literal del frontend. |
 | El push web no pide permiso | El navegador exige HTTPS (Railway ya lo da) y que la PWA esté cargada con el service worker; abre el sitio en una pestaña nueva e inicia sesión como Cliente. |
 | El APK no recibe push | Se compiló sin `google-services.json` (revisa el aviso amarillo del flujo), el paquete de la app en Firebase no es `com.example.fashionstore_movil`, o falta `FCM_PROYECTO`/`FCM_CREDENCIALES_JSON` en el backend. |
+
+## Vestidor web (MediaPipe, Prompt P)
+
+- El navegador carga `@mediapipe/tasks-vision` solo al entrar al vestidor. Los archivos WASM y su cargador se copian desde `node_modules` a `dist/mediapipe/wasm/`; el modelo se sirve desde `dist/mediapipe/pose_landmarker_lite.task`. No se usa CDN.
+- Recursos de MediaPipe versionados: modelo Lite **5.78 MB**; los tres cargadores JS y sus WASM (SIMD, modular y fallback sin SIMD) **33.75 MB**; total **39.53 MB**. El bloque inicial de JavaScript de la web permanece en **310.89 kB**; el bundle de MediaPipe es lazy (~134.92 kB sin comprimir, descarga comprimida ~34.42 kB), aparte de los archivos del modelo y WASM.
+- El grupo de recursos de la PWA los guarda bajo demanda la primera vez que el vestidor los solicita. El PNG de cada color vestible se guarda en Cache Storage durante «Descargar catálogo» para permitir el uso sin conexión. Los PNG continúan almacenados bajo `/media` en el backend.
+- El modelo Pose Landmarker Lite se obtiene de [Google AI Edge](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task) y se distribuye bajo **Apache License 2.0**, como el paquete MediaPipe Tasks Vision. El navegador procesa el video localmente; no se envían cuadros al backend.

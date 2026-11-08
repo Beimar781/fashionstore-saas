@@ -11,6 +11,7 @@ import { Opciones, PrendaDetalle, SucursalCatalogo } from '../../core/catalogo.m
 import { Disponibilidad } from '../../core/inventario.models';
 import { ReservaBorradorService } from '../../core/reservas/reserva-borrador.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { VestidorApi } from '../../core/api/vestidor.api';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
 @Component({
@@ -36,6 +37,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               @if (p.promocion) { <span class="badge danger">{{ p.promocion }}</span> }
             </div>
             <p>{{ p.descripcion }}</p>
+            @if (vestidorDisponible()) { <a class="btn" [routerLink]="['/tienda/catalogo', p.id, 'vestidor']" [queryParams]="sucursalId() ? { sucursal: sucursalId() } : {}">Probar en el vestidor</a> }
 
             <label style="max-width:300px">Ver disponibilidad en
               <select [ngModel]="sucursalId()" (ngModelChange)="cambiarSucursal($event)" name="suc">
@@ -115,6 +117,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 })
 export class PrendaPage implements OnInit {
   private api = inject(CatalogoApi);
+  private vestidorApi = inject(VestidorApi);
   private inventario = inject(InventarioApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
@@ -132,6 +135,7 @@ export class PrendaPage implements OnInit {
   readonly colorId = signal<number | null>(null);
   readonly tallaCodigo = signal<string | null>(null); // la talla se recuerda por código, no por id: cambia entre grupos de tallas
   readonly fotoElegida = signal<number | null>(null);
+  readonly vestidorDisponible = signal(false);
   private id = 0;
 
   readonly colorElegido = computed(() => this.opciones()?.colores.find((c) => c.id === this.colorId()) ?? null);
@@ -154,6 +158,7 @@ export class PrendaPage implements OnInit {
       this.sucursalId.set(s ? Number(s) : null);
       this.colorId.set(null); this.tallaCodigo.set(null); this.fotoElegida.set(null);
       this.aprendizaje.vista(this.id);
+      this.vestidorApi.producto(this.id).subscribe({ next: (v) => this.vestidorDisponible.set(v.admite && v.colores.some((c) => c.listo && !!c.imagen_url && !!c.anclaje)), error: () => this.vestidorDisponible.set(false) });
       this.cargar();
     });
   }

@@ -150,9 +150,18 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 11.6 | Móvil | Cliente EMP-B | Descargar el catálogo desde Perfil → Modo sin conexión, abrir Inicio y activar modo avión. | La franja indica «Sin conexión · Datos al …» y se conservan las fotos descargadas, incluso las que no se habían abierto antes. | ☐ |
 | 11.7 | Móvil | Cliente EMP-B | En Android, probar el inicio, carrito, entrega y vestidor tanto con navegación por gestos como con tres botones. | El contenido final y los selectores de color y talla quedan por encima de la barra del sistema; el video no queda oculto bajo la barra de gestos. | ☐ |
 
+## 12. Vestidor virtual también en la web
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✓ |
+|---|---|---|---|---|---|
+| 12.1 | Web (Chrome y Edge) | Cliente con prenda lista | Abrir el detalle de una prenda admitida, entrar al vestidor, permitir la cámara y probar varios colores y tallas. | La guía aparece, la prenda sigue hombros y cadera, la talla modifica su escala, la foto se descarga como PNG y se agrega al carrito la variante elegida. El video se procesa localmente. | ☐ |
+| 12.2 | Web (Chrome y Edge) | Cliente | Denegar el permiso de cámara e intentar abrirla otra vez permitiendo el acceso. | Se muestra «Permita el acceso a la cámara para usar el vestidor.»; al permitirlo el vestidor funciona. Al ocultar la pestaña se detiene la cámara. | ☐ |
+| 12.3 | Web instalada como PWA | Cliente | Con conexión, descargar el catálogo; esperar a que estén disponibles los recursos de MediaPipe; desconectar Internet y abrir un producto admitido del catálogo descargado. | El vestidor carga el modelo local y los PNG guardados, y permite probarse la prenda sin enviar video. Si falta un recurso descargado se informa «Descargue el catálogo con conexión para usar el vestidor sin Internet.». | ☐ |
+| 12.4 | Móvil Android | Cliente | Repetir el flujo móvil existente con una prenda y color listos. | La cámara y el ajuste de la prenda en móvil se mantienen sin cambios. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
-- **Vestidor virtual:** solo en el móvil, por diseño.
+- El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.
 - **Reportes administrativos, caja, inventario y demás roles:** solo en la web.
 - **Comprobante de una compra hecha sin conexión:** una compra offline confirmada queda por pagar y todavía no tiene comprobante; el PDF existe cuando se paga con tarjeta.
 

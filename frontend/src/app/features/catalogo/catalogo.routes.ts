@@ -5,6 +5,7 @@ export const TIENDA_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'catalogo' },
   { path: 'catalogo', loadComponent: () => import('./catalogo.page').then((m) => m.CatalogoPage), title: 'Catálogo · FashionStore' },
   { path: 'catalogo/:id', loadComponent: () => import('./prenda.page').then((m) => m.PrendaPage), title: 'Prenda · FashionStore' },
+  { path: 'catalogo/:id/vestidor', loadComponent: () => import('../vestidor/presentation/vestidor.page').then((m) => m.VestidorPage), title: 'Vestidor · FashionStore' },
   { path: 'offline', loadComponent: () => import('../offline/modo-offline.page').then((m) => m.ModoOfflinePage), title: 'Modo sin conexión · FashionStore' },
   { path: 'asistente', loadComponent: () => import('../primer-parcial/ia/asistente.page').then((m) => m.AsistentePage), title: 'Asistente · FashionStore' },
   { path: 'reservar', loadComponent: () => import('../reservas/reservar.page').then((m) => m.ReservarPage), title: 'Mi reserva · FashionStore' },

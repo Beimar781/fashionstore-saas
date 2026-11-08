@@ -2,6 +2,9 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { OfflineApi } from '../api/offline.api';
 import { MetaCatalogo, ProductoLocal, VarianteLocal } from '../offline.models';
 import { LocalDbService } from './local-db.service';
+import { VestidorApi } from '../api/vestidor.api';
+import { MEDIA_URL } from '../api.config';
+import { AuthService } from '../auth/auth.service';
 
 export interface PrendaLocal { producto: ProductoLocal; variante: VarianteLocal; }
 
@@ -10,6 +13,8 @@ export interface PrendaLocal { producto: ProductoLocal; variante: VarianteLocal;
 export class CatalogoLocalService {
   private api = inject(OfflineApi);
   private db = inject(LocalDbService);
+  private vestidorApi = inject(VestidorApi);
+  private auth = inject(AuthService);
 
   readonly productos = signal<ProductoLocal[]>([]);
   readonly meta = signal<MetaCatalogo | null>(null);
@@ -32,6 +37,7 @@ export class CatalogoLocalService {
           const productos: ProductoLocal[] = c.productos.map((p) => ({ ...p, empresa_id: c.empresa_id }));
           const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes };
           await this.db.guardarCatalogo(productos, meta);
+          if (this.auth.rol() === 'Cliente') await this.guardarImagenesVestidor(productos.map((p) => p.id));
           await this.db.marcarSincronizacion();
           this.productos.set(productos);
           this.meta.set(meta);
@@ -41,6 +47,23 @@ export class CatalogoLocalService {
         error: (e) => { this.descargando.set(false); rechazar(e); },
       });
     });
+  }
+
+  /** Descarga y conserva las imágenes vestibles para que acompañen al catálogo offline. */
+  private async guardarImagenesVestidor(ids: number[]) {
+    if (!('caches' in window)) return;
+    const cache = await caches.open('vestidor-productos');
+    await Promise.all(ids.map((id) => new Promise<void>((resolver) => {
+      this.vestidorApi.producto(id).subscribe({
+        next: async (p) => {
+          try {
+            const urls = p.admite ? p.colores.filter((c) => c.listo && c.imagen_url).map((c) => /^https?:/.test(c.imagen_url!) ? c.imagen_url! : MEDIA_URL + c.imagen_url) : [];
+            await Promise.all(urls.map(async (url) => { if (!await cache.match(url)) { const r = await fetch(url); if (r.ok) await cache.put(url, r); } }));
+          } catch { /* Una imagen fallida no impide descargar el catálogo. */ }
+          resolver();
+        }, error: () => resolver(),
+      });
+    })));
   }
 
   /** Búsqueda local por nombre, categoría, SKU o código de barras. */
