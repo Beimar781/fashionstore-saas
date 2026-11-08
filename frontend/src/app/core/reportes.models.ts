@@ -59,7 +59,7 @@ export interface MiPlan {
 }
 
 /** CU-07 · asistente y recomendador. */
-export interface MensajeChat { rol: 'usuario' | 'asistente'; texto: string; productos?: Prenda[]; sugerencias?: string[]; }
+export interface MensajeChat { rol: 'usuario' | 'asistente'; texto: string; productos?: Prenda[]; sugerencias?: string[]; respuesta_local?: boolean; }
 export interface RespuestaChat { respuesta: string; productos: Prenda[]; sugerencias: string[]; filtros: Record<string, unknown>; origen: 'IA' | 'REGLAS'; }
 export interface Recomendaciones { motivo: string; personalizada: boolean; productos: Prenda[]; motivos: Record<number, string>; ofertas: Prenda[]; origen: 'IA' | 'REGLAS'; }
 export interface Outfit { base: Prenda | null; prendas: Prenda[]; motivo: string; motivos: Record<number, string>; origen: 'IA' | 'REGLAS'; }

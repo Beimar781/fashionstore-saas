@@ -8,6 +8,10 @@ import { ReportesApi } from '../../../core/api/reportes.api';
 import { Prenda, SucursalCatalogo } from '../../../core/catalogo.models';
 import { MensajeChat, Outfit, Privacidad, Recomendaciones } from '../../../core/reportes.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
+import { CatalogoLocalService } from '../../../core/offline/catalogo-local.service';
+import { AsistenteLocalService } from '../../../core/ia/asistente-local.service';
 
 /** CU-07 · Asistente y recomendador: el cliente pide prendas en lenguaje natural; el sistema aprende de lo que compra, busca y mira para recomendarle, armarle outfits y mostrarle ofertas que le convienen. */
 @Component({
@@ -25,6 +29,7 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
           @for (m of mensajes(); track $index) {
             <div class="msg" [class.yo]="m.rol === 'usuario'">
               <div class="burbuja">{{ m.texto }}</div>
+              @if (m.respuesta_local) { <span class="badge warn small">Respuesta local, sin IA (sin conexión)</span> }
               @if (m.productos?.length) { <div class="prendas">@for (p of m.productos; track p.id) { <ng-container *ngTemplateOutlet="tarjeta; context: { p: p }" /> }</div> }
               @if (m.sugerencias?.length && $last) { <div class="row" style="flex-wrap:wrap">@for (s of m.sugerencias; track s) { <button type="button" class="chip" (click)="enviar(s)">{{ s }}</button> }</div> }
             </div>
@@ -91,6 +96,10 @@ export class AsistentePage implements OnInit {
   private api = inject(ReportesApi);
   private catalogo = inject(CatalogoApi);
   private toast = inject(ToastService);
+  private auth = inject(AuthService);
+  private red = inject(ConnectivityService);
+  private catalogoLocal = inject(CatalogoLocalService);
+  private asistenteLocal = inject(AsistenteLocalService);
 
   readonly media = MEDIA_URL;
   readonly mensajes = signal<MensajeChat[]>([]);
@@ -110,6 +119,7 @@ export class AsistentePage implements OnInit {
   }
 
   private cargarRecomendaciones() {
+    if (!this.red.online()) return;
     this.api.recomendaciones(this.sucursal).subscribe({ next: (r) => this.rec.set(r), error: (e) => this.error.set(mensajeError(e)) });
   }
 
@@ -120,6 +130,11 @@ export class AsistentePage implements OnInit {
     if (!texto || this.pensando()) return;
     this.error.set(''); this.texto = '';
     this.mensajes.update((m) => [...m, { rol: 'usuario', texto }]);
+    if (!this.red.online()) {
+      if (!this.auth.sesion()?.suscripcion?.plan.reportes_ia) { this.error.set('Su plan no incluye el asistente de compras.'); return; }
+      this.responderLocal(texto);
+      return;
+    }
     this.pensando.set(true);
     this.api.chat(this.mensajes(), this.sucursal).subscribe({
       next: (r) => {
@@ -127,8 +142,19 @@ export class AsistentePage implements OnInit {
         this.mensajes.update((m) => [...m, { rol: 'asistente', texto: r.respuesta, productos: r.productos as Prenda[], sugerencias: r.sugerencias }]);
         this.api.privacidad().subscribe({ next: (p) => this.priv.set(p), error: () => undefined });
       },
-      error: (e) => { this.pensando.set(false); this.error.set(mensajeError(e)); },
+      error: (e) => {
+        this.pensando.set(false);
+        if ((e.status === 0 || !this.red.online()) && this.auth.sesion()?.suscripcion?.plan.reportes_ia) this.responderLocal(texto);
+        else this.error.set(mensajeError(e));
+      },
     });
+  }
+
+  private responderLocal(texto: string) {
+    if (!this.catalogoLocal.hayCatalogo()) { this.error.set('Descargue el catálogo con conexión para usar el asistente sin conexión.'); return; }
+    const r = this.asistenteLocal.responder(texto, this.catalogoLocal.productos(), this.sucursal);
+    this.mensajes.update((m) => [...m, { rol: 'asistente', texto: r.respuesta, productos: r.productos, sugerencias: r.sugerencias, respuesta_local: true }]);
+    this.error.set('');
   }
 
   armarOutfit(productoId: number | null) {

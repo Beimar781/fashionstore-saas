@@ -7,9 +7,11 @@ const msgAsistenteSinConexion = 'Sin conexión: el asistente necesita Internet.'
 
 /// Estado de la conversación con el asistente: los mensajes, si está buscando y el último error.
 class ChatAsistente extends ChangeNotifier {
-  ChatAsistente(this._repo);
+  ChatAsistente(this._repo, {this.responderLocal});
 
   final AsistenteRepository _repo;
+  final Future<MensajeChat> Function(String texto, int? sucursalId)?
+      responderLocal;
 
   final List<MensajeChat> mensajes = [];
   bool pensando = false;
@@ -25,7 +27,17 @@ class ChatAsistente extends ChangeNotifier {
     try {
       mensajes.add(await _repo.chat(mensajes, sucursalId));
     } on ApiException catch (e) {
-      error = e.sinConexion ? msgAsistenteSinConexion : e.mensaje;
+      if (e.sinConexion && responderLocal != null) {
+        try {
+          mensajes.add(await responderLocal!(mensajes.last.texto, sucursalId));
+        } on ApiException catch (local) {
+          error = local.mensaje;
+        } catch (_) {
+          error = msgAsistenteSinConexion;
+        }
+      } else {
+        error = e.sinConexion ? msgAsistenteSinConexion : e.mensaje;
+      }
     }
     pensando = false;
     notifyListeners();
