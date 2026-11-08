@@ -4,7 +4,8 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { API_URL } from '../api.config';
 import { AuthService } from './auth.service';
 
-const esAuthPublica = (url: string) => url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/registro');
+const esAuthPublica = (url: string) =>
+  url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/registro');
 
 /** Agrega el token Bearer a las peticiones a la API y, ante un 401, intenta renovar la sesión una vez. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -18,8 +19,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((err: HttpErrorResponse) => {
       if (err.status !== 401 || !auth.refreshToken()) return throwError(() => err);
       return auth.refrescar().pipe(
-        switchMap((r) => next(conToken(req, r.access_token))),
-        catchError((e) => { auth.cerrarSesion(); return throwError(() => e); }),
+        catchError((e: HttpErrorResponse) => {
+          // Solo un rechazo de autenticación del refresh invalida la sesión; los fallos de red se conservan.
+          if (e.status === 401 || e.status === 403) auth.cerrarSesion();
+          return throwError(() => e);
+        }),
+        switchMap((r) =>
+          next(conToken(req, r.access_token)).pipe(
+            catchError((e: HttpErrorResponse) => {
+              if (e.status === 401) auth.cerrarSesion();
+              return throwError(() => e);
+            }),
+          ),
+        ),
       );
     }),
   );

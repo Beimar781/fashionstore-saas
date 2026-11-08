@@ -34,10 +34,11 @@ class ArchivoDescargado {
 /// Cliente REST compartido por todos los paquetes (la misma API que usa la PWA Angular).
 /// Agrega el token Bearer y, ante un 401, intenta renovar la sesión una vez.
 class ApiClient {
-  ApiClient({required this.obtenerToken, required this.renovarToken});
+  ApiClient({required this.obtenerToken, required this.renovarToken, http.Client? cliente}) : _cliente = cliente ?? http.Client();
 
   final Future<String?> Function() obtenerToken;
   final Future<bool> Function() renovarToken;
+  final http.Client _cliente;
 
   Future<Map<String, dynamic>> get(String ruta) async => _mapa(await _enviar('GET', ruta));
 
@@ -58,7 +59,7 @@ class ApiClient {
   Future<ArchivoDescargado> descargar(String ruta, {bool reintento = false}) async {
     final token = await obtenerToken();
     try {
-      final respuesta = await http
+      final respuesta = await _cliente
           .get(Uri.parse('${ApiConfig.baseUrl}$ruta'), headers: {if (token != null) 'Authorization': 'Bearer $token'})
           .timeout(const Duration(seconds: 30));
       if (respuesta.statusCode == 401 && !reintento && await renovarToken()) return await descargar(ruta, reintento: true);
@@ -88,13 +89,13 @@ class ApiClient {
       final http.Response respuesta;
       switch (metodo) {
         case 'GET':
-          respuesta = await http.get(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
+          respuesta = await _cliente.get(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
         case 'DELETE':
-          respuesta = await http.delete(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
+          respuesta = await _cliente.delete(uri, headers: cabeceras).timeout(const Duration(seconds: 12));
         case 'PUT':
-          respuesta = await http.put(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
+          respuesta = await _cliente.put(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
         default:
-          respuesta = await http.post(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
+          respuesta = await _cliente.post(uri, headers: cabeceras, body: jsonEncode(cuerpo ?? {})).timeout(const Duration(seconds: 12));
       }
 
       if (respuesta.statusCode == 401 && autenticado && !reintento && await renovarToken()) {

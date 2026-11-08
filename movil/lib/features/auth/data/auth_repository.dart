@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/db/local_database.dart';
@@ -9,8 +10,8 @@ import 'sesion.dart';
 
 /// Acceso a datos del paquete Usuarios y acceso: API REST + sesión local en SQLite.
 class AuthRepository {
-  AuthRepository() {
-    _api = ApiClient(obtenerToken: _accessToken, renovarToken: _renovar);
+  AuthRepository({http.Client? cliente}) {
+    _api = ApiClient(obtenerToken: _accessToken, renovarToken: _renovar, cliente: cliente);
   }
 
   late final ApiClient _api;
@@ -112,7 +113,8 @@ class AuthRepository {
       );
       await _guardar(respuesta);
       return true;
-    } on ApiException {
+    } on ApiException catch (e) {
+      if (e.sinConexion || (e.statusCode != null && e.statusCode! >= 500)) rethrow;
       return false;
     }
   }
