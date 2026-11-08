@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/ui/tema.dart';
+import 'core/ui/area_segura.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/login_screen.dart';
@@ -17,12 +19,23 @@ final _mensajero = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    systemNavigationBarColor: Tema.tinta,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: true,
+    statusBarColor: Tema.tinta,
+    statusBarIconBrightness: Brightness.light,
+  ));
   final authRepo = AuthRepository();
-  runApp(FashionStoreApp(authRepo: authRepo, pushRepo: PushRepository(authRepo.api, proveedor: ProveedorFirebase())));
+  runApp(FashionStoreApp(
+      authRepo: authRepo,
+      pushRepo: PushRepository(authRepo.api, proveedor: ProveedorFirebase())));
 }
 
 class FashionStoreApp extends StatelessWidget {
-  const FashionStoreApp({super.key, required this.authRepo, required this.pushRepo});
+  const FashionStoreApp(
+      {super.key, required this.authRepo, required this.pushRepo});
 
   final AuthRepository authRepo;
   final PushRepository pushRepo;
@@ -32,16 +45,24 @@ class FashionStoreApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AuthRepository>.value(value: authRepo),
-        ChangeNotifierProvider(create: (_) => AuthController(authRepo, antesDeCerrarSesion: pushRepo.quitarDispositivo)..iniciar()),
+        ChangeNotifierProvider(
+            create: (_) => AuthController(authRepo,
+                antesDeCerrarSesion: pushRepo.quitarDispositivo)
+              ..iniciar()),
         // el modo sin conexión sigue a la sesión: al iniciar sesión sincroniza lo pendiente y reintenta mientras haya operaciones sin enviar
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
-          create: (_) => OfflineController(OfflineRepository(authRepo.api))..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8))),
+          create: (_) => OfflineController(OfflineRepository(authRepo.api))
+            ..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(
+                SnackBar(
+                    content: Text(texto),
+                    duration: const Duration(seconds: 8))),
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
         ),
         // las prendas elegidas para reservar se guardan por usuario
         ChangeNotifierProxyProvider<AuthController, ReservaBorrador>(
           create: (_) => ReservaBorrador(),
-          update: (_, auth, borrador) => borrador!..usarUsuario(auth.sesion?.usuarioId),
+          update: (_, auth, borrador) =>
+              borrador!..usarUsuario(auth.sesion?.usuarioId),
         ),
         // avisos push: con Firebase el token de FCM se registra al iniciar sesión y la notificación es nativa; sin Firebase (modo simulado) los avisos se muestran en el inicio
         ChangeNotifierProxyProvider<AuthController, PushController>(
@@ -54,6 +75,8 @@ class FashionStoreApp extends StatelessWidget {
         title: 'FashionStore',
         debugShowCheckedModeBanner: false,
         theme: Tema.claro(),
+        builder: (context, child) =>
+            AreaSeguraAplicacion(child: child ?? const SizedBox.shrink()),
         home: const _Raiz(),
       ),
     );
