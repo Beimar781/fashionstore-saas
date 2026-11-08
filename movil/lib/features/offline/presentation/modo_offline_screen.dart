@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/imagen_prenda.dart';
 import '../data/modelos.dart';
 import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
@@ -28,7 +29,10 @@ class ModoOfflineScreen extends StatelessWidget {
           bottom: TabBar(tabs: [
             const Tab(text: 'Catálogo'),
             const Tab(text: 'Registrar'),
-            Tab(text: c.pendientes.isEmpty ? 'Operaciones' : 'Operaciones (${c.pendientes.length})'),
+            Tab(
+                text: c.pendientes.isEmpty
+                    ? 'Operaciones'
+                    : 'Operaciones (${c.pendientes.length})'),
           ]),
         ),
         body: Column(children: [
@@ -37,9 +41,15 @@ class ModoOfflineScreen extends StatelessWidget {
               width: double.infinity,
               color: const Color(0xFFFBEFD9),
               padding: const EdgeInsets.all(10),
-              child: const Text('Sin conexión con el servidor. Lo que registre se guarda en este dispositivo y se envía solo al volver Internet.'),
+              child: const Text(
+                  'Sin conexión con el servidor. Lo que registre se guarda en este dispositivo y se envía solo al volver Internet.'),
             ),
-          const Expanded(child: TabBarView(children: [_CatalogoTab(), RegistrarOfflineTab(), _OperacionesTab()])),
+          const Expanded(
+              child: TabBarView(children: [
+            _CatalogoTab(),
+            RegistrarOfflineTab(),
+            _OperacionesTab()
+          ])),
         ]),
       ),
     );
@@ -71,9 +81,15 @@ class _CatalogoTabState extends State<_CatalogoTab> {
   Future<void> _descargar() async {
     final c = context.read<OfflineController>();
     await c.descargarCatalogo();
+    if (c.error == null) {
+      final prendas = await c.repo.buscar('', limite: 1000);
+      await precalentarImagenes(prendas.map((p) => p.producto.imagen).toSet());
+    }
     await _buscar();
     if (mounted && c.error == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Catálogo descargado: ya puede consultarlo sin conexión.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Catálogo descargado: ya puede consultarlo sin conexión.')));
     }
   }
 
@@ -81,41 +97,69 @@ class _CatalogoTabState extends State<_CatalogoTab> {
   Widget build(BuildContext context) {
     final c = context.watch<OfflineController>();
     final antiguo = c.catalogoGeneradoEn != null &&
-        (!c.enLinea || DateTime.now().difference(DateTime.tryParse(c.catalogoGeneradoEn!) ?? DateTime.now()).inHours > 24);
+        (!c.enLinea ||
+            DateTime.now()
+                    .difference(DateTime.tryParse(c.catalogoGeneradoEn!) ??
+                        DateTime.now())
+                    .inHours >
+                24);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Card(
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Catálogo en este dispositivo', style: Theme.of(context).textTheme.titleMedium),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Catálogo en este dispositivo',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(c.catalogoGeneradoEn == null
                 ? 'Todavía no descargó el catálogo. Descárguelo con conexión para consultar y vender sin Internet.'
                 : 'Descargado el ${fechaCorta(c.catalogoGeneradoEn)}.'),
             if (antiguo) // RN16
-              const Padding(padding: EdgeInsets.only(top: 6), child: Text('Esta información puede estar desactualizada.', style: TextStyle(color: Color(0xFF8A5A00)))),
-            if (c.error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(c.error!, style: const TextStyle(color: Colors.red))),
+              const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Text('Esta información puede estar desactualizada.',
+                      style: TextStyle(color: Color(0xFF8A5A00)))),
+            if (c.error != null)
+              Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(c.error!,
+                      style: const TextStyle(color: Colors.red))),
             const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: c.descargando ? null : _descargar,
               icon: const Icon(Icons.download),
-              label: Text(c.descargando ? 'Descargando…' : c.catalogoGeneradoEn == null ? 'Descargar catálogo' : 'Actualizar catálogo'),
+              label: Text(c.descargando
+                  ? 'Descargando…'
+                  : c.catalogoGeneradoEn == null
+                      ? 'Descargar catálogo'
+                      : 'Actualizar catálogo'),
             ),
           ]),
         ),
       ),
       if (c.hayCatalogo) ...[
         const SizedBox(height: 12),
-        TextField(controller: _texto, onChanged: (_) => _buscar(), decoration: const InputDecoration(labelText: 'Buscar en el catálogo guardado', prefixIcon: Icon(Icons.search))),
+        TextField(
+            controller: _texto,
+            onChanged: (_) => _buscar(),
+            decoration: const InputDecoration(
+                labelText: 'Buscar en el catálogo guardado',
+                prefixIcon: Icon(Icons.search))),
         const SizedBox(height: 8),
         for (final r in _resultados)
           ListTile(
             title: Text(r.producto.nombre),
-            subtitle: Text('${r.variante.talla} · ${r.variante.color} · ${r.variante.sku}\nStock: ${r.variante.stockEn(c.sesion?.sucursalId)}'),
+            subtitle: Text(
+                '${r.variante.talla} · ${r.variante.color} · ${r.variante.sku}\nStock: ${r.variante.stockEn(c.sesion?.sucursalId)}'),
             isThreeLine: true,
-            trailing: Text('Bs ${r.variante.precioFinal}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            trailing: Text('Bs ${r.variante.precioFinal}',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
-        if (_resultados.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No hay prendas con ese texto.')),
+        if (_resultados.isEmpty)
+          const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No hay prendas con ese texto.')),
       ],
     ]);
   }
@@ -135,33 +179,59 @@ class _OperacionesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.watch<OfflineController>();
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Última sincronización: ${fechaCorta(c.ultimaSync)} · ${c.pendientes.length} pendiente(s) de enviar.'), // RN16
+      Text(
+          'Última sincronización: ${fechaCorta(c.ultimaSync)} · ${c.pendientes.length} pendiente(s) de enviar.'), // RN16
       const SizedBox(height: 8),
       Wrap(spacing: 8, children: [
         FilledButton.icon(
-          onPressed: c.sincronizando || c.pendientes.isEmpty ? null : () => c.sincronizar(),
+          onPressed: c.sincronizando || c.pendientes.isEmpty
+              ? null
+              : () => c.sincronizar(),
           icon: const Icon(Icons.sync),
           label: Text(c.sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'),
         ),
-        OutlinedButton(onPressed: c.limpiarTerminadas, child: const Text('Quitar confirmadas y rechazadas')),
+        OutlinedButton(
+            onPressed: c.limpiarTerminadas,
+            child: const Text('Quitar confirmadas y rechazadas')),
       ]),
-      if (c.error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(c.error!, style: const TextStyle(color: Colors.red))),
+      if (c.error != null)
+        Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(c.error!, style: const TextStyle(color: Colors.red))),
       const SizedBox(height: 8),
-      if (c.operaciones.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No hay operaciones registradas en este dispositivo.'))),
+      if (c.operaciones.isEmpty)
+        const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(
+                child: Text(
+                    'No hay operaciones registradas en este dispositivo.'))),
       for (final o in c.operaciones)
         Card(
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Chip(label: Text(Estado.textos[o.estado] ?? o.estado), backgroundColor: _color(o.estado)),
-                Text(fechaCorta(o.creadoEn), style: Theme.of(context).textTheme.bodySmall),
+                Chip(
+                    label: Text(Estado.textos[o.estado] ?? o.estado),
+                    backgroundColor: _color(o.estado)),
+                Text(fechaCorta(o.creadoEn),
+                    style: Theme.of(context).textTheme.bodySmall),
               ]),
               Text(o.resumen),
-              if (o.referencia != null) Text('${o.referencia}${o.comprobante != null ? ' · comprobante ${o.comprobante}' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              if (o.mensaje.isNotEmpty) Text(o.mensaje, style: Theme.of(context).textTheme.bodySmall),
-              for (final f in o.faltantes) Text('• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay ${f['disponibles']}', style: Theme.of(context).textTheme.bodySmall),
-              if (o.estado == Estado.registradaLocal && o.intentos > 0) Text('${o.intentos} intento(s) de envío', style: Theme.of(context).textTheme.bodySmall),
+              if (o.referencia != null)
+                Text(
+                    '${o.referencia}${o.comprobante != null ? ' · comprobante ${o.comprobante}' : ''}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              if (o.mensaje.isNotEmpty)
+                Text(o.mensaje, style: Theme.of(context).textTheme.bodySmall),
+              for (final f in o.faltantes)
+                Text(
+                    '• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay ${f['disponibles']}',
+                    style: Theme.of(context).textTheme.bodySmall),
+              if (o.estado == Estado.registradaLocal && o.intentos > 0)
+                Text('${o.intentos} intento(s) de envío',
+                    style: Theme.of(context).textTheme.bodySmall),
               Text(o.id, style: Theme.of(context).textTheme.labelSmall),
             ]),
           ),
