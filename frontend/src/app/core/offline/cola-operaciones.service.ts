@@ -83,7 +83,7 @@ export class ColaOperacionesService {
     this.operaciones.update((l) => [...l]);
     try {
       const r = await new Promise<import('../offline.models').RespuestaSync>((ok, mal) =>
-        this.api.sincronizar(lote.map((o) => ({ id: o.id, tipo: o.tipo, creada_en: o.creada_en, sucursal_id: o.sucursal_id, payload: o.payload }))).subscribe({ next: ok, error: mal }));
+        void Promise.all(lote.map(async (o) => ({ id: o.id, tipo: o.tipo, creada_en: o.creada_en, sucursal_id: o.sucursal_id, payload: await this.db.payloadDesdeDetalle(o) }))).then((ops) => this.api.sincronizar(ops).subscribe({ next: ok, error: mal })));
       let confirmadas = 0, conflictos = 0, conError = false;
       for (const res of r.resultados) {
         const o = lote.find((x) => x.id === res.id);
@@ -92,6 +92,7 @@ export class ColaOperacionesService {
         else { o.estado = res.estado; o.referencia = res.referencia; o.comprobante = res.comprobante; o.detalle = res.detalle; }
         o.mensaje = res.mensaje;
         await this.db.guardarOperacion(o);
+        await this.db.anotarIntento({ operacion_id: o.id, tipo: o.tipo, intento: o.intentos, fecha: new Date().toISOString(), resultado: res.estado, codigo: res.estado === 'ERROR' ? '5xx' : '200', motivo: o.estado === 'RECHAZADA' || o.estado === 'EN_CONFLICTO' ? o.mensaje : '' });
         this.avisarAlCliente(o);
         if (o.estado === 'CONFIRMADA') confirmadas++;
         if (o.estado === 'EN_CONFLICTO') conflictos++;
@@ -102,7 +103,8 @@ export class ColaOperacionesService {
       this.ultimaSync.set(r.sincronizado_en);
       if (r.aviso_reloj) this.errorSync.set(r.aviso_reloj);  // §7.2: la hora del dispositivo parece incorrecta
     } catch (e) {
-      for (const o of lote) { o.estado = 'REGISTRADA_LOCAL'; await this.db.guardarOperacion(o); }  // sin respuesta: nada se pierde
+      const codigoHttp = String((e as { status?: number }).status || 'SIN_RED');
+      for (const o of lote) { o.estado = 'REGISTRADA_LOCAL'; await this.db.guardarOperacion(o); await this.db.anotarIntento({ operacion_id: o.id, tipo: o.tipo, intento: o.intentos, fecha: new Date().toISOString(), resultado: 'SIN_RESPUESTA', codigo: codigoHttp, motivo: '' }); }  // sin respuesta: nada se pierde
       const estadoHttp = (e as { status?: number }).status;
       if (estadoHttp === undefined || estadoHttp === 0 || estadoHttp >= 500) this.fallo();  // un 4xx de negocio no se reintenta con espera: el servidor ya respondió
       const err = e as { status?: number; error?: { detail?: string } };
