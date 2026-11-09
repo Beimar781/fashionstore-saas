@@ -96,8 +96,21 @@ Las pruebas del backend están en `backend/tests/`, las del frontend en `fronten
 | Despliegue | Railway (nube, accesible externamente) | ✔ |
 | Conservar AR y comercio electrónico | vestidor virtual, catálogo, carrito, pagos | ✔ |
 
-## Pendiente conocido
-- **Pantallas de captura sin conexión** en web y móvil para devolución (B3), recepción (B5) y ajuste de inventario (B6): el servidor ya las procesa, con migración y pruebas; falta el formulario del cliente.
-- **No hechos:** atención de reservas sin conexión (B4), búsqueda por escaneo (B7), consulta sin conexión de Administrador, SuperAdministrador y Proveedor (B8), propuesta de proveedor sin conexión (B9), *Background Sync* del Service Worker (B10) y comprobante provisional en la web (B1 web).
+## Funciones adicionales sin conexión (Parte B del Prompt R)
+| Función | Dónde | Estado |
+|---|---|---|
+| B1 Comprobante provisional `LOC-…` | móvil `comprobante_provisional.dart`; web `comprobante-provisional.ts` (jspdf, bajo demanda) | ✔ |
+| B2 Resumen de mi turno · B11 Simular sin conexión | móvil y web | ✔ |
+| B3 Devolución sin conexión (plazo guardado en la descarga) | móvil `tareas_sucursal_screen.dart`; web `tareas-sucursal.component.ts`; servidor `ejecucion.py` | ✔ |
+| B4 Atención de reservas sin conexión (validar código, preparar, prenda no encontrada, atender; solo Encargado) | móvil, web y servidor | ✔ |
+| B5 Recepción · B6 Ajuste de inventario (por diferencia) | móvil, web y servidor | ✔ |
+| B7 Escaneo de códigos de barras y QR | móvil (`escaner_screen.dart`, ML Kit); web (`escaner.component.ts`, `BarcodeDetector`, solo navegadores que lo traen) | ✔ |
+| B8 Consulta sin conexión de otros roles: «Datos al…» global, caché de la API con tope de 3 s, borrado del caché al cerrar sesión, «Generar un reporte con IA necesita Internet.» | web `shell.component.ts`, `ngsw-config.json`, `auth.service.ts` | ◐ (lectura de lo ya visitado; no se descargan listados completos de Administrador o Proveedor) |
+| B9 Propuesta del proveedor sin conexión | web `abastecimiento.page.ts`; servidor `PROPUESTA_PROVEEDOR` (migración 0022) | ✔ (el móvil no tiene pantalla de Proveedor) |
+| B10 Sincronización en segundo plano | web `public/sw-sync.js` (Background Sync, solo Chrome/Edge); móvil: al volver a primer plano y con `connectivity_plus` | ◐ |
+
+## Límites conocidos
+- La exportación a PDF de la analítica del CU-42 usa la impresión del navegador; los reportes con IA y los convencionales sí tienen PDF generado en el servidor.
+- El aviso local de «hay ventas por sincronizar» en el móvil es una alerta dentro de la app (sin `workmanager`).
 
 **Nota 1.** Lighthouse 12 o posterior eliminó la categoría «PWA» de su informe; la instalabilidad se verifica con las condiciones del manifiesto (`pwa.spec.ts`) y manualmente en Chrome (DevTools → Application → Manifest).

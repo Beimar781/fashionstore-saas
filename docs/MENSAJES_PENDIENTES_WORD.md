@@ -533,6 +533,9 @@ y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
 | Navegador no compatible con el vestidor | «Este navegador no admite el vestidor virtual. Pruebe con Chrome o Edge.» | (pantalla) | Pendiente |
 | No se puede cargar el modelo del vestidor | «No se pudo cargar el modelo del vestidor.» | (pantalla) | Pendiente |
 | Catálogo offline sin recursos de vestidor | «Descargue el catálogo con conexión para usar el vestidor sin Internet.» | (pantalla) | Pendiente |
+| Generar reporte con IA sin conexión | «Generar un reporte con IA necesita Internet.» | — (solo en la web) | Pendiente |
+| Devolver fuera de plazo (validación local) | «El plazo de devolución de esta venta venció.» | — (se valida otra vez al sincronizar) | Pendiente |
+| Propuesta guardada sin conexión | «Propuesta guardada en este dispositivo. Se enviará sola al recuperar la conexión.» | — (solo en la app) | Pendiente |
 
 ## Para el Word
 
@@ -709,7 +712,12 @@ CU-37 a CU-40 y los casos de uso del Cliente: el tipo de operación `CANCELAR_RE
 - **Simular sin conexión:** interruptor para la defensa en la web y el móvil que fuerza el modo sin conexión con Internet encendido.
 - **Índices:** migración 0019 (`existencias`, `pedido_items`, `bitacora`); decisiones en `docs/RENDIMIENTO.md`.
 - **Historial de demostración:** `python -m app.demo_historial` (3 meses por sucursal, idempotente, códigos `DEMO-`); no lo corre el arranque.
-- **Migraciones nuevas:** 0018 (reloj), 0019 (índices), 0020 (tipos de operación).
+- **Migraciones nuevas:** 0018 (reloj), 0019 (índices), 0020 (devolución, recepción y ajuste), 0021 (atención de reservas, tipo VARCHAR 24), 0022 (propuesta del proveedor; sucursal opcional).
+- **Atención de reservas sin conexión (B4):** operaciones `PREPARAR_RESERVA`, `PRENDA_NO_ENCONTRADA` y `ATENDER_RESERVA`, solo Encargado de la sucursal; reutilizan CU-24/25 con `commit=False`. La descarga del catálogo trae `reservas_sucursal` y `ventas_recientes` (con `plazo_devolucion_dias`).
+- **Propuesta del proveedor sin conexión (B9):** operación `PROPUESTA_PROVEEDOR` (rol Proveedor, sin sucursal); reutiliza la creación de propuestas.
+- **Escaneo (B7):** móvil con `google_mlkit_barcode_scanning` y `camera`; web con `BarcodeDetector` si el navegador lo trae. La imagen no sale del dispositivo.
+- **Sincronización en segundo plano (B10):** `sw-sync.js` (Background Sync del navegador) despierta la cola; sin soporte, evento `online` y reintento con espera creciente.
+- **Librerías nuevas:** web `jspdf` (comprobante provisional); móvil `google_mlkit_barcode_scanning`, `camera`, `connectivity_plus`, `pdf`, `open_filex`, `path_provider`.
 
 ## Mensajes nuevos
 

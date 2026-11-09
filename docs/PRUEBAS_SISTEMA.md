@@ -200,7 +200,15 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 14.12 | Web y móvil | Cliente | Cerrar sesión con operaciones pendientes. | «Tiene N operaciones sin sincronizar. Se conservarán en este dispositivo.» Al volver a entrar el mismo usuario, siguen ahí; otro usuario del mismo dispositivo no las ve. | ☐ |
 | 14.13 | Web y móvil | Cualquiera | Ver «Registro de sincronización» y «Copiar diagnóstico». | Una fila por intento con resultado y código; el texto copiado no trae correos ni NIT. | ☐ |
 | 14.14 | Web y móvil | Cliente | Con el catálogo descargado hace más de 6 horas y con Internet. | Se actualiza solo en segundo plano; el botón «Actualizar ahora» lo hace a mano. | ☐ |
-| 14.15 | API | Encargado | Sincronizar `AJUSTE_INVENTARIO` (diferencia +4, motivo CONTEO), `RECEPCION` y `DEVOLUCION` con `POST /api/offline/sincronizar`. | Cada una queda CONFIRMADA y el inventario cambia; un ajuste que deja el stock negativo queda EN_CONFLICTO; reenviar no duplica. (Falta la pantalla de captura.) | ☐ |
+| 14.15 | API | Encargado | Sincronizar `AJUSTE_INVENTARIO` (diferencia +4, motivo CONTEO), `RECEPCION` y `DEVOLUCION` con `POST /api/offline/sincronizar`. | Cada una queda CONFIRMADA y el inventario cambia; un ajuste que deja el stock negativo queda EN_CONFLICTO; reenviar no duplica. | ☐ |
+| 14.16 | Web y móvil | Cajero | Descargar el catálogo con Internet; sin conexión, «Tareas de la sucursal» → Devolución → elegir una venta reciente y una prenda. | Queda en la cola; si el plazo venció: «El plazo de devolución de esta venta venció.»; lo devuelto ya no se puede devolver otra vez. Al volver la red, CONFIRMADA. | ☐ |
+| 14.17 | Web y móvil | Encargado | Sin conexión: Recepción de 5 unidades y Ajuste de −2 (merma). | El stock local sube y baja de inmediato; al sincronizar el servidor aplica ambos y deja la bitácora de inventario. | ☐ |
+| 14.18 | Web y móvil | Encargado | Sin conexión, pestaña Reservas: validar el código, «Preparar», marcar una prenda «No encontrada» y «Atender». | Cada paso queda en la cola y la copia local cambia; al sincronizar el servidor reutiliza el CU-24/25. | ☐ |
+| 14.19 | Móvil y web | Encargado | En Recepción o Ajuste, tocar «Escanear» y apuntar al código de barras (en la web solo Chrome/Edge). | Se llena el buscador con el código y se elige la prenda. | ☐ |
+| 14.20 | Web | Proveedor | Sin conexión, «Proponer producto». | «Propuesta guardada en este dispositivo…»; al volver la red llega a la administración. | ☐ |
+| 14.21 | Web | Cajero | Venta de contado sin conexión → Operaciones → botón «Comprobante LOC-…». | Se descarga un PDF provisional con el detalle, el total y el cambio. | ☐ |
+| 14.22 | Web | Administrador | Sin conexión, «Reportes con IA» → «Generar». | «Generar un reporte con IA necesita Internet.» La franja superior muestra «Datos al…». | ☐ |
+| 14.23 | Web | Cajero | Chrome: registrar una venta sin conexión, cambiar a otra pestaña y volver la red. | La cola se envía sola (Background Sync). | ☐ |
 
 ## Diferencias conocidas entre la web y el móvil
 
