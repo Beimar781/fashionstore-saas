@@ -71,6 +71,17 @@ class OfflineController extends ChangeNotifier {
     }
   }
 
+  /// Nombres de las prendas del catálogo descargado (para el comprobante provisional). Si no se conoce, se muestra el código de la variante.
+  final Map<int, String> _nombres = {};
+
+  String nombreDeVariante(int id) => _nombres[id] ?? 'Prenda $id';
+
+  Future<void> _cargarNombres() async {
+    for (final p in await _repo.buscar('', limite: 100000)) {
+      _nombres[p.variante.id] = '${p.producto.nombre} (${p.variante.talla}, ${p.variante.color})';
+    }
+  }
+
   void simularSinConexion(bool valor) {
     simulado = valor;
     ApiClient.simularSinConexion = valor;
@@ -112,6 +123,7 @@ class OfflineController extends ChangeNotifier {
     if (s == null || s.empresaId == null) return;
     operaciones = await _repo.operaciones(s.usuarioId, s.empresaId!);
     hayCatalogo = await _repo.hayCatalogo();
+    if (hayCatalogo && _nombres.isEmpty) await _cargarNombres();
     catalogoGeneradoEn = await _repo.catalogoGeneradoEn();
     ultimaSync = await _repo.ultimaSincronizacion();
     notifyListeners();
