@@ -392,7 +392,10 @@ class OfflineRepository {
               'payload': o.payload
             },
         ],
+        'hora_dispositivo': DateTime.now().toUtc().toIso8601String(), // con zona horaria: el servidor compara con su reloj (§7.2)
       });
+      final avisoReloj = r['aviso_reloj'] as String?;
+      if (avisoReloj != null) resumen.avisos.add(avisoReloj);
       for (final res
           in (r['resultados'] as List).cast<Map<String, dynamic>>()) {
         final o = lote.where((x) => x.id == res['id']).firstOrNull;

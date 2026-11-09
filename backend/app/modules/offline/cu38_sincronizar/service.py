@@ -15,7 +15,7 @@ from app.core.errors import AppError
 from app.core.tiempo import a_local, ahora
 from app.modules.acceso.dependencias import Contexto
 from app.modules.offline import avisos, schemas
-from app.modules.offline.ejecucion import Ejecutor, Resultado, es_falta_de_stock
+from app.modules.offline.ejecucion import Ejecutor, PrecioCambio, Resultado, es_falta_de_stock
 from app.modules.offline.mapeo import resultado_de
 from app.modules.offline.models import OperacionOffline
 from app.modules.offline.repository import OperacionRepository
@@ -31,6 +31,8 @@ MSG_SUCURSAL = "Sucursal no encontrada."
 MSG_CONFLICTO = "No hay existencias suficientes para esta operación. No se descontó nada del inventario; el Encargado debe resolverla."
 MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el dispositivo y se reintentará."
 MSG_CONFIRMADA = "Operación confirmada."
+MSG_RELOJ = "La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta."
+TOLERANCIA_RELOJ = 300  # segundos (5 minutos)
 NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva"}
 PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,)}
 
@@ -41,11 +43,15 @@ class SincronizacionService:
         self.ctx = ctx
         self.empresa_id = ctx.empresa_id
         self.ops = OperacionRepository(db, ctx.empresa_id)
+        self.desfase: int | None = None
 
     def sincronizar(self, datos: schemas.SincronizarIn) -> schemas.SincronizacionOut:
+        desfase = round((datos.hora_dispositivo - ahora()).total_seconds()) if datos.hora_dispositivo else None
+        self.desfase = desfase
         por_id = {op.id: self._una(op) for op in sorted(datos.operaciones, key=lambda o: o.creada_en)}  # en el orden en que ocurrieron
         resultados = [por_id[op.id] for op in datos.operaciones]
-        return schemas.SincronizacionOut(resultados=resultados, sincronizado_en=ahora())
+        aviso = MSG_RELOJ if desfase is not None and abs(desfase) > TOLERANCIA_RELOJ else None
+        return schemas.SincronizacionOut(resultados=resultados, sincronizado_en=ahora(), desfase_reloj_segundos=desfase, aviso_reloj=aviso)
 
     def _una(self, op: schemas.OperacionIn) -> schemas.ResultadoOperacionOut:
         self.ops.bloquear(op.id)
@@ -89,6 +95,14 @@ class SincronizacionService:
                 f"Una {NOMBRE_TIPO[op.tipo]} registrada sin conexión por {self.ctx.usuario.nombre} no se pudo aplicar por falta de existencias. Resuélvala en «Conflictos de sincronización».",
                 sucursal_id=sucursal_id, referencia_tipo="OPERACION_OFFLINE", referencia_id=fila.id,
             )
+        elif isinstance(e, PrecioCambio):  # §7.2: el precio cambió desde que se registró la venta; no se descuenta nada
+            fila = self._guardar(op, sucursal_id, "EN_CONFLICTO", e.message, Resultado(None, None), {"precios": e.cambios})
+            self.db.flush()
+            notificar(
+                self.db, self.empresa_id, "CONFLICTO_SYNC", "Venta offline con precio distinto",
+                f"Una {NOMBRE_TIPO[op.tipo]} registrada sin conexión por {self.ctx.usuario.nombre} tiene un precio que cambió. Resuélvala en «Conflictos de sincronización».",
+                sucursal_id=sucursal_id, referencia_tipo="OPERACION_OFFLINE", referencia_id=fila.id,
+            )
         elif isinstance(e, ValidationError):
             fila = self._guardar(op, sucursal_id, "RECHAZADA", MSG_FORMATO, Resultado(None, None))
         elif isinstance(e, AppError):
@@ -97,7 +111,7 @@ class SincronizacionService:
             logger.exception("sync operacion=%s falló", op.id)
             return self._sin_guardar(op, "ERROR", MSG_ERROR)
         self.db.commit()
-        if fila.estado == "EN_CONFLICTO":
+        if fila.estado == "EN_CONFLICTO" and "faltantes" in (fila.detalle or {}):
             avisos.avisar_conflicto(self.db, self.empresa_id, fila)  # regla 17: el cliente se entera, además del personal de la sucursal
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
@@ -106,6 +120,7 @@ class SincronizacionService:
         return self.ops.agregar(OperacionOffline(
             operacion_id=op.id, usuario_id=self.ctx.usuario.id, sucursal_id=sucursal_id, tipo=op.tipo, estado=estado, payload=op.payload, creada_en_cliente=a_local(op.creada_en),
             mensaje=mensaje, referencia=r.referencia, comprobante=r.comprobante, detalle=detalle, pedido_id=r.pedido_id, reserva_id=r.reserva_id,
+            desfase_reloj_segundos=self.desfase,
         ))
 
     @staticmethod

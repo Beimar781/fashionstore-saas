@@ -103,7 +103,7 @@ export class RegistrarOfflineComponent {
     } else {
       if ((this.recibido ?? -1) < this.total()) { this.error.set('El efectivo recibido es menor al total de la venta.'); return; }
       this.guardando.set(true);
-      await this.cola.registrar('VENTA_CONTADO', { items, monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado Bs ${this.total().toFixed(2)}: ${resumen}`);
+      await this.cola.registrar('VENTA_CONTADO', { items: this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario: l.precio.toFixed(2) })), forma_pago: 'EFECTIVO', monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado Bs ${this.total().toFixed(2)}: ${resumen}`);
     }
     await this.local.comprometer(items, this.sucursalId);
     this.toast.ok(this.red.online() ? 'Operación registrada; se está sincronizando.' : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.');

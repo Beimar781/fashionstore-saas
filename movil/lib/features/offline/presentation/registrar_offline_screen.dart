@@ -214,7 +214,12 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       await c.registrar(
         tipo: 'VENTA_CONTADO',
         payload: {
-          'items': items,
+          // el precio que se usó al registrar y la forma de pago viajan con la venta (§7.2)
+          'items': [
+            for (final l in _lineas)
+              {'variante_id': l.prenda.variante.id, 'cantidad': l.cantidad, 'precio_unitario': l.prenda.variante.precioFinal}
+          ],
+          'forma_pago': 'EFECTIVO',
           'monto_recibido': recibido.toStringAsFixed(2),
           'cliente_email': _clienteEmail
         },

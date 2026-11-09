@@ -10,7 +10,7 @@ export class OfflineApi {
 
   catalogo() { return this.http.get<CatalogoDescargado>(`${API_URL}/offline/catalogo`); }
   sincronizar(operaciones: { id: string; tipo: string; creada_en: string; sucursal_id: number | null; payload: unknown }[]) {
-    return this.http.post<RespuestaSync>(`${API_URL}/offline/sincronizar`, { operaciones });
+    return this.http.post<RespuestaSync>(`${API_URL}/offline/sincronizar`, { operaciones, hora_dispositivo: new Date().toISOString() });
   }
   mias() { return this.http.get<OperacionServidor[]>(`${API_URL}/offline/operaciones`); }
   conflictos() { return this.http.get<OperacionServidor[]>(`${API_URL}/offline/conflictos`); }

@@ -21,7 +21,7 @@ export interface OperacionLocal {
 }
 
 export interface ResultadoSync { id: string; estado: 'CONFIRMADA' | 'RECHAZADA' | 'EN_CONFLICTO' | 'ERROR'; mensaje: string; referencia: string | null; comprobante: string | null; detalle: { faltantes: Faltante[] } | null; ya_procesada: boolean; }
-export interface RespuestaSync { resultados: ResultadoSync[]; sincronizado_en: string; }
+export interface RespuestaSync { resultados: ResultadoSync[]; sincronizado_en: string; desfase_reloj_segundos?: number | null; aviso_reloj?: string | null; }
 export interface OperacionServidor {
   id: string; tipo: TipoOperacion; estado: EstadoLocal; mensaje: string; referencia: string | null; comprobante: string | null; detalle: { faltantes: Faltante[] } | null;
   sucursal_id: number; sucursal: string; usuario: string; creada_en: string; procesada_en: string; intentos: number; resolucion: string | null; motivo_resolucion: string | null;

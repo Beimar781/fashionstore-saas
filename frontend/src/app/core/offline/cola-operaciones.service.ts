@@ -78,6 +78,7 @@ export class ColaOperacionesService {
       }
       await this.db.marcarSincronizacion();
       this.ultimaSync.set(r.sincronizado_en);
+      if (r.aviso_reloj) this.errorSync.set(r.aviso_reloj);  // §7.2: la hora del dispositivo parece incorrecta
     } catch (e) {
       for (const o of lote) { o.estado = 'REGISTRADA_LOCAL'; await this.db.guardarOperacion(o); }  // sin respuesta: nada se pierde
       const err = e as { status?: number; error?: { detail?: string } };

@@ -86,7 +86,7 @@ class ConflictosService:
             raise Conflicto(MSG_USUARIO_INACTIVO)
         id_fila, tipo, payload, sucursal_id = fila.id, fila.tipo, fila.payload, fila.sucursal_id
         try:
-            r = Ejecutor(self.db, autor).ejecutar(tipo, {**payload, "sucursal_id": sucursal_id} if tipo == "COMPRA" else payload)
+            r = Ejecutor(self.db, autor).ejecutar(tipo, {**payload, "sucursal_id": sucursal_id} if tipo == "COMPRA" else payload, validar_precio=False)  # el Encargado acepta el precio actual
             fila.estado, fila.mensaje, fila.detalle = "CONFIRMADA", MSG_CONFIRMADA + " Resuelta por reintento.", None
             fila.referencia, fila.comprobante, fila.pedido_id, fila.reserva_id = r.referencia, r.comprobante, r.pedido_id, r.reserva_id
         except Exception as e:  # noqa: BLE001

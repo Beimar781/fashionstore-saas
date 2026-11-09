@@ -27,6 +27,7 @@ class OperacionOffline(Base):
     creada_en_cliente: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     recibida_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     procesada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    desfase_reloj_segundos: Mapped[int | None] = mapped_column(Integer)  # hora del dispositivo menos hora del servidor al sincronizar (§7.2)
     mensaje: Mapped[str] = mapped_column(String(400), default="")
     referencia: Mapped[str | None] = mapped_column(String(30))
     comprobante: Mapped[str | None] = mapped_column(String(30))

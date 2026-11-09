@@ -3,6 +3,8 @@
 Todo va en UNA transacción: el que llama hace el único commit junto con el registro de la operación (RNF04, RNF05).
 Una falta de stock no deja nada a medias: se deshace todo y la operación queda en conflicto (RN14).
 """
+from decimal import Decimal
+
 from sqlalchemy.orm import Session
 
 from app.core.errors import Conflicto, DatosInvalidos
@@ -22,6 +24,17 @@ class Resultado:
         self.referencia, self.comprobante, self.pedido_id, self.reserva_id = referencia, comprobante, pedido_id, reserva_id
 
 
+MSG_PRECIO = "El precio de una prenda cambió desde que se registró la venta."
+
+
+class PrecioCambio(Conflicto):
+    """Regla de precio (§7.2): se respeta el precio local solo si sigue siendo el vigente; si cambió, la venta queda EN_CONFLICTO para que el Encargado decida."""
+
+    def __init__(self, cambios: list[dict]):
+        super().__init__(MSG_PRECIO)
+        self.cambios = cambios
+
+
 def es_falta_de_stock(e: Exception) -> bool:
     return isinstance(e, SinStock) or (isinstance(e, Conflicto) and "stock suficiente" in e.message)
 
@@ -30,11 +43,13 @@ class Ejecutor:
     def __init__(self, db: Session, ctx: Contexto):
         self.db, self.ctx = db, ctx
 
-    def ejecutar(self, tipo: str, payload: dict) -> Resultado:
+    def ejecutar(self, tipo: str, payload: dict, validar_precio: bool = True) -> Resultado:
         if tipo == "COMPRA":
             return self._compra(CompraOfflineIn.model_validate(payload))
         if tipo == "VENTA_CONTADO":
             datos = VentaOfflineIn.model_validate(payload)
+            if validar_precio:
+                self._validar_precios(datos)
             venta = VentaPresencialService(self.db, self.ctx).crear(
                 VentaIn(items=[LineaIn(variante_id=i.variante_id, cantidad=i.cantidad) for i in datos.items], cliente_email=datos.cliente_email, nit_ci=datos.nit_ci, razon_social=datos.razon_social),
                 commit=False,
@@ -49,6 +64,24 @@ class Ejecutor:
             return Resultado(reserva.codigo, None, reserva_id=reserva.id)
         reserva = ReservaService(self.db, self.ctx.empresa_id).crear(self.ctx, ReservaIn.model_validate(payload), commit=False)
         return Resultado(reserva.codigo, None, reserva_id=reserva.id)
+
+    def _validar_precios(self, datos: VentaOfflineIn) -> None:
+        """Compara el precio usado sin conexión con el vigente en el servidor (con promociones). Si alguno cambió, nada se registra."""
+        usados = {i.variante_id: i.precio_unitario for i in datos.items if i.precio_unitario is not None}
+        if not usados:
+            return
+        variantes = VarianteVentaRepository(self.db, self.ctx.empresa_id).vendibles(set(usados))
+        descuentos = descuentos_vigentes(self.db, self.ctx.empresa_id)
+        cambios = []
+        for vid, precio in usados.items():
+            v = variantes.get(vid)
+            if v is None:
+                continue
+            vigente = descuentos.precio_final(v.producto, v.precio)[0]
+            if Decimal(vigente).quantize(Decimal("0.01")) != precio.quantize(Decimal("0.01")):
+                cambios.append({"variante_id": vid, "producto": v.producto.nombre, "precio_registrado": f"{precio:.2f}", "precio_actual": f"{Decimal(vigente):.2f}"})
+        if cambios:
+            raise PrecioCambio(cambios)
 
     def _compra(self, datos: CompraOfflineIn) -> Resultado:
         """La compra del cliente es el pedido por pagar del checkout (CU-11), sin cobrar nada: si ya no alcanzan las existencias, no se crea y queda en conflicto (RN14)."""

@@ -12,6 +12,7 @@ TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA")
 class LineaOfflineIn(BaseModel):
     variante_id: int
     cantidad: int = Field(ge=1, le=50)
+    precio_unitario: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)  # precio con que se registró sin conexión (§7.2)
 
 
 class VentaOfflineIn(BaseModel):
@@ -19,6 +20,7 @@ class VentaOfflineIn(BaseModel):
 
     items: list[LineaOfflineIn] = Field(min_length=1, max_length=60)
     monto_recibido: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    forma_pago: Literal["EFECTIVO"] = "EFECTIVO"  # RN13: de contado; el campo queda preparado para otras formas de pago
     cliente_email: str | None = Field(default=None, max_length=120)
     nit_ci: str = Field(default="0", max_length=20)
     razon_social: str = Field(default="Sin nombre", max_length=120)
@@ -51,6 +53,7 @@ class OperacionIn(BaseModel):
 
 class SincronizarIn(BaseModel):
     operaciones: list[OperacionIn] = Field(min_length=1, max_length=100)
+    hora_dispositivo: datetime | None = None  # la hora del dispositivo al enviar: sirve para detectar un reloj mal puesto (§7.2)
 
 
 class ResultadoOperacionOut(BaseModel):
@@ -66,6 +69,8 @@ class ResultadoOperacionOut(BaseModel):
 class SincronizacionOut(BaseModel):
     resultados: list[ResultadoOperacionOut]
     sincronizado_en: datetime  # RN16
+    desfase_reloj_segundos: int | None = None  # hora del dispositivo menos hora del servidor, si el cliente la envió
+    aviso_reloj: str | None = None  # presente si la diferencia supera los 5 minutos
 
 
 class OperacionOut(BaseModel):
