@@ -15,11 +15,12 @@ import { VestidorApi } from '../../core/api/vestidor.api';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { ProductoLocal } from '../../core/offline.models';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
 @Component({
   selector: 'app-prenda',
-  imports: [FormsModule, RouterLink],
+  imports: [BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <a routerLink="/tienda/catalogo" class="small">← Catálogo</a>
@@ -35,8 +36,8 @@ import { ConnectivityService } from '../../core/offline/connectivity.service';
           <div class="stack">
             <div><span class="muted small">{{ p.categoria }}{{ p.marca ? ' · ' + p.marca : '' }} · {{ p.coleccion }}</span><h1>{{ p.nombre }}</h1></div>
             <div class="precio">
-              @if (precioFinal() !== precioNormal()) { <s class="muted">Bs {{ precioNormal() }}</s> }
-              <b>Bs {{ precioFinal() }}</b>
+              @if (precioFinal() !== precioNormal()) { <s class="muted">{{ precioNormal() | bs }}</s> }
+              <b>{{ precioFinal() | bs }}</b>
               @if (p.promocion) { <span class="badge danger">{{ p.promocion }}</span> }
             </div>
             <p>{{ p.descripcion }}</p>

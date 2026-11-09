@@ -5,6 +5,7 @@ import { ComprasApi } from '../../../core/api/compras.api';
 import { ConfigPago, IniciarPago, ResultadoPago, TarjetaGuardada, TarjetaPrueba, TarjetaSimulada } from '../../../core/compras.models';
 import { StripeJsService } from '../../../core/pagos/stripe-js.service';
 import { mensajeError } from '../../../core/ui/toast.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'error';
 
@@ -12,7 +13,7 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
  *  Lo usan el checkout del cliente y la caja: con Stripe en modo de prueba la tarjeta la captura Stripe.js; si no hay claves, es un formulario de pruebas. */
 @Component({
   selector: 'app-pago-tarjeta',
-  imports: [FormsModule],
+  imports: [BsPipe, FormsModule],
   template: `
     <div class="stack">
       @if (config(); as cfg) {
@@ -57,8 +58,8 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
         }
         @if (fase() === 'error') { <div class="alert danger resultado" role="alert">{{ mensaje() }}</div> }
         <div class="row between">
-          <span class="muted small">Se cobrará el equivalente a <strong>US$ {{ dolares() }}</strong> (Bs {{ total() }} a {{ config()?.tasa_bob_por_usd }} Bs por dólar).</span>
-          <button type="button" class="btn primary" (click)="pagar()">Pagar Bs {{ total() }}</button>
+          <span class="muted small">Se cobrará <strong>{{ total() | bs }}</strong> a su tarjeta.</span>
+          <button type="button" class="btn primary" (click)="pagar()">Pagar {{ total() | bs }}</button>
         </div>
       }
 
@@ -102,10 +103,6 @@ export class PagoTarjetaComponent implements OnInit {
   readonly verificando = signal(false);
   readonly mensaje = signal('');
   readonly motivo = signal('');
-  readonly dolares = computed(() => {
-    const c = this.config();
-    return c ? (Number(this.total()) / c.tasa_bob_por_usd).toFixed(2) : '';
-  });
   guardadaId: number | null = null;
   guardar = false;
   titular = '';

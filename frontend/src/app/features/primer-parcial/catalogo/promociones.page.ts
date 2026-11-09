@@ -4,11 +4,12 @@ import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { Categoria, Coleccion, Promocion } from '../../../core/catalogo.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { alternar } from './catalogo.util';
+import { BsPipe } from '../../../core/formato-bs';
 
 /** CU-19 · Gestionar promociones y descuentos. Se reflejan en el catálogo (CU-03) y, después, en el punto de venta. */
 @Component({
   selector: 'app-promociones',
-  imports: [FormsModule],
+  imports: [BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -26,7 +27,7 @@ import { alternar } from './catalogo.util';
               @for (p of promociones(); track p.id) {
                 <tr>
                   <td><strong>{{ p.nombre }}</strong>@if (p.codigo) { <div class="small muted">Cupón <code>{{ p.codigo }}</code> · {{ p.usos }}{{ p.usos_maximos ? ' / ' + p.usos_maximos : '' }} usos</div> }</td>
-                  <td class="nowrap">{{ p.tipo_descuento === 'PORCENTAJE' ? p.valor + ' %' : 'Bs ' + p.valor }}</td>
+                  <td class="nowrap">{{ p.tipo_descuento === 'PORCENTAJE' ? p.valor + ' %' : (p.valor | bs) }}</td>
                   <td class="nowrap">{{ p.inicia }} → {{ p.termina }}</td>
                   <td class="small">{{ alcance(p) }}</td>
                   <td>@if (p.vigente) { <span class="badge ok">Vigente</span> } @else if (!p.activa) { <span class="badge warn">Inactiva</span> } @else { <span class="badge">Fuera de fechas</span> }</td>

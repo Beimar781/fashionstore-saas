@@ -5,11 +5,12 @@ import { RouterLink } from '@angular/router';
 import { PlataformaApi } from '../../core/api/plataforma.api';
 import { Empresa, Plan, SuscripcionDetalle } from '../../core/models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-35 · Gestionar suscripciones de empresas. La ruta entrega el id de la empresa como input. */
 @Component({
   selector: 'app-suscripcion',
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [BsPipe, FormsModule, DatePipe, RouterLink],
   template: `
     <div class="page">
       <p class="small"><a routerLink="/plataforma/empresas">← Empresas</a></p>
@@ -44,11 +45,11 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
         <h2 style="margin:1.5rem 0 .75rem">Historial</h2>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Plan</th><th>Inicio</th><th>Vencimiento</th><th>Estado</th><th>Pago</th><th class="right">Monto (Bs)</th></tr></thead>
+            <thead><tr><th>Plan</th><th>Inicio</th><th>Vencimiento</th><th>Estado</th><th>Pago</th><th class="right">Monto</th></tr></thead>
             <tbody>
               @for (h of d.historial; track h.id) {
                 <tr><td><strong>{{ h.plan.nombre }}</strong></td><td>{{ h.fecha_inicio | date: 'dd/MM/yyyy' }}</td><td>{{ h.fecha_vencimiento | date: 'dd/MM/yyyy' }}</td>
-                  <td><span class="badge" [class.ok]="h.estado === 'ACTIVA'">{{ h.estado }}</span></td><td>{{ h.forma_pago ?? '—' }}</td><td class="right">{{ h.monto }}</td></tr>
+                  <td><span class="badge" [class.ok]="h.estado === 'ACTIVA'">{{ h.estado }}</span></td><td>{{ h.forma_pago ?? '—' }}</td><td class="right">{{ h.monto_texto ?? (h.monto | bs) }}</td></tr>
               }
             </tbody>
           </table>
@@ -65,7 +66,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <label class="full">Plan
                 <select name="plan" [(ngModel)]="form.plan_id" required>
                   <option [ngValue]="null" disabled>Seleccione…</option>
-                  @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales · Bs {{ p.precio }}{{ p.es_prueba ? ' · 1 mes, una sola vez' : '' }}</option> }
+                  @for (p of planes(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }} · hasta {{ p.max_sucursales }} sucursales · {{ p.precio_texto ?? (p.precio | bs) }}{{ p.es_prueba ? ' · 1 mes, una sola vez' : '' }}</option> }
                 </select></label>
               <label>Inicio<input name="fi" type="date" [(ngModel)]="form.fecha_inicio" required /></label>
               @if (esPrueba()) { <div class="full small muted">La prueba gratuita dura 1 mes y la empresa puede usarla una sola vez.</div> } @else {

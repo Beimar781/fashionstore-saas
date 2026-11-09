@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { PlataformaApi } from '../../core/api/plataforma.api';
 import { Plan } from '../../core/models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-34 · Gestionar planes de suscripción. */
 @Component({
   selector: 'app-planes',
-  imports: [FormsModule],
+  imports: [BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -22,7 +23,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             <div class="row between"><h2>{{ p.nombre }}@if (p.es_prueba) { <span class="badge ok" title="Un mes, una sola vez por empresa">Prueba</span> }</h2>
               @if (!p.activo) { <span class="badge warn">Inactivo</span> } @else { <span class="badge accent">{{ p.empresas_suscritas }} {{ p.empresas_suscritas === 1 ? 'empresa' : 'empresas' }}</span> }
             </div>
-            <p class="precio">Bs {{ p.precio }}<small> / {{ p.periodicidad === 'anual' ? 'año' : 'mes' }}</small></p>
+            <p class="precio">{{ p.precio_texto ?? ((p.precio | bs) + ' / ' + (p.periodicidad === 'anual' ? 'año' : 'mes')) }}</p>
             <p class="muted small">{{ p.descripcion }}</p>
             <ul>
               <li><strong>Hasta {{ p.max_sucursales }}</strong> sucursales activas</li>

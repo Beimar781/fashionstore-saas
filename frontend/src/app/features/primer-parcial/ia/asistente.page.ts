@@ -12,11 +12,12 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { CatalogoLocalService } from '../../../core/offline/catalogo-local.service';
 import { AsistenteLocalService } from '../../../core/ia/asistente-local.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 /** CU-07 · Asistente y recomendador: el cliente pide prendas en lenguaje natural; el sistema aprende de lo que compra, busca y mira para recomendarle, armarle outfits y mostrarle ofertas que le convienen. */
 @Component({
   selector: 'app-asistente',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [BsPipe, FormsModule, RouterLink, NgTemplateOutlet],
   template: `
     <div class="page" style="max-width:1000px">
       <div class="page-head"><div><h1>Asistente de compras</h1><p>Cuénteme qué busca y le muestro prendas disponibles. Aprendo de lo que compra, busca y mira para recomendarle lo que le va a gustar.</p></div></div>
@@ -77,7 +78,7 @@ import { AsistenteLocalService } from '../../../core/ia/asistente-local.service'
           @if (p.imagen) { <img [src]="media + p.imagen" [alt]="p.nombre" /> } @else { <span class="foto">👕</span> }
           @if (etiqueta) { <span class="badge">{{ etiqueta }}</span> }
           <strong>{{ p.nombre }}</strong><span class="small muted">{{ p.categoria }}</span>
-          <span>@if (p.promocion) { <s class="muted small">Bs {{ p.precio }}</s> } <strong>Bs {{ p.precio_final }}</strong> @if (p.promocion) { <span class="badge danger">{{ p.promocion }}</span> }</span>
+          <span>@if (p.promocion) { <s class="muted small">{{ p.precio | bs }}</s> } <strong>{{ p.precio_final | bs }}</strong> @if (p.promocion) { <span class="badge danger">{{ p.promocion }}</span> }</span>
         </a>
         @if (motivo) { <span class="small motivo">{{ motivo }}</span> }
         <button type="button" class="btn sm ghost" (click)="armarOutfit(p.id)">Armar outfit con esta</button>

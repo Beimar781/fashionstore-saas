@@ -6,13 +6,14 @@ import { ReportesApi } from '../../core/api/reportes.api';
 import { Sucursal } from '../../core/models';
 import { InventarioReporte, PagosReporte, ReservasReporte, VentasReporte } from '../../core/reportes.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 
 /** CU-21 · Reportes de ventas y reservas del Administrador: ventas netas de devoluciones, reservas con su conversión y vista de pagos (aprobados, rechazados y pendientes). */
 @Component({
   selector: 'app-reportes',
-  imports: [FormsModule, DatePipe],
+  imports: [BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes</h1><p>Ventas digitales y presenciales netas de devoluciones, reservas y pagos de su empresa.</p></div>
@@ -51,29 +52,29 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 
       @if (pestana() === 'ventas' && ventas(); as v) {
         <div class="grid cols-3" style="margin-bottom:1rem">
-          <div class="card pad"><div class="small muted">Ventas netas</div><div class="cifra">Bs {{ v.totales.ventas_netas }}</div><div class="small muted">Bruto Bs {{ v.totales.total_bruto }} − devuelto Bs {{ v.totales.devuelto }} + cambios Bs {{ v.totales.entregado_en_cambios }}</div></div>
-          <div class="card pad"><div class="small muted">Ventas</div><div class="cifra">{{ v.totales.ventas }}</div><div class="small muted">{{ v.totales.unidades }} prenda(s) · ticket promedio Bs {{ v.totales.ticket_promedio }}</div></div>
+          <div class="card pad"><div class="small muted">Ventas netas</div><div class="cifra">{{ v.totales.ventas_netas | bs }}</div><div class="small muted">Bruto {{ v.totales.total_bruto | bs }} − devuelto {{ v.totales.devuelto | bs }} + cambios {{ v.totales.entregado_en_cambios | bs }}</div></div>
+          <div class="card pad"><div class="small muted">Ventas</div><div class="cifra">{{ v.totales.ventas }}</div><div class="small muted">{{ v.totales.unidades }} prenda(s) · ticket promedio {{ v.totales.ticket_promedio | bs }}</div></div>
           <div class="card pad"><div class="small muted">Devoluciones y cambios</div><div class="cifra">{{ v.totales.devoluciones }}</div><div class="small muted">notas en el periodo</div></div>
         </div>
         <div class="grid cols-2" style="margin-bottom:1rem">
           <section class="card pad stack"><h3>Ventas por día</h3>
-            @for (d of v.por_dia; track d.fecha) { @if (d.ventas) { <div class="barra"><span class="small">{{ d.fecha | date: 'dd/MM' }}</span><div class="meter"><span [style.width.%]="pct(d.total, maxDia(v))"></span></div><strong class="small">Bs {{ d.total }}</strong></div> } }
+            @for (d of v.por_dia; track d.fecha) { @if (d.ventas) { <div class="barra"><span class="small">{{ d.fecha | date: 'dd/MM' }}</span><div class="meter"><span [style.width.%]="pct(d.total, maxDia(v))"></span></div><strong class="small">{{ d.total | bs }}</strong></div> } }
             @if (!v.totales.ventas) { <p class="muted small">Sin ventas en el periodo.</p> }
           </section>
           <section class="card pad stack">
             <h3>Por canal</h3>
-            @for (c of v.por_canal; track c.canal) { <div class="row between small"><span>{{ c.canal === 'PRESENCIAL' ? 'Caja (POS)' : 'Online' }} · {{ c.ventas }} venta(s) · {{ c.unidades }} prenda(s)</span><strong>Bs {{ c.total }}</strong></div> }
+            @for (c of v.por_canal; track c.canal) { <div class="row between small"><span>{{ c.canal === 'PRESENCIAL' ? 'Caja (POS)' : 'Online' }} · {{ c.ventas }} venta(s) · {{ c.unidades }} prenda(s)</span><strong>{{ c.total | bs }}</strong></div> }
             <h3>Medio de pago</h3>
-            @for (m of v.por_metodo; track m.metodo) { <div class="row between small"><span>{{ m.metodo === 'EFECTIVO' ? 'Efectivo' : 'Tarjeta' }} · {{ m.cobros }} cobro(s)</span><strong>Bs {{ m.total }}</strong></div> }
+            @for (m of v.por_metodo; track m.metodo) { <div class="row between small"><span>{{ m.metodo === 'EFECTIVO' ? 'Efectivo' : 'Tarjeta' }} · {{ m.cobros }} cobro(s)</span><strong>{{ m.total | bs }}</strong></div> }
             <h3>Por sucursal</h3>
-            @for (s of v.por_sucursal; track s.sucursal_id) { <div class="row between small"><span>{{ s.sucursal }} · {{ s.ventas }} venta(s)</span><strong>Bs {{ s.total }}</strong></div> }
+            @for (s of v.por_sucursal; track s.sucursal_id) { <div class="row between small"><span>{{ s.sucursal }} · {{ s.ventas }} venta(s)</span><strong>{{ s.total | bs }}</strong></div> }
           </section>
         </div>
         <div class="grid cols-2">
           <section class="card pad stack"><h3>Más vendidos</h3>
-            @for (p of v.mas_vendidos; track p.producto) { <div class="row between small"><span>{{ p.producto }} · {{ p.unidades }} u.</span><strong>Bs {{ p.ingresos }}</strong></div> } @empty { <p class="muted small">Sin ventas.</p> }</section>
+            @for (p of v.mas_vendidos; track p.producto) { <div class="row between small"><span>{{ p.producto }} · {{ p.unidades }} u.</span><strong>{{ p.ingresos | bs }}</strong></div> } @empty { <p class="muted small">Sin ventas.</p> }</section>
           <section class="card pad stack"><h3>Menos vendidos</h3>
-            @for (p of v.menos_vendidos; track p.producto) { <div class="row between small"><span>{{ p.producto }} · {{ p.unidades }} u.</span><strong>Bs {{ p.ingresos }}</strong></div> } @empty { <p class="muted small">Sin ventas.</p> }</section>
+            @for (p of v.menos_vendidos; track p.producto) { <div class="row between small"><span>{{ p.producto }} · {{ p.unidades }} u.</span><strong>{{ p.ingresos | bs }}</strong></div> } @empty { <p class="muted small">Sin ventas.</p> }</section>
         </div>
       }
 
@@ -93,9 +94,9 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 
       @if (pestana() === 'pagos' && pagos(); as p) {
         <div class="grid cols-3" style="margin-bottom:1rem">
-          <div class="card pad"><div class="small muted">Aprobados</div><div class="cifra ok">{{ p.aprobados.cantidad }}</div><div class="small muted">Bs {{ p.aprobados.monto }}</div></div>
-          <div class="card pad"><div class="small muted">Rechazados</div><div class="cifra mal">{{ p.rechazados.cantidad }}</div><div class="small muted">Bs {{ p.rechazados.monto }}</div></div>
-          <div class="card pad"><div class="small muted">Pendientes de confirmación</div><div class="cifra aviso">{{ p.pendientes_confirmacion.cantidad }}</div><div class="small muted">Bs {{ p.pendientes_confirmacion.monto }}</div></div>
+          <div class="card pad"><div class="small muted">Aprobados</div><div class="cifra ok">{{ p.aprobados.cantidad }}</div><div class="small muted">{{ p.aprobados.monto | bs }}</div></div>
+          <div class="card pad"><div class="small muted">Rechazados</div><div class="cifra mal">{{ p.rechazados.cantidad }}</div><div class="small muted">{{ p.rechazados.monto | bs }}</div></div>
+          <div class="card pad"><div class="small muted">Pendientes de confirmación</div><div class="cifra aviso">{{ p.pendientes_confirmacion.cantidad }}</div><div class="small muted">{{ p.pendientes_confirmacion.monto | bs }}</div></div>
         </div>
         <section class="card table-wrap">
           <h3 style="padding:1rem 1rem 0">Pagos con problemas</h3>
@@ -103,7 +104,7 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
             <table><thead><tr><th>Fecha</th><th>Pedido</th><th>Sucursal</th><th>Medio</th><th>Estado</th><th>Motivo</th><th class="right">Monto</th></tr></thead>
               <tbody>@for (x of p.con_problemas; track x.id) {
                 <tr><td class="nowrap">{{ x.fecha | date: 'dd/MM HH:mm' }}</td><td>{{ x.pedido }}</td><td>{{ x.sucursal }}</td><td>{{ x.tarjeta || x.metodo }}</td>
-                  <td><span class="badge" [class.danger]="x.estado === 'RECHAZADO'" [class.warn]="x.estado !== 'RECHAZADO'">{{ x.estado === 'RECHAZADO' ? 'Rechazado' : 'Pendiente' }}</span></td><td>{{ x.motivo }}</td><td class="right nowrap">Bs {{ x.monto }}</td></tr> }</tbody></table>
+                  <td><span class="badge" [class.danger]="x.estado === 'RECHAZADO'" [class.warn]="x.estado !== 'RECHAZADO'">{{ x.estado === 'RECHAZADO' ? 'Rechazado' : 'Pendiente' }}</span></td><td>{{ x.motivo }}</td><td class="right nowrap">{{ x.monto | bs }}</td></tr> }</tbody></table>
           }
         </section>
       }

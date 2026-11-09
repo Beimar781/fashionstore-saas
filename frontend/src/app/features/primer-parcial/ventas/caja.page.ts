@@ -7,11 +7,12 @@ import { Pedido, ResultadoPago } from '../../../core/compras.models';
 import { Reserva } from '../../../core/reservas.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
+import { BsPipe } from '../../../core/formato-bs';
 
 /** Punto de venta: CU-28 (escanear o buscar prendas), CU-29 (armar la venta, también desde una reserva) y CU-30 (cobrar y emitir el comprobante). */
 @Component({
   selector: 'app-caja',
-  imports: [FormsModule, PagoTarjetaComponent],
+  imports: [BsPipe, FormsModule, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:1180px">
       <div class="page-head"><div><h1>Caja</h1><p>Escanee las prendas, registre la venta y cóbrela. El stock se descuenta al cobrar.</p></div>
@@ -21,7 +22,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
         <section class="card pad stack" style="margin-bottom:1rem">
           <strong>Ventas pendientes de cobro</strong>
           @for (p of pendientes(); track p.id) {
-            <div class="row between small"><span><strong>{{ p.codigo }}</strong> · {{ p.total_unidades }} prenda(s) · Bs {{ p.total }}{{ p.cliente ? ' · ' + p.cliente : '' }}</span>
+            <div class="row between small"><span><strong>{{ p.codigo }}</strong> · {{ p.total_unidades }} prenda(s) · {{ p.total | bs }}{{ p.cliente ? ' · ' + p.cliente : '' }}</span>
               <span class="row"><button class="btn sm" (click)="retomar(p)">Retomar cobro</button><button class="btn sm danger" (click)="anular(p)">Anular</button></span></div>
           }
         </section>
@@ -47,7 +48,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
                     <button type="button" class="card producto" [disabled]="p.disponible === 0" (click)="agregar(p)">
                       @if (p.imagen) { <img [src]="media + p.imagen" [alt]="p.producto" /> } @else { <span class="foto">👕</span> }
                       <span><strong>{{ p.producto }}</strong><br /><span class="small muted">Talla {{ p.talla }} · {{ p.color }}</span><br />
-                        @if (p.promocion) { <s class="muted small">Bs {{ p.precio }}</s> } <strong>Bs {{ p.precio_final }}</strong>
+                        @if (p.promocion) { <s class="muted small">{{ p.precio | bs }}</s> } <strong>{{ p.precio_final | bs }}</strong>
                         @if (p.promocion) { <span class="badge danger">{{ p.promocion }}</span> }<br />
                         <span class="badge" [class.ok]="p.disponible > 3" [class.warn]="p.disponible > 0 && p.disponible <= 3" [class.danger]="p.disponible === 0">{{ p.disponible === 0 ? 'Sin stock' : p.disponible + ' en tienda' }}</span></span>
                     </button>
@@ -79,12 +80,12 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
             } @else {
               @for (l of lineas(); track l.variante_id) {
                 <div class="linea">
-                  <div><strong>{{ l.producto }}</strong><div class="small muted">Talla {{ l.talla }} · {{ l.color }} · Bs {{ l.precio_final }}</div></div>
+                  <div><strong>{{ l.producto }}</strong><div class="small muted">Talla {{ l.talla }} · {{ l.color }} · {{ l.precio_final | bs }}</div></div>
                   <input type="number" min="1" [max]="l.max" [ngModel]="l.cantidad" (change)="cantidad(l, $any($event.target).value)" [name]="'q' + l.variante_id" style="width:4.5rem" />
                   <button type="button" class="btn sm danger" (click)="quitar(l)" aria-label="Quitar">✕</button>
                 </div>
               } @empty { <p class="muted small">Escanee o busque una prenda para agregarla.</p> }
-              <div class="row between total"><strong>Total</strong><strong>Bs {{ total() }}</strong></div>
+              <div class="row between total"><strong>Total</strong><strong>{{ total() | bs }}</strong></div>
             }
             <label>Correo del cliente <span class="hint">(opcional: la compra aparece en su historial)</span><input name="c" [(ngModel)]="clienteEmail" type="email" [disabled]="!!reserva()" /></label>
             <div class="form-grid"><label>NIT o CI<input name="n" [(ngModel)]="nit" maxlength="20" /></label><label>Razón social<input name="rz" [(ngModel)]="razon" maxlength="120" /></label></div>
@@ -106,9 +107,9 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
               @if (metodo() === 'EFECTIVO') {
                 <div class="form-grid">
                   <label>Monto recibido (Bs)<input name="mr" type="number" min="0" step="0.01" [(ngModel)]="recibido" autofocus /></label>
-                  <div class="cambio" [class.mal]="cambioNum() < 0"><span class="small muted">Cambio a entregar</span><strong>Bs {{ cambioNum() < 0 ? '—' : cambioNum().toFixed(2) }}</strong></div>
+                  <div class="cambio" [class.mal]="cambioNum() < 0"><span class="small muted">Cambio a entregar</span><strong>{{ (cambioNum() < 0 ? '—' : cambioNum().toFixed(2)) | bs }}</strong></div>
                 </div>
-                <div><button class="btn primary" (click)="cobrarCaja('EFECTIVO')" [disabled]="cobrando() || cambioNum() < 0">{{ cobrando() ? 'Cobrando…' : 'Cobrar Bs ' + v.total }}</button></div>
+                <div><button class="btn primary" (click)="cobrarCaja('EFECTIVO')" [disabled]="cobrando() || cambioNum() < 0">{{ cobrando() ? 'Cobrando…' : 'Cobrar ' + (v.total | bs) }}</button></div>
               }
               @if (metodo() === 'TARJETA') {
                 <app-pago-tarjeta [pedidoId]="v.id" [total]="v.total" [permitirGuardar]="false" (listo)="alTarjeta($event)" (sinStock)="avisoSinStock()" />
@@ -119,7 +120,7 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
 
             @if (cobro(); as c) {
               <div class="alert ok resultado" role="status"><strong>✔ Venta cobrada</strong><br />Comprobante N.° <strong>{{ c.pedido.comprobante_numero }}</strong> ({{ c.pedido.comprobante_tipo === 'FACTURA' ? 'factura' : 'comprobante interno temporal' }})
-                @if (c.pago.metodo === 'EFECTIVO') { <br />Recibido Bs {{ c.pago.monto_recibido }} · <strong>Cambio Bs {{ c.cambio }}</strong> }</div>
+                @if (c.pago.metodo === 'EFECTIVO') { <br />Recibido {{ c.pago.monto_recibido | bs }} · <strong>Cambio {{ c.cambio | bs }}</strong> }</div>
               @if (c.aviso) { <div class="alert warn" role="alert">{{ c.aviso }}</div> }
               <div class="row"><button class="btn primary" (click)="imprimir(c.pedido)">🖨 Imprimir comprobante</button><button class="btn" (click)="nueva()">Nueva venta</button></div>
             }
@@ -133,11 +134,11 @@ import { PagoTarjetaComponent } from './pago-tarjeta.component';
 
           <aside class="card pad stack resumen">
             <h2>Venta {{ v.codigo }}</h2>
-            @for (i of v.items; track i.id) { <div class="row between small"><span>{{ i.cantidad }} × {{ i.producto }} · {{ i.talla }} · {{ i.color }}</span><span class="nowrap">Bs {{ i.subtotal }}</span></div> }
-            <div class="row between"><span class="muted">Subtotal</span><span>Bs {{ v.subtotal }}</span></div>
-            @if (v.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− Bs {{ v.descuento }}</span></div> }
-            <div class="row between total"><strong>Total</strong><strong>Bs {{ v.total }}</strong></div>
-            <p class="muted small">IVA incluido: Bs {{ v.iva_incluido }}{{ v.cliente ? ' · Cliente: ' + v.cliente : '' }}</p>
+            @for (i of v.items; track i.id) { <div class="row between small"><span>{{ i.cantidad }} × {{ i.producto }} · {{ i.talla }} · {{ i.color }}</span><span class="nowrap">{{ i.subtotal | bs }}</span></div> }
+            <div class="row between"><span class="muted">Subtotal</span><span>{{ v.subtotal | bs }}</span></div>
+            @if (v.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− {{ v.descuento | bs }}</span></div> }
+            <div class="row between total"><strong>Total</strong><strong>{{ v.total | bs }}</strong></div>
+            <p class="muted small">IVA incluido: {{ v.iva_incluido | bs }}{{ v.cliente ? ' · Cliente: ' + v.cliente : '' }}</p>
           </aside>
         </div>
       }

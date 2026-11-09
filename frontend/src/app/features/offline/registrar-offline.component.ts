@@ -5,13 +5,14 @@ import { CatalogoLocalService, PrendaLocal } from '../../core/offline/catalogo-l
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService } from '../../core/ui/toast.service';
+import { BsPipe, formatoBs } from '../../core/formato-bs';
 
 interface Linea { variante_id: number; texto: string; precio: number; cantidad: number; max: number; }
 
 /** RF19 · Registrar sin conexión: el personal registra ventas de contado (RN13) y el cliente reserva. Todo usa el catálogo guardado y queda en la cola para sincronizar. */
 @Component({
   selector: 'app-registrar-offline',
-  imports: [FormsModule],
+  imports: [BsPipe, FormsModule],
   template: `
     <section class="card pad stack">
       <h2>{{ !esCliente ? 'Venta de contado sin conexión' : modo === 'COMPRA' ? 'Comprar sin conexión' : 'Reservar sin conexión' }}</h2>
@@ -30,21 +31,21 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
         <label>Buscar prenda<input name="q" [ngModel]="texto()" (ngModelChange)="texto.set($event)" placeholder="Nombre, SKU o código de barras" autocomplete="off" /></label>
         @if (texto().trim()) {
           <div class="row" style="flex-wrap:wrap">
-            @for (r of resultados(); track r.variante.id) { <button type="button" class="chip" [disabled]="stock(r) === 0" (click)="agregar(r)">{{ r.producto.nombre }} · {{ r.variante.talla }} · {{ r.variante.color }} · Bs {{ r.variante.precio_final }} ({{ stock(r) }})</button> }
+            @for (r of resultados(); track r.variante.id) { <button type="button" class="chip" [disabled]="stock(r) === 0" (click)="agregar(r)">{{ r.producto.nombre }} · {{ r.variante.talla }} · {{ r.variante.color }} · {{ r.variante.precio_final | bs }} ({{ stock(r) }})</button> }
           </div>
         }
         @for (l of lineas(); track l.variante_id) {
-          <div class="row between small"><span>{{ l.texto }} · Bs {{ l.precio }}</span>
+          <div class="row between small"><span>{{ l.texto }} · {{ l.precio | bs }}</span>
             <span class="row"><input type="number" min="1" [max]="l.max" [name]="'c' + l.variante_id" [(ngModel)]="l.cantidad" style="width:4.5rem" (ngModelChange)="lineas.set([...lineas()])" /><button type="button" class="btn sm danger" (click)="quitar(l)">✕</button></span></div>
         }
         @if (lineas().length) {
-          <div class="row between total"><strong>Total</strong><strong>Bs {{ total().toFixed(2) }}</strong></div>
+          <div class="row between total"><strong>Total</strong><strong>{{ total().toFixed(2) | bs }}</strong></div>
           @if (esCliente && modo === 'RESERVA') { <label>Notas (opcional)<input name="n" [(ngModel)]="notas" maxlength="300" /></label> }
           @else if (esCliente) { <div class="alert warn" role="status">Si cuando sincronice la prenda ya se agotó, le avisaremos y no se le cobrará nada.</div> }
           @else {
             <div class="row">
               <label style="max-width:200px">Efectivo recibido (Bs)<input name="r" type="number" min="0" step="0.01" [(ngModel)]="recibido" /></label>
-              <div class="cambio" [class.mal]="cambio() < 0"><span class="small muted">Cambio a entregar</span><strong>Bs {{ cambio() < 0 ? '—' : cambio().toFixed(2) }}</strong></div>
+              <div class="cambio" [class.mal]="cambio() < 0"><span class="small muted">Cambio a entregar</span><strong>{{ (cambio() < 0 ? '—' : cambio().toFixed(2)) | bs }}</strong></div>
               <label style="min-width:240px">Cliente (opcional)<select name="cl" [(ngModel)]="clienteEmail"><option [ngValue]="null">Consumidor final</option>@for (c of local.meta()?.clientes ?? []; track c.id) { <option [ngValue]="c.email">{{ c.nombre }} · {{ c.email }}</option> }</select></label>
             </div>
           }
@@ -103,7 +104,7 @@ export class RegistrarOfflineComponent {
     } else {
       if ((this.recibido ?? -1) < this.total()) { this.error.set('El efectivo recibido es menor al total de la venta.'); return; }
       this.guardando.set(true);
-      await this.cola.registrar('VENTA_CONTADO', { items: this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario: l.precio.toFixed(2) })), forma_pago: 'EFECTIVO', monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado Bs ${this.total().toFixed(2)}: ${resumen}`);
+      await this.cola.registrar('VENTA_CONTADO', { items: this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario: l.precio.toFixed(2) })), forma_pago: 'EFECTIVO', monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado ${formatoBs(this.total())}: ${resumen}`);
     }
     await this.local.comprometer(items, this.sucursalId);
     this.toast.ok(this.red.online() ? 'Operación registrada; se está sincronizando.' : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.');

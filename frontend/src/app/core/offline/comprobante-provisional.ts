@@ -1,3 +1,4 @@
+import { formatoBs } from '../formato-bs';
 import { OperacionLocal } from '../offline.models';
 
 /** B1 · Número local `LOC-<sucursal>-<6 del UUID>`; al sincronizar, la venta recibe su número oficial CMP-…. */
@@ -18,8 +19,8 @@ export async function comprobanteProvisional(o: OperacionLocal, empresa: string,
     const subtotal = Number(i.precio_unitario) * i.cantidad; total += subtotal;
     doc.text(`${i.cantidad} × ${nombreDe(i.variante_id)}`.slice(0, 48), 10, y); doc.text(subtotal.toFixed(2), 130, y, { align: 'right' }); y += 5;
   }
-  y += 3; doc.setFontSize(11); doc.text(`Total: Bs ${total.toFixed(2)}`, 10, y); y += 5;
+  y += 3; doc.setFontSize(11); doc.text(`Total: ${formatoBs(total)}`, 10, y); y += 5;
   const recibido = Number(o.payload['monto_recibido'] ?? 0);
-  doc.text(`Recibido: Bs ${recibido.toFixed(2)}   Cambio: Bs ${Math.max(recibido - total, 0).toFixed(2)}`, 10, y);
+  doc.text(`Recibido: ${formatoBs(recibido)}   Cambio: ${formatoBs(Math.max(recibido - total, 0))}`, 10, y);
   return doc;
 }

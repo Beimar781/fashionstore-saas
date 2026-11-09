@@ -8,11 +8,12 @@ import { SucursalCatalogo } from '../../../core/catalogo.models';
 import { CarritoEstadoService } from '../../../core/carrito/carrito-estado.service';
 import { Carrito, ItemCarrito } from '../../../core/compras.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 /** CU-08 · Carrito de compras: cantidades, subtotal e IVA en tiempo real, con el stock de la sucursal elegida. */
 @Component({
   selector: 'app-carrito',
-  imports: [FormsModule, RouterLink],
+  imports: [BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi carrito</h1><p>Las prendas se descuentan del stock de la sucursal elegida recién cuando el pago se aprueba.</p></div></div>
@@ -46,9 +47,9 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
                         <div class="muted small">Talla {{ i.talla }} · {{ i.color }} · {{ i.sku }}</div>
                         @if (i.estado === 'SIN_STOCK') { <span class="badge danger">Hay {{ i.disponible }} disponible(s)</span> }
                         @if (i.estado === 'RETIRADA') { <span class="badge danger">Ya no está en el catálogo</span> }</td>
-                      <td class="right nowrap">@if (i.precio !== i.precio_final) { <s class="muted small">Bs {{ i.precio }}</s><br /> }Bs {{ i.precio_final }}</td>
+                      <td class="right nowrap">@if (i.precio !== i.precio_final) { <s class="muted small">{{ i.precio | bs }}</s><br /> }{{ i.precio_final | bs }}</td>
                       <td><input type="number" min="1" max="10" [ngModel]="i.cantidad" (change)="cambiar(i, $any($event.target).value)" [name]="'q' + i.id" style="width:5.5rem;margin-left:auto;display:block" [disabled]="i.estado === 'RETIRADA'" /></td>
-                      <td class="right nowrap"><strong>Bs {{ i.subtotal }}</strong></td>
+                      <td class="right nowrap"><strong>{{ i.subtotal | bs }}</strong></td>
                       <td class="actions"><button type="button" class="btn sm danger" (click)="quitar(i)">Quitar</button></td>
                     </tr>
                   }
@@ -60,10 +61,10 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
           <aside class="card pad stack resumen">
             <h2>Resumen</h2>
             <div class="row between"><span class="muted">Prendas</span><span>{{ c.total_unidades }}</span></div>
-            <div class="row between"><span class="muted">Subtotal</span><span>Bs {{ c.subtotal }}</span></div>
-            @if (c.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span class="ok-texto">− Bs {{ c.descuento }}</span></div> }
-            <div class="row between total"><strong>Total</strong><strong>Bs {{ c.total }}</strong></div>
-            <p class="muted small">Incluye IVA: Bs {{ c.iva_incluido }}</p>
+            <div class="row between"><span class="muted">Subtotal</span><span>{{ c.subtotal | bs }}</span></div>
+            @if (c.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span class="ok-texto">− {{ c.descuento | bs }}</span></div> }
+            <div class="row between total"><strong>Total</strong><strong>{{ c.total | bs }}</strong></div>
+            <p class="muted small">Incluye IVA: {{ c.iva_incluido | bs }}</p>
             <a class="btn primary" routerLink="/tienda/checkout" [class.disabled]="!c.puede_pagar" [attr.aria-disabled]="!c.puede_pagar" (click)="!c.puede_pagar && $event.preventDefault()">Proceder al pago</a>
             @if (!c.puede_pagar) { <p class="small muted">Corrija los avisos de arriba para poder pagar.</p> }
             <a routerLink="/tienda/catalogo" class="small">← Seguir comprando</a>

@@ -50,7 +50,7 @@ export interface Analitica {
 
 /** CU-36 · plan, límites y uso. */
 export interface MiPlan {
-  plan: { id: number; nombre: string; descripcion: string | null; precio: string; periodicidad: string } | null;
+  plan: { id: number; nombre: string; descripcion: string | null; precio: string; precio_texto?: string; moneda?: string; periodicidad: string } | null;
   vigencia: { estado: string; fecha_inicio: string; fecha_vencimiento: string; dias_restantes: number | null; vigente: boolean } | null;
   limites: { clave: string; etiqueta: string; usado: number; limite: number | null; porcentaje: number | null; alcanzado: boolean }[];
   consumo: { clave: string; etiqueta: string; valor: number }[];

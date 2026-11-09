@@ -7,13 +7,14 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
 import { LocalDbService } from '../../../core/offline/local-db.service';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.';
 
 /** CU-12 · Detalle de una compra: prendas, totales, entrega, facturación, pagos y descarga del comprobante. */
 @Component({
   selector: 'app-compra-detalle',
-  imports: [RouterLink, DatePipe, PagoTarjetaComponent],
+  imports: [BsPipe, RouterLink, DatePipe, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:900px">
       <a routerLink="/tienda/compras" class="small">← Mis compras</a>
@@ -35,17 +36,17 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
           <table>
             <thead><tr><th>Prenda</th><th class="right">Cantidad</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
             <tbody>@for (i of p.items; track i.id) { <tr><td><strong>{{ i.producto }}</strong><div class="muted small">Talla {{ i.talla }} · {{ i.color }} · {{ i.sku }}</div></td>
-              <td class="right">{{ i.cantidad }}</td><td class="right nowrap">Bs {{ i.precio_final }}</td><td class="right nowrap">Bs {{ i.subtotal }}</td></tr> }</tbody>
+              <td class="right">{{ i.cantidad }}</td><td class="right nowrap">{{ i.precio_final | bs }}</td><td class="right nowrap">{{ i.subtotal | bs }}</td></tr> }</tbody>
           </table>
         </section>
 
         <div class="grid cols-2" style="margin-top:1rem">
           <section class="card pad stack">
             <h3>Totales</h3>
-            <div class="row between"><span class="muted">Subtotal</span><span>Bs {{ p.subtotal }}</span></div>
-            @if (p.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− Bs {{ p.descuento }}</span></div> }
-            <div class="row between"><strong>Total</strong><strong>Bs {{ p.total }}</strong></div>
-            <p class="muted small">Incluye IVA: Bs {{ p.iva_incluido }}</p>
+            <div class="row between"><span class="muted">Subtotal</span><span>{{ p.subtotal | bs }}</span></div>
+            @if (p.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− {{ p.descuento | bs }}</span></div> }
+            <div class="row between"><strong>Total</strong><strong>{{ p.total | bs }}</strong></div>
+            <p class="muted small">Incluye IVA: {{ p.iva_incluido | bs }}</p>
           </section>
           <section class="card pad stack">
             <h3>Entrega y facturación</h3>
@@ -60,7 +61,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
           @for (g of p.pagos; track g.id) {
             <div class="row between small">
               <span>{{ g.creado_en | date: 'dd/MM HH:mm' }} · Tarjeta {{ g.tarjeta_marca }} {{ g.tarjeta_ultimos4 ? 'terminada en ' + g.tarjeta_ultimos4 : '' }}@if (g.motivo) { · {{ g.motivo }} }</span>
-              <span><span class="badge" [class.ok]="g.estado === 'APROBADO'" [class.danger]="g.estado === 'RECHAZADO' || g.estado === 'CANCELADO'" [class.warn]="g.estado === 'PENDIENTE_CONFIRMACION'">{{ g.estado.replaceAll('_', ' ') }}</span> Bs {{ g.monto }}</span>
+              <span><span class="badge" [class.ok]="g.estado === 'APROBADO'" [class.danger]="g.estado === 'RECHAZADO' || g.estado === 'CANCELADO'" [class.warn]="g.estado === 'PENDIENTE_CONFIRMACION'">{{ g.estado.replaceAll('_', ' ') }}</span> {{ g.monto | bs }}</span>
             </div>
           } @empty { <p class="muted small">Sin intentos de pago.</p> }
         </section>

@@ -10,11 +10,12 @@ import { Categoria, ColorCatalogo, FiltrosCatalogo, GENEROS, Marca, Pagina, Pren
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-03 · Consultar catálogo de prendas y CU-04 · Buscar y filtrar. Todos los filtros viajan al backend. */
 @Component({
   selector: 'app-catalogo',
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [BsPipe, FormsModule, RouterLink, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Catálogo</h1><p>Encuentre su próxima prenda y revise la disponibilidad por sucursal.</p></div></div>
@@ -55,7 +56,7 @@ import { ConnectivityService } from '../../core/offline/connectivity.service';
               <div class="info">
                 <strong>{{ p.nombre }}</strong>
                 <span class="muted small">{{ p.categoria }}{{ p.marca ? ' · ' + p.marca : '' }}</span>
-                <span class="precio">@if (p.precio_final !== p.precio) { <s class="muted small">Bs {{ p.precio }}</s> } <b>Bs {{ p.precio_final }}</b></span>
+                <span class="precio">@if (p.precio_final !== p.precio) { <s class="muted small">{{ p.precio | bs }}</s> } <b>{{ p.precio_final | bs }}</b></span>
                 <span class="row" style="gap:.3rem">@for (c of p.colores; track c.id) { <span class="swatch" [style.background]="c.codigo_hex" [title]="c.nombre"></span> }</span>
                 <span class="muted small">Tallas: {{ p.tallas.join(' · ') }}</span>
               </div>

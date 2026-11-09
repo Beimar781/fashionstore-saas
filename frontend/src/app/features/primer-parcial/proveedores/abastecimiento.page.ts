@@ -9,6 +9,7 @@ import { ROL } from '../../../core/models';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 type Pestana = 'avisos' | 'propuestas';
 interface Linea { sku: string; producto: string; talla: string; color: string; cantidad: number; costo: number | null; }
@@ -16,7 +17,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
 /** CU-31 · Información de productos y abastecimiento. El Proveedor avisa remisiones y propone productos; el Administrador revisa. */
 @Component({
   selector: 'app-abastecimiento',
-  imports: [FormsModule],
+  imports: [BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -68,7 +69,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
                   <tr>
                     <td><strong>{{ p.nombre }}</strong><div class="muted small">{{ p.material }}</div></td>
                     @if (!esProveedor) { <td>{{ p.proveedor }}</td> }
-                    <td>{{ p.coleccion }}</td><td class="right nowrap">Bs {{ p.precio_base }}</td>
+                    <td>{{ p.coleccion }}</td><td class="right nowrap">{{ p.precio_base | bs }}</td>
                     <td><span class="badge" [class.warn]="p.estado === 'PENDIENTE'" [class.ok]="p.estado === 'APROBADA'" [class.danger]="p.estado === 'RECHAZADA'">{{ p.estado === 'PENDIENTE' ? 'Pendiente' : p.estado === 'APROBADA' ? 'Aprobada' : 'Rechazada' }}</span>
                       @if (p.notas_revision) { <div class="muted small">{{ p.notas_revision }}</div> }</td>
                     <td class="actions">@if (!esProveedor && p.estado === 'PENDIENTE') { <button class="btn sm" (click)="revisar.set(p); notas = ''; error.set('')">Revisar</button> }</td>
@@ -155,7 +156,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
         <div class="modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
           <header><h2>Revisar propuesta</h2><button type="button" class="btn sm ghost" (click)="revisar.set(null)" aria-label="Cerrar">✕</button></header>
           <div class="body">
-            <p><strong>{{ p.nombre }}</strong> · {{ p.proveedor }} · {{ p.coleccion }} · Bs {{ p.precio_base }}</p>
+            <p><strong>{{ p.nombre }}</strong> · {{ p.proveedor }} · {{ p.coleccion }} · {{ p.precio_base | bs }}</p>
             <p class="small muted">{{ p.descripcion }}</p>
             <label>Notas de la revisión <span class="hint">(obligatorias para rechazar)</span><textarea rows="3" [(ngModel)]="notas" name="notas"></textarea></label>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }

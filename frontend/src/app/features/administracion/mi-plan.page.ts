@@ -5,11 +5,12 @@ import { ReportesApi } from '../../core/api/reportes.api';
 import { AuthService } from '../../core/auth/auth.service';
 import { MiPlan } from '../../core/reportes.models';
 import { mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-36 · Plan, límites y uso de la empresa. Es lo único habilitado cuando la suscripción no está vigente (RN05); entonces solo se muestra el plan y la vigencia. */
 @Component({
   selector: 'app-mi-plan',
-  imports: [DatePipe, RouterLink],
+  imports: [BsPipe, DatePipe, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi plan</h1><p>Plan contratado, vigencia, límites con su uso y funcionalidades habilitadas para su empresa.</p></div></div>
@@ -29,7 +30,7 @@ import { mensajeError } from '../../core/ui/toast.service';
                 <span class="badge" [class.ok]="m.vigencia.vigente" [class.danger]="!m.vigencia.vigente">{{ m.vigencia.estado }}</span></div>
               @if (m.plan.descripcion) { <p class="muted small">{{ m.plan.descripcion }}</p> }
               <div class="muted">Vigente del {{ m.vigencia.fecha_inicio | date: 'dd/MM/yyyy' }} al <strong>{{ m.vigencia.fecha_vencimiento | date: 'dd/MM/yyyy' }}</strong>@if (m.vigencia.dias_restantes !== null) { · quedan {{ m.vigencia.dias_restantes }} día(s) }</div>
-              <div class="small muted">Precio Bs {{ m.plan.precio }} ({{ m.plan.periodicidad }})</div>
+              <div class="small muted">Precio {{ m.plan.precio_texto ?? (m.plan.precio | bs) }}</div>
               <h3>Funcionalidades</h3>
               <ul>@for (f of m.funcionalidades; track f.clave) { <li [class.no]="!f.incluida">{{ f.etiqueta }}</li> }</ul>
             </section>

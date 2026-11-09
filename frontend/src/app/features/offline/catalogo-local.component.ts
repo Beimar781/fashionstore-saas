@@ -5,11 +5,12 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-37 · Catálogo para uso offline: se descarga una vez con conexión y se consulta y busca sin ella. Siempre dice de cuándo es (RN16). */
 @Component({
   selector: 'app-catalogo-local',
-  imports: [FormsModule, DatePipe],
+  imports: [BsPipe, FormsModule, DatePipe],
   template: `
     <section class="card pad stack">
       <div class="row between">
@@ -32,7 +33,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
           <tbody>
             @for (r of resultados(); track r.variante.id) {
               <tr><td>{{ r.producto.nombre }}<div class="small muted">{{ r.producto.categoria }}</div></td><td>{{ r.variante.talla }}</td><td>{{ r.variante.color }}</td><td class="small">{{ r.variante.sku }}</td>
-                <td class="right nowrap">@if (r.variante.promocion) { <s class="muted small">Bs {{ r.variante.precio }}</s> } Bs {{ r.variante.precio_final }}</td>
+                <td class="right nowrap">@if (r.variante.promocion) { <s class="muted small">{{ r.variante.precio | bs }}</s> } {{ r.variante.precio_final | bs }}</td>
                 <td class="right">{{ detalleStock(r.variante) }}</td></tr>
             } @empty { <tr><td colspan="6" class="empty">No hay prendas con ese texto.</td></tr> }
           </tbody></table></div>

@@ -6,11 +6,12 @@ import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { Categoria, Coleccion, ColorCatalogo, GENEROS, GrupoTalla, Marca, Pagina, ProductoResumen } from '../../../core/catalogo.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { alternar, tallasDeCategoria } from './catalogo.util';
+import { BsPipe } from '../../../core/formato-bs';
 
 /** CU-18 · Gestionar productos: listado y alta con sus variantes (talla × color). Las fotos se suben en el detalle. */
 @Component({
   selector: 'app-productos',
-  imports: [FormsModule, RouterLink],
+  imports: [BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head">
@@ -36,7 +37,7 @@ import { alternar, tallasDeCategoria } from './catalogo.util';
                 <tr>
                   <td>@if (p.imagen_principal) { <img class="thumb" [src]="media + p.imagen_principal" [alt]="p.nombre" /> } @else { <span class="thumb vacia">👕</span> }</td>
                   <td><strong>{{ p.nombre }}</strong>@if (p.marca) { <div class="muted small">{{ p.marca }}</div> }</td>
-                  <td>{{ p.categoria }}</td><td>{{ p.coleccion }}</td><td class="right nowrap">Bs {{ p.precio_base }}</td><td class="right">{{ p.variantes }}</td>
+                  <td>{{ p.categoria }}</td><td>{{ p.coleccion }}</td><td class="right nowrap">{{ p.precio_base | bs }}</td><td class="right">{{ p.variantes }}</td>
                   <td><span class="badge" [class.ok]="p.activo" [class.warn]="!p.activo">{{ p.activo ? 'Activo' : 'Retirado' }}</span></td>
                   <td class="actions"><a class="btn sm" [routerLink]="['/empresa/catalogo/productos', p.id]">Editar</a></td>
                 </tr>

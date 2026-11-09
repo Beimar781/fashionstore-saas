@@ -8,13 +8,14 @@ import { mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { LocalDbService } from '../../../core/offline/local-db.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.';
 
 /** CU-11 · Checkout (entrega y facturación). El pago con tarjeta (CU-32) lo resuelve el componente compartido `app-pago-tarjeta`. */
 @Component({
   selector: 'app-checkout',
-  imports: [FormsModule, RouterLink, PagoTarjetaComponent],
+  imports: [BsPipe, FormsModule, RouterLink, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:980px">
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
@@ -63,11 +64,11 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
 
           <aside class="card pad stack resumen">
             <h2>Su pedido</h2>
-            @for (i of (pedido()?.items ?? carrito()!.items); track i.id) { <div class="row between small"><span>{{ i.cantidad }} × {{ i.producto }} · {{ i.talla }} · {{ i.color }}</span><span class="nowrap">Bs {{ i.subtotal }}</span></div> }
-            <div class="row between"><span class="muted">Subtotal</span><span>Bs {{ pedido()?.subtotal ?? carrito()!.subtotal }}</span></div>
-            @if ((pedido()?.descuento ?? carrito()!.descuento) !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− Bs {{ pedido()?.descuento ?? carrito()!.descuento }}</span></div> }
-            <div class="row between total"><strong>Total</strong><strong>Bs {{ pedido()?.total ?? carrito()!.total }}</strong></div>
-            <p class="muted small">Incluye IVA: Bs {{ pedido()?.iva_incluido ?? carrito()!.iva_incluido }}</p>
+            @for (i of (pedido()?.items ?? carrito()!.items); track i.id) { <div class="row between small"><span>{{ i.cantidad }} × {{ i.producto }} · {{ i.talla }} · {{ i.color }}</span><span class="nowrap">{{ i.subtotal | bs }}</span></div> }
+            <div class="row between"><span class="muted">Subtotal</span><span>{{ (pedido()?.subtotal ?? carrito()!.subtotal) | bs }}</span></div>
+            @if ((pedido()?.descuento ?? carrito()!.descuento) !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− {{ (pedido()?.descuento ?? carrito()!.descuento) | bs }}</span></div> }
+            <div class="row between total"><strong>Total</strong><strong>{{ (pedido()?.total ?? carrito()!.total) | bs }}</strong></div>
+            <p class="muted small">Incluye IVA: {{ (pedido()?.iva_incluido ?? carrito()!.iva_incluido) | bs }}</p>
           </aside>
         </div>
       }

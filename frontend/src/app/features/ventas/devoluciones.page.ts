@@ -10,11 +10,12 @@ import { ProductoCaja } from '../../core/caja.models';
 import { IniciarPago, ResultadoPago, TarjetaSimulada } from '../../core/compras.models';
 import { Devolucion, LineaNueva, VentaDevolvible } from '../../core/devoluciones.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-41 · Devoluciones y cambios: se busca la venta por su comprobante (RN15), se eligen las prendas y se emite la nota. Cajero y Encargado, solo su sucursal. */
 @Component({
   selector: 'app-devoluciones',
-  imports: [FormsModule, DatePipe, PagoTarjetaComponent],
+  imports: [BsPipe, FormsModule, DatePipe, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:1100px">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Ingrese el comprobante de la venta. La prenda devuelta vuelve al inventario de la sucursal.</p></div>
@@ -34,7 +35,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <tbody>
                 @for (d of recientes(); track d.id) {
                   <tr><td><strong>{{ d.numero }}</strong></td><td class="nowrap">{{ d.fecha | date: 'dd/MM HH:mm' }}</td><td>{{ d.tipo === 'CAMBIO' ? 'Cambio' : 'Devolución' }}</td><td>{{ d.comprobante }}</td>
-                    <td class="right nowrap">Bs {{ d.monto_devuelto }}</td><td class="right nowrap">Bs {{ d.reembolso }}</td><td class="actions"><button class="btn sm" (click)="imprimir(d)">Nota</button></td></tr>
+                    <td class="right nowrap">{{ d.monto_devuelto | bs }}</td><td class="right nowrap">{{ d.reembolso | bs }}</td><td class="actions"><button class="btn sm" (click)="imprimir(d)">Nota</button></td></tr>
                 }
               </tbody>
             </table>
@@ -45,7 +46,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
       @if (venta(); as v) {
         <div class="stack">
           <section class="card pad stack">
-            <div class="row between"><h2>Venta {{ v.pedido.comprobante_numero }}</h2><span class="small muted">{{ v.pedido.codigo }} · {{ v.pedido.pagado_en | date: 'dd/MM/yyyy HH:mm' }} · Bs {{ v.pedido.total }}</span></div>
+            <div class="row between"><h2>Venta {{ v.pedido.comprobante_numero }}</h2><span class="small muted">{{ v.pedido.codigo }} · {{ v.pedido.pagado_en | date: 'dd/MM/yyyy HH:mm' }} · {{ v.pedido.total | bs }}</span></div>
             <p class="small muted">Pagada con {{ nombreMedio(v.medio_pago) }}. @if (v.dentro_del_plazo) { Se acepta hasta el {{ v.vence_el | date: 'dd/MM/yyyy' }} ({{ v.plazo_dias }} días). }</p>
             @if (!v.dentro_del_plazo) { <div class="alert danger" role="alert">El plazo de {{ v.plazo_dias }} días venció el {{ v.vence_el | date: 'dd/MM/yyyy' }}: no se puede devolver ni cambiar.</div> }
             @if (v.devoluciones.length) { <p class="small">Ya registradas: @for (d of v.devoluciones; track d.id) { <span class="badge">{{ d.numero }}</span> }</p> }
@@ -82,21 +83,21 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               @if (resultados().length) {
                 <div class="row" style="flex-wrap:wrap">
                   @for (p of resultados(); track p.variante_id) {
-                    <button type="button" class="btn sm" [disabled]="p.disponible === 0" (click)="agregarNueva(p)">{{ p.producto }} · {{ p.talla }} · {{ p.color }} · Bs {{ p.precio_final }} ({{ p.disponible }})</button>
+                    <button type="button" class="btn sm" [disabled]="p.disponible === 0" (click)="agregarNueva(p)">{{ p.producto }} · {{ p.talla }} · {{ p.color }} · {{ p.precio_final | bs }} ({{ p.disponible }})</button>
                   }
                 </div>
               }
               @for (n of nuevas(); track n.variante_id) {
-                <div class="row between small"><span>{{ n.producto }} · {{ n.talla }} · {{ n.color }} · Bs {{ n.precio_final }}</span>
+                <div class="row between small"><span>{{ n.producto }} · {{ n.talla }} · {{ n.color }} · {{ n.precio_final | bs }}</span>
                   <span class="row"><input type="number" min="1" [max]="n.max" [name]="'n' + n.variante_id" [(ngModel)]="n.cantidad" style="width:4.5rem" (ngModelChange)="nuevas.set([...nuevas()])" /><button type="button" class="btn sm danger" (click)="quitarNueva(n)">✕</button></span></div>
               }
             }
 
             <div class="resumen stack">
-              <div class="row between"><span>Valor de lo devuelto</span><strong>Bs {{ devuelto().toFixed(2) }}</strong></div>
-              @if (tipo() === 'CAMBIO') { <div class="row between"><span>Valor de lo nuevo</span><strong>Bs {{ nuevo().toFixed(2) }}</strong></div> }
+              <div class="row between"><span>Valor de lo devuelto</span><strong>{{ devuelto().toFixed(2) | bs }}</strong></div>
+              @if (tipo() === 'CAMBIO') { <div class="row between"><span>Valor de lo nuevo</span><strong>{{ nuevo().toFixed(2) | bs }}</strong></div> }
               @if (diferencia() > 0) {
-                <div class="alert warn">El cliente debe pagar Bs {{ diferencia().toFixed(2) }}.</div>
+                <div class="alert warn">El cliente debe pagar {{ diferencia().toFixed(2) | bs }}.</div>
                 <div class="tabs" role="tablist">
                   <button role="tab" [class.activa]="metodoCobro() === 'EFECTIVO'" (click)="metodoCobro.set('EFECTIVO')">💵 Efectivo</button>
                   <button role="tab" [class.activa]="metodoCobro() === 'TARJETA'" (click)="metodoCobro.set('TARJETA')">💳 Tarjeta</button>
@@ -105,7 +106,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                   <div class="row"><label style="max-width:170px">Monto recibido en efectivo (Bs)<input name="mr" type="number" min="0" step="0.01" [(ngModel)]="montoRecibido" /></label></div>
                 }
               } @else if (diferencia() < 0 || (tipo() === 'DEVOLUCION' && devuelto() > 0)) {
-                <div class="alert ok">Se reembolsan Bs {{ reembolso().toFixed(2) }} con {{ nombreMedio(v.medio_pago) }}{{ v.medio_pago === 'TARJETA' ? ' (a la misma tarjeta)' : '' }}.</div>
+                <div class="alert ok">Se reembolsan {{ reembolso().toFixed(2) | bs }} con {{ nombreMedio(v.medio_pago) }}{{ v.medio_pago === 'TARJETA' ? ' (a la misma tarjeta)' : '' }}.</div>
               }
             </div>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
@@ -124,8 +125,8 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
       @if (resultado(); as r) {
         <section class="card pad stack">
           <div class="alert ok" role="status"><strong>✔ {{ r.tipo === 'CAMBIO' ? 'Cambio registrado' : 'Devolución registrada' }}</strong><br />Nota N.° <strong>{{ r.numero }}</strong> sobre el comprobante {{ r.comprobante }}.
-            @if (+r.reembolso > 0) { <br />Reembolso: Bs {{ r.reembolso }} en {{ nombreMedio(r.medio_reembolso) }}@if (r.referencia_reembolso) { (ref. {{ r.referencia_reembolso }}) }. }
-            @if (+r.cobro_adicional > 0) { <br />Diferencia cobrada: Bs {{ r.cobro_adicional }} en {{ r.tarjeta_cobro ? 'tarjeta ' + r.tarjeta_cobro : nombreMedio(r.medio_cobro) }}@if (r.cambio_entregado && +r.cambio_entregado > 0) { · cambio Bs {{ r.cambio_entregado }} }. }
+            @if (+r.reembolso > 0) { <br />Reembolso: {{ r.reembolso | bs }} en {{ nombreMedio(r.medio_reembolso) }}@if (r.referencia_reembolso) { (ref. {{ r.referencia_reembolso }}) }. }
+            @if (+r.cobro_adicional > 0) { <br />Diferencia cobrada: {{ r.cobro_adicional | bs }} en {{ r.tarjeta_cobro ? 'tarjeta ' + r.tarjeta_cobro : nombreMedio(r.medio_cobro) }}@if (r.cambio_entregado && +r.cambio_entregado > 0) { · cambio {{ r.cambio_entregado | bs }} }. }
           </div>
           <div class="row"><button class="btn primary" (click)="imprimir(r)">🖨 Imprimir nota</button><button class="btn" (click)="nueva()">Otra devolución</button></div>
         </section>

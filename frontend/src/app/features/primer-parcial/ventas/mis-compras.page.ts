@@ -9,13 +9,14 @@ import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.s
 import { LocalDbService } from '../../../core/offline/local-db.service';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { CatalogoLocalService } from '../../../core/offline/catalogo-local.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 interface CompraEnLista { id: string | number; codigo: string; fecha: string; sucursal: string; total: string; total_unidades: number; comprobante_numero: string | null; estado: string; pendiente: boolean; }
 
 /** CU-12 · Historial de compras del cliente, ordenado por fecha, con monto, sucursal y estado. */
 @Component({
   selector: 'app-mis-compras',
-  imports: [RouterLink, DatePipe],
+  imports: [BsPipe, RouterLink, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mis compras</h1><p>Sus compras digitales, con su comprobante.</p></div><a class="btn primary" routerLink="/tienda/catalogo">Seguir comprando</a></div>
@@ -30,7 +31,7 @@ interface CompraEnLista { id: string | number; codigo: string; fecha: string; su
               @for (c of compras(); track c.id) {
                 <tr>
                   <td class="nowrap">{{ c.fecha | date: 'dd/MM/yyyy HH:mm' }}</td><td><strong>{{ c.codigo }}</strong></td><td>{{ c.sucursal }}</td>
-                  <td class="right">{{ c.total_unidades }}</td><td class="right nowrap">Bs {{ c.total }}</td>
+                  <td class="right">{{ c.total_unidades }}</td><td class="right nowrap">{{ c.total | bs }}</td>
                   <td>@if (c.pendiente) { <span class="badge warn">Pendiente de sincronizar · {{ c.estado }}</span> } @else { <span class="badge" [class]="clase(c.estado)">{{ texto(c.estado) }}</span> }</td><td>{{ c.comprobante_numero ?? '—' }}</td>
                   <td class="actions">@if (!c.pendiente) { <a class="btn sm" [routerLink]="['/tienda/compras', c.id]">Ver detalle</a> }</td>
                 </tr>

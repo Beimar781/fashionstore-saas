@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { DevolucionesApi } from '../../core/api/devoluciones.api';
 import { Devolucion } from '../../core/devoluciones.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 /** CU-41 · Administrador: plazo de devolución de la empresa y consulta de todas las notas de devolución y cambio. */
 @Component({
   selector: 'app-devoluciones-admin',
-  imports: [FormsModule, DatePipe],
+  imports: [BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Plazo de devolución de la empresa y notas registradas en todas las sucursales.</p></div></div>
@@ -32,7 +33,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             <tbody>
               @for (d of notas(); track d.id) {
                 <tr><td><strong>{{ d.numero }}</strong></td><td class="nowrap">{{ d.fecha | date: 'dd/MM HH:mm' }}</td><td>{{ d.sucursal }}</td><td>{{ d.tipo === 'CAMBIO' ? 'Cambio' : 'Devolución' }}</td><td>{{ d.comprobante }}</td><td>{{ d.motivo }}</td>
-                  <td class="right nowrap">Bs {{ d.monto_devuelto }}</td><td class="right nowrap">Bs {{ d.reembolso }}</td><td class="right nowrap">Bs {{ d.cobro_adicional }}</td><td class="actions"><button class="btn sm" (click)="imprimir(d)">Nota</button></td></tr>
+                  <td class="right nowrap">{{ d.monto_devuelto | bs }}</td><td class="right nowrap">{{ d.reembolso | bs }}</td><td class="right nowrap">{{ d.cobro_adicional | bs }}</td><td class="actions"><button class="btn sm" (click)="imprimir(d)">Nota</button></td></tr>
               }
             </tbody>
           </table>

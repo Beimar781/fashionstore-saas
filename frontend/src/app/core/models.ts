@@ -17,7 +17,7 @@ export interface TokenResponse extends Sesion { access_token: string; refresh_to
 export interface LoginBody { codigo_empresa: string | null; email: string; password: string; }
 
 export interface Plan {
-  id: number; nombre: string; descripcion: string | null; precio: string | number; periodicidad: string; max_sucursales: number;
+  id: number; nombre: string; descripcion: string | null; precio: string | number; precio_texto?: string; moneda?: string; periodicidad: string; max_sucursales: number;
   reportes_ia: boolean; offline: boolean; reportes_convencionales: boolean; es_prueba: boolean; activo: boolean; empresas_suscritas: number;
 }
 export interface EmpresaExcedida { empresa_id: number; codigo: string; sucursales_activas: number; limite: number; }
@@ -29,7 +29,7 @@ export interface Empresa {
   administrador_email?: string | null;
 }
 export interface PlanResumen { id: number; nombre: string; max_sucursales: number; reportes_ia: boolean; offline: boolean; reportes_convencionales: boolean; }
-export interface Suscripcion { id: number; empresa_id: number; plan: PlanResumen; fecha_inicio: string; fecha_vencimiento: string; estado: string; forma_pago: string | null; monto: string | number | null; }
+export interface Suscripcion { id: number; empresa_id: number; plan: PlanResumen; fecha_inicio: string; fecha_vencimiento: string; estado: string; forma_pago: string | null; monto: string | number | null; monto_texto?: string | null; moneda?: string; }
 export interface SuscripcionDetalle { vigente: Suscripcion | null; historial: Suscripcion[]; uso: { sucursales_activas: number; limite: number | null }; }
 
 export interface Usuario { id: number; nombre: string; apellidos: string; email: string; rol: Rol; sucursal_id: number | null; sucursal_nombre: string | null; activo: boolean; ultimo_acceso: string | null; }

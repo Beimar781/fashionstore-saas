@@ -7,6 +7,7 @@ import { ColaOperacionesService } from '../../core/offline/cola-operaciones.serv
 import { ReservaSucursalLocal, VentaReciente } from '../../core/offline.models';
 import { EscanerComponent, hayEscaner } from '../../core/ui/escaner.component';
 import { ToastService } from '../../core/ui/toast.service';
+import { BsPipe } from '../../core/formato-bs';
 
 export const MSG_PLAZO_VENCIDO = 'El plazo de devolución de esta venta venció.';
 type Tarea = 'devolucion' | 'recepcion' | 'ajuste' | 'reservas';
@@ -15,7 +16,7 @@ type Tarea = 'devolucion' | 'recepcion' | 'ajuste' | 'reservas';
  *  Cada tarea queda en la cola con su UUID y se envía sola al recuperar la red; el servidor vuelve a validar todo al sincronizar. */
 @Component({
   selector: 'app-tareas-sucursal',
-  imports: [FormsModule, DatePipe, EscanerComponent, NgTemplateOutlet],
+  imports: [BsPipe, FormsModule, DatePipe, EscanerComponent, NgTemplateOutlet],
   template: `
     <section class="card pad stack">
       <div class="tabs" role="tablist">
@@ -33,7 +34,7 @@ type Tarea = 'devolucion' | 'recepcion' | 'ajuste' | 'reservas';
           @if (!venta()) {
             <p class="small muted">Ventas recientes de la sucursal, dentro del plazo de devolución, descargadas con el catálogo.</p>
             <label>Buscar por número de comprobante<input name="cb" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" autocomplete="off" /></label>
-            @for (v of ventasVisibles(); track v.comprobante) { <button type="button" class="btn" (click)="elegirVenta(v)">{{ v.comprobante }} · Bs {{ v.total }} · {{ v.pagado_en | date: 'dd/MM HH:mm' }}</button> }
+            @for (v of ventasVisibles(); track v.comprobante) { <button type="button" class="btn" (click)="elegirVenta(v)">{{ v.comprobante }} · {{ v.total | bs }} · {{ v.pagado_en | date: 'dd/MM HH:mm' }}</button> }
             @empty { <p class="muted small">No hay ventas descargadas.</p> }
           } @else {
             <h3>Venta {{ venta()!.comprobante }}</h3>

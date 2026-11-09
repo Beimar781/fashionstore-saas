@@ -18,14 +18,17 @@ export function resumirTurno(operaciones: OperacionLocal[]) {
 const NOMBRES: Record<string, string> = { REGISTRADA_LOCAL: 'Pendientes de enviar', ENVIADA: 'Enviadas', CONFIRMADA: 'Confirmadas', RECHAZADA: 'Rechazadas', EN_CONFLICTO: 'En conflicto' };
 
 /** B2 · «Resumen de mi turno» (Cajero y Encargado): solo lectura sobre los datos locales, funciona sin conexión; se imprime o se guarda como PDF desde el navegador. */
+import { BsPipe } from '../../core/formato-bs';
+
 @Component({
   selector: 'app-resumen-turno',
+  imports: [BsPipe],
   template: `
     <div class="card pad stack" id="resumen-turno">
       <div class="row between"><h3>Resumen de mi turno</h3><button class="btn sm primary" (click)="imprimir()">Imprimir / Guardar PDF</button></div>
       @let r = resumen();
-      <p><strong>{{ r.ventas }}</strong> venta(s) de contado · Total vendido <strong>Bs {{ r.total.toFixed(2) }}</strong></p>
-      <p>Efectivo recibido <strong>Bs {{ r.recibido.toFixed(2) }}</strong> · Cambio entregado <strong>Bs {{ r.cambio.toFixed(2) }}</strong></p>
+      <p><strong>{{ r.ventas }}</strong> venta(s) de contado · Total vendido <strong>{{ r.total | bs }}</strong></p>
+      <p>Efectivo recibido <strong>{{ r.recibido | bs }}</strong> · Cambio entregado <strong>{{ r.cambio | bs }}</strong></p>
       <h4>Por estado de sincronización</h4>
       @for (e of estados; track e) { <div class="row between small"><span>{{ nombres[e] }}</span><strong>{{ r.por_estado[e] }}</strong></div> }
       <p class="muted small">Datos de este dispositivo. Generado por FashionStore.</p>

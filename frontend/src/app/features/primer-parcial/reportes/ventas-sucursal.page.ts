@@ -5,13 +5,14 @@ import { CajaApi } from '../../../core/api/caja.api';
 import { ResumenDia, Ticket } from '../../../core/caja.models';
 import { Pedido } from '../../../core/compras.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { BsPipe } from '../../../core/formato-bs';
 
 const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 /** CU-27 · Ventas de la sucursal: resumen monetario y cierre de caja del día, y los tickets con su detalle. Solo la sucursal del Encargado. */
 @Component({
   selector: 'app-ventas-sucursal',
-  imports: [FormsModule, DatePipe],
+  imports: [BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Ventas de la sucursal</h1><p>Resumen del día, cierre de caja y detalle de cada ticket de {{ resumen()?.sucursal ?? 'su sucursal' }}.</p></div></div>
@@ -26,24 +27,24 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
 
       @if (resumen(); as r) {
         <div class="grid cols-3" style="margin-bottom:1rem">
-          <div class="card pad"><div class="small muted">Total vendido</div><div class="cifra">Bs {{ r.total_vendido }}</div><div class="small muted">{{ r.ventas }} venta(s) · {{ r.unidades }} prenda(s) · ticket promedio Bs {{ r.ticket_promedio }}</div>@if (r.devoluciones.notas) { <div class="small"><strong>Ventas netas Bs {{ r.ventas_netas }}</strong> (descuenta devoluciones y cambios)</div> }</div>
-          <div class="card pad"><div class="small muted">Ventas en caja (POS)</div><div class="cifra">Bs {{ r.presencial.total }}</div><div class="small muted">{{ r.presencial.ventas }} venta(s) · {{ r.presencial.unidades }} prenda(s)</div></div>
-          <div class="card pad"><div class="small muted">Pedidos online (retiro o despacho)</div><div class="cifra">Bs {{ r.digital.total }}</div><div class="small muted">{{ r.digital.ventas }} pedido(s) · {{ r.digital.unidades }} prenda(s)</div></div>
+          <div class="card pad"><div class="small muted">Total vendido</div><div class="cifra">{{ r.total_vendido | bs }}</div><div class="small muted">{{ r.ventas }} venta(s) · {{ r.unidades }} prenda(s) · ticket promedio {{ r.ticket_promedio | bs }}</div>@if (r.devoluciones.notas) { <div class="small"><strong>Ventas netas {{ r.ventas_netas | bs }}</strong> (descuenta devoluciones y cambios)</div> }</div>
+          <div class="card pad"><div class="small muted">Ventas en caja (POS)</div><div class="cifra">{{ r.presencial.total | bs }}</div><div class="small muted">{{ r.presencial.ventas }} venta(s) · {{ r.presencial.unidades }} prenda(s)</div></div>
+          <div class="card pad"><div class="small muted">Pedidos online (retiro o despacho)</div><div class="cifra">{{ r.digital.total | bs }}</div><div class="small muted">{{ r.digital.ventas }} pedido(s) · {{ r.digital.unidades }} prenda(s)</div></div>
         </div>
         <div class="grid cols-2" style="margin-bottom:1rem">
           <section class="card pad stack">
             <h3>Cierre de caja</h3>
             @for (c of r.cierre_de_caja; track c.metodo) {
-              <div class="row between small"><span><strong>{{ nombreMetodo(c.metodo) }}</strong> · {{ c.cobros }} cobro(s)@if (c.recibido) { · recibido Bs {{ c.recibido }}, cambio Bs {{ c.cambio }} }</span><strong>Bs {{ c.total }}</strong></div>
+              <div class="row between small"><span><strong>{{ nombreMetodo(c.metodo) }}</strong> · {{ c.cobros }} cobro(s)@if (c.recibido) { · recibido {{ c.recibido | bs }}, cambio {{ c.cambio | bs }} }</span><strong>{{ c.total | bs }}</strong></div>
             } @empty { <p class="muted small">Sin cobros en el día.</p> }
-            <div class="row between total"><strong>Efectivo que debe haber en caja</strong><strong>Bs {{ r.efectivo_en_caja }}</strong></div>
+            <div class="row between total"><strong>Efectivo que debe haber en caja</strong><strong>{{ r.efectivo_en_caja | bs }}</strong></div>
           </section>
           <section class="card pad stack"><h3>Devoluciones y cambios</h3>
             @if (r.devoluciones.notas) {
-              <div class="row between small"><span>{{ r.devoluciones.notas }} nota(s) · prendas devueltas</span><strong>Bs {{ r.devoluciones.devuelto }}</strong></div>
-              <div class="row between small"><span>Entregado en cambios</span><strong>Bs {{ r.devoluciones.entregado_en_cambios }}</strong></div>
-              <div class="row between small"><span>Reembolsado en efectivo / tarjeta</span><strong>Bs {{ r.devoluciones.reembolsado_efectivo }} / {{ r.devoluciones.reembolsado_tarjeta }}</strong></div>
-              <div class="row between small"><span>Diferencias cobradas (efectivo / tarjeta)</span><strong>Bs {{ r.devoluciones.cobrado_efectivo }} / {{ r.devoluciones.cobrado_tarjeta }}</strong></div>
+              <div class="row between small"><span>{{ r.devoluciones.notas }} nota(s) · prendas devueltas</span><strong>{{ r.devoluciones.devuelto | bs }}</strong></div>
+              <div class="row between small"><span>Entregado en cambios</span><strong>{{ r.devoluciones.entregado_en_cambios | bs }}</strong></div>
+              <div class="row between small"><span>Reembolsado en efectivo / tarjeta</span><strong>{{ r.devoluciones.reembolsado_efectivo | bs }} / {{ r.devoluciones.reembolsado_tarjeta }}</strong></div>
+              <div class="row between small"><span>Diferencias cobradas (efectivo / tarjeta)</span><strong>{{ r.devoluciones.cobrado_efectivo | bs }} / {{ r.devoluciones.cobrado_tarjeta }}</strong></div>
             } @else { <p class="muted small">Sin devoluciones ni cambios en el día.</p> }
           </section>
           <section class="card pad stack"><h3>Reservas</h3><div class="cifra">{{ r.reservas_completadas }}</div><p class="small muted">reserva(s) completada(s) en el día</p></section>
@@ -58,10 +59,10 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
               @for (t of tickets(); track t.id) {
                 <tr><td class="nowrap">{{ t.fecha | date: 'dd/MM HH:mm' }}</td><td><strong>{{ t.comprobante_numero }}</strong>@if (t.comprobante_tipo === 'INTERNO_TEMPORAL') { <span class="badge warn">interno</span> }</td>
                   <td>{{ t.canal === 'PRESENCIAL' ? 'Caja' : 'Online' }}</td><td>{{ t.cliente ?? '—' }}</td><td>{{ t.vendedor ?? '—' }}</td><td>{{ nombreMetodo(t.metodo) }}</td>
-                  <td class="right">{{ t.unidades }}</td><td class="right nowrap">Bs {{ t.total }}</td><td class="actions"><button class="btn sm" (click)="ver(t)">Ver ticket</button></td></tr>
+                  <td class="right">{{ t.unidades }}</td><td class="right nowrap">{{ t.total | bs }}</td><td class="actions"><button class="btn sm" (click)="ver(t)">Ver ticket</button></td></tr>
               }
             </tbody>
-            <tfoot><tr><td colspan="7" class="right muted">Total del listado</td><td class="right nowrap"><strong>Bs {{ total() }}</strong></td><td></td></tr></tfoot>
+            <tfoot><tr><td colspan="7" class="right muted">Total del listado</td><td class="right nowrap"><strong>{{ total() | bs }}</strong></td><td></td></tr></tfoot>
           </table>
         }
       </div>
@@ -77,8 +78,8 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
               <thead><tr><th>Prenda</th><th class="right">Cant.</th><th class="right">Precio</th><th class="right">Subtotal</th></tr></thead>
               <tbody>@for (i of p.items; track i.id) { <tr><td>{{ i.producto }}<div class="small muted">Talla {{ i.talla }} · {{ i.color }} · {{ i.sku }}</div></td><td class="right">{{ i.cantidad }}</td><td class="right">{{ i.precio_final }}</td><td class="right">{{ i.subtotal }}</td></tr> }</tbody>
             </table></div>
-            <div class="row between"><span class="muted small">IVA incluido Bs {{ p.iva_incluido }}@if (p.descuento !== '0.00') { · descuento Bs {{ p.descuento }} }</span><strong>Total Bs {{ p.total }}</strong></div>
-            @for (g of p.pagos; track g.id) { <p class="small">Cobro: {{ nombreMetodo(g.metodo) }}@if (g.tarjeta_ultimos4) { {{ g.tarjeta_marca }} ****{{ g.tarjeta_ultimos4 }} }@if (g.monto_recibido) { · recibido Bs {{ g.monto_recibido }} · cambio Bs {{ g.cambio }} } · {{ g.estado }}</p> }
+            <div class="row between"><span class="muted small">IVA incluido {{ p.iva_incluido | bs }}@if (p.descuento !== '0.00') { · descuento {{ p.descuento | bs }} }</span><strong>Total {{ p.total | bs }}</strong></div>
+            @for (g of p.pagos; track g.id) { <p class="small">Cobro: {{ nombreMetodo(g.metodo) }}@if (g.tarjeta_ultimos4) { {{ g.tarjeta_marca }} ****{{ g.tarjeta_ultimos4 }} }@if (g.monto_recibido) { · recibido {{ g.monto_recibido | bs }} · cambio {{ g.cambio | bs }} } · {{ g.estado }}</p> }
           </div>
           <footer><button class="btn" (click)="detalle.set(null)">Cerrar</button></footer>
         </div>

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Prenda } from '../catalogo.models';
+import { formatoBs } from '../formato-bs';
 import { ProductoLocal } from '../offline.models';
 
 /** Respaldo por reglas del CU-07, equivalente a la intención interpretada por el backend. */
@@ -31,7 +32,7 @@ export class AsistenteLocalService {
       const v = p.variantes.find((x) => x.promocion) ?? p.variantes[0];
       return { id: p.id, publico_id: p.publico_id ?? String(p.id), nombre: p.nombre, slug: p.slug ?? String(p.id), categoria: p.categoria, marca: p.marca ?? null, genero: p.genero as Prenda['genero'], coleccion: p.coleccion ?? '', temporada: p.temporada ?? '', precio: v?.precio ?? '0', precio_final: v?.precio_final ?? '0', promocion: v?.promocion ?? null, imagen: p.imagen, colores: [], tallas: [...new Set(p.variantes.map((x) => x.talla))], disponible: true };
     });
-    const detalle = [categorias, colores].flat().concat(talla ? [`talla ${talla}`] : []).concat(max ? [`hasta Bs ${max}`] : []).concat(min ? [`desde Bs ${min}`] : []).concat(ocasion ? [ocasion] : []).join(', ');
+    const detalle = [categorias, colores].flat().concat(talla ? [`talla ${talla}`] : []).concat(max ? [`hasta ${formatoBs(max)}`] : []).concat(min ? [`desde ${formatoBs(min)}`] : []).concat(ocasion ? [ocasion] : []).join(', ');
     const respuesta = tarjetas.length ? `${outfit ? 'Le armé un conjunto' : `Encontré ${tarjetas.length} prenda(s) disponible(s)`}${detalle ? ` (${detalle})` : ''}${outfit ? `: ${tarjetas.map((p) => p.nombre).join(', ')}.` : '.'}${relajados.length ? ` Amplié la búsqueda sin el filtro de ${relajados.join(', ')}.` : ''}` : ofertas ? 'No encontré ofertas con esas características.' : 'No encontré prendas con esas características.';
     return { respuesta, productos: tarjetas, sugerencias: tarjetas.length ? ['Muéstreme algo más económico', '¿Lo tiene en otro color?', ofertas ? 'Arme un outfit con esto' : 'Muéstreme las ofertas'] : ['Quiero ropa formal', 'Arme un outfit casual'] };
   }

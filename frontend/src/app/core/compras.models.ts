@@ -24,7 +24,7 @@ export interface CompraResumen { id: number; codigo: string; fecha: string; sucu
 export interface Historial { compras: CompraResumen[]; mensaje: string | null; }
 
 export interface TarjetaPrueba { numero: string; marca: string; resultado: string; }
-export interface ConfigPago { modo: 'stripe' | 'simulado'; publishable_key: string | null; tarjetas_prueba: TarjetaPrueba[]; moneda_pasarela: string; tasa_bob_por_usd: number; }
+export interface ConfigPago { modo: 'stripe' | 'simulado'; publishable_key: string | null; tarjetas_prueba: TarjetaPrueba[]; moneda_pasarela: string; }
 export interface TarjetaGuardada { id: number; marca: string; ultimos4: string; exp_mes: number; exp_anio: number; }
 export interface IniciarPago {
   pago_id: number; modo: 'stripe' | 'simulado'; publishable_key: string | null; client_secret: string | null; monto: string; moneda: string;
