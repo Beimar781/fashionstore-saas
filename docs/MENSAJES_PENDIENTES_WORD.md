@@ -536,6 +536,7 @@ y en el CU-32, el aviso al cliente cuando el stock se agota durante el pago.
 | Generar reporte con IA sin conexión | «Generar un reporte con IA necesita Internet.» | — (solo en la web) | Pendiente |
 | Devolver fuera de plazo (validación local) | «El plazo de devolución de esta venta venció.» | — (se valida otra vez al sincronizar) | Pendiente |
 | Propuesta guardada sin conexión | «Propuesta guardada en este dispositivo. Se enviará sola al recuperar la conexión.» | — (solo en la app) | Pendiente |
+| Pagar con tarjeta un monto menor al mínimo | «El monto mínimo para pagar con tarjeta es Bs 3,50.» | 422 | Pendiente |
 
 ## Para el Word
 
@@ -716,6 +717,8 @@ CU-37 a CU-40 y los casos de uso del Cliente: el tipo de operación `CANCELAR_RE
 - **Atención de reservas sin conexión (B4):** operaciones `PREPARAR_RESERVA`, `PRENDA_NO_ENCONTRADA` y `ATENDER_RESERVA`, solo Encargado de la sucursal; reutilizan CU-24/25 con `commit=False`. La descarga del catálogo trae `reservas_sucursal` y `ventas_recientes` (con `plazo_devolucion_dias`).
 - **Propuesta del proveedor sin conexión (B9):** operación `PROPUESTA_PROVEEDOR` (rol Proveedor, sin sucursal); reutiliza la creación de propuestas.
 - **Reportes con IA por voz (web, Chrome):** el Administrador puede dictar la petición, conversar con el sistema (pide, genera, el sistema lee el reporte y vuelve a escuchar; órdenes «repite» y «terminar») y escuchar cualquier reporte con «Escuchar». Usa `SpeechRecognition` y `speechSynthesis` del navegador; no cambia la API ni la base de datos. El reconocimiento de voz de Chrome necesita Internet.
+- **Moneda única (decisión):** el sistema opera y cobra solo en bolivianos (BOB), sin conversión de moneda ni tipo de cambio. El PaymentIntent de Stripe (modo prueba) se crea con `currency="bob"` y el monto en centavos (total × 100, redondeado); la descripción y la metadata dicen «Pedido PED-xxx · Bs X». Se eliminó la variable `TASA_BOB_POR_USD` (no hay variables nuevas para Railway). Una sola función de formato para todo el backend: «Bs 1.250,50» (`app/core/dinero.py`), usada en comprobante, nota de devolución y reportes con IA. Los planes devuelven además `moneda` y `precio_texto` («Bs 150 / mes»); las suscripciones, `moneda` y `monto_texto`. No cambió ningún campo que ya devolvía la API.
+- **Pago con tarjeta sin `payment_method_types`:** Stripe (API 2026-10-28) ya no lo acepta; se usa `automatic_payment_methods` con `allow_redirects: never`. El error real de Stripe queda en el log (`logger.exception`) y el usuario sigue viendo el mensaje en español.
 - **Escaneo (B7):** móvil con `google_mlkit_barcode_scanning` y `camera`; web con `BarcodeDetector` si el navegador lo trae. La imagen no sale del dispositivo.
 - **Sincronización en segundo plano (B10):** `sw-sync.js` (Background Sync del navegador) despierta la cola; sin soporte, evento `online` y reintento con espera creciente.
 - **Librerías nuevas:** web `jspdf` (comprobante provisional); móvil `google_mlkit_barcode_scanning`, `camera`, `connectivity_plus`, `pdf`, `open_filex`, `path_provider`.
