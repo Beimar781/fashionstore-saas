@@ -21,7 +21,24 @@ export class CatalogoLocalService {
   readonly descargando = signal(false);
   readonly hayCatalogo = computed(() => this.productos().length > 0);
 
-  constructor() { void this.cargar(); }
+  /** Horas después de las cuales los datos descargados se consideran viejos y se actualizan solos con conexión (§5.3). */
+  static readonly HORAS_VIGENCIA = 6;
+  readonly vencido = computed(() => {
+    const m = this.meta();
+    return !!m && Date.now() - new Date(m.generado_en).getTime() > CatalogoLocalService.HORAS_VIGENCIA * 3600 * 1000;
+  });
+
+  constructor() {
+    void this.cargar().then(() => this.actualizarSiVencido());
+    window.addEventListener('online', () => void this.actualizarSiVencido());
+    setInterval(() => void this.actualizarSiVencido(), 10 * 60 * 1000);
+  }
+
+  /** Con conexión, si el catálogo descargado tiene más de 6 horas se actualiza solo, en segundo plano. */
+  async actualizarSiVencido(): Promise<void> {
+    if (!navigator.onLine || !this.auth.autenticado() || !this.hayCatalogo() || !this.vencido() || this.descargando()) return;
+    try { await this.descargar(); } catch { /* sin respuesta del servidor: se vuelve a intentar en el siguiente ciclo */ }
+  }
 
   async cargar() {
     this.productos.set(await this.db.leerCatalogo());

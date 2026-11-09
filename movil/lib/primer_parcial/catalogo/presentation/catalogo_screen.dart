@@ -289,7 +289,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               color: const Color(0xFFFBEFD9),
               padding: const EdgeInsets.all(10),
               child: Text(off.hayCatalogo
-                  ? 'Sin conexión · Datos al ${fechaCorta(off.catalogoGeneradoEn)}'
+                  ? 'Sin conexión · Datos al ${fechaCorta(off.catalogoGeneradoEn)}; pueden estar desactualizados'
                   : 'Sin conexión · Descargue el catálogo desde Perfil → Modo sin conexión.')),
         if (_error != null)
           Padding(

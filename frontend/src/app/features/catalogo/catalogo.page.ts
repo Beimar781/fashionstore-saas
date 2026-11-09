@@ -18,7 +18,8 @@ import { ConnectivityService } from '../../core/offline/connectivity.service';
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Catálogo</h1><p>Encuentre su próxima prenda y revise la disponibilidad por sucursal.</p></div></div>
-      @if (!red.online() && local.meta(); as m) { <div class="alert warn small" role="status">Sin conexión · datos al {{ m.generado_en | date: 'dd/MM HH:mm' }}. Precios, promociones y stock pueden haber cambiado.</div> }
+      @if (!red.online() && local.meta(); as m) { <div class="alert warn small" role="status">Sin conexión · Datos al {{ m.generado_en | date: 'dd/MM HH:mm' }}; pueden estar desactualizados. Precios, promociones y stock pueden haber cambiado.</div> }
+      @if (red.online() && local.vencido() && local.meta(); as m) { <div class="alert warn small" role="status">Datos descargados al {{ m.generado_en | date: 'dd/MM HH:mm' }}; pueden estar desactualizados. <button type="button" class="btn sm" (click)="local.descargar()" [disabled]="local.descargando()">{{ local.descargando() ? 'Actualizando…' : 'Actualizar ahora' }}</button></div> }
 
       <form class="card pad stack" style="margin-bottom:1.1rem" (ngSubmit)="buscar()">
         <div class="row">

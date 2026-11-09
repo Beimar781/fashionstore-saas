@@ -1,3 +1,4 @@
+import { CatalogoLocalService } from '../core/offline/catalogo-local.service';
 import { InstalarAppComponent } from '../core/ui/instalar-app.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -148,6 +149,7 @@ export class ShellComponent {
   readonly net = inject(ConnectivityService);
   readonly borrador = inject(ReservaBorradorService);
   readonly carrito = inject(CarritoEstadoService);
+  private readonly catalogoLocal = inject(CatalogoLocalService);  // al crearse, actualiza solo el catálogo descargado si tiene más de 6 horas
   readonly cola = inject(ColaOperacionesService);  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);

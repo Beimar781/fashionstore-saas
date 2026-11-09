@@ -42,6 +42,7 @@ class OfflineRepository {
   }
 
   Future<void> _descargarVestidor(List productos) async {
+    if (productos.isEmpty) return;
     final db = await _db;
     final dir = Directory(
         p.join((await getApplicationSupportDirectory()).path, 'vestidor'));

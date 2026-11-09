@@ -52,6 +52,7 @@ class OfflineController extends ChangeNotifier {
       _red = _conectividad?.listen(_alCambiarLaRed);
       _reintento = Timer.periodic(const Duration(seconds: 30), (_) {
         if (pendientes.isNotEmpty) sincronizar();
+        actualizarSiVencido();
       });
       Future.microtask(() async {
         await recargar();
@@ -67,6 +68,7 @@ class OfflineController extends ChangeNotifier {
     enLinea = hayRed;
     notifyListeners();
     if (hayRed && pendientes.isNotEmpty) sincronizar();
+    if (hayRed) actualizarSiVencido();
   }
 
   Future<void> recargar() async {
@@ -77,6 +79,20 @@ class OfflineController extends ChangeNotifier {
     catalogoGeneradoEn = await _repo.catalogoGeneradoEn();
     ultimaSync = await _repo.ultimaSincronizacion();
     notifyListeners();
+  }
+
+  /// Horas después de las cuales el catálogo descargado se actualiza solo con conexión (§5.3).
+  static const horasVigencia = 6;
+
+  bool get catalogoVencido {
+    final fecha = DateTime.tryParse(catalogoGeneradoEn ?? '');
+    return fecha != null && DateTime.now().difference(fecha).inHours >= horasVigencia;
+  }
+
+  /// Con conexión, si el catálogo tiene más de 6 horas se descarga de nuevo en segundo plano; «Actualizar ahora» hace lo mismo a mano.
+  Future<void> actualizarSiVencido() async {
+    if (!habilitado || !enLinea || descargando || !hayCatalogo || !catalogoVencido) return;
+    await descargarCatalogo();
   }
 
   /// CU-37: descarga el catálogo con conexión.

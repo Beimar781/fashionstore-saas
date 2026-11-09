@@ -26,8 +26,10 @@ class ImagenPrenda extends StatelessWidget {
 
 /// Descarga también las fotos que el Cliente todavía no abrió, para que estén disponibles offline.
 Future<void> precalentarImagenes(Iterable<String?> rutas) async {
+  final pendientes = rutas.whereType<String>().where((r) => r.isNotEmpty).toList();
+  if (pendientes.isEmpty) return;
   final cache = DefaultCacheManager();
-  for (final ruta in rutas.whereType<String>().where((r) => r.isNotEmpty)) {
+  for (final ruta in pendientes) {
     final url = urlImagen(ruta);
     if (url == null) continue;
     try {
