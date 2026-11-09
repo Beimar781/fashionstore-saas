@@ -7,11 +7,15 @@ import '../data/modelos.dart';
 import '../data/offline_repository.dart';
 
 /// Estado del modo sin conexión para la capa de presentación (CU-37 a CU-39).
-/// Cuando hay sesión, sincroniza al abrir la app y reintenta cada 30 segundos mientras queden operaciones pendientes (RNF06).
+/// Cuando hay sesión, sincroniza al abrir la app, en el instante en que vuelve la red y, como respaldo, cada 30 segundos mientras queden operaciones pendientes (RNF06).
 class OfflineController extends ChangeNotifier {
-  OfflineController(this._repo);
+  /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
+  OfflineController(this._repo, {Stream<bool>? conectividad})
+      : _conectividad = conectividad;
 
   final OfflineRepository _repo;
+  final Stream<bool>? _conectividad;
+  StreamSubscription<bool>? _red;
 
   Sesion? _sesion;
   Timer? _reintento;
@@ -26,10 +30,15 @@ class OfflineController extends ChangeNotifier {
 
   OfflineRepository get repo => _repo;
   Sesion? get sesion => _sesion;
-  List<OperacionLocal> get pendientes => operaciones.where((o) => o.pendiente).toList();
-  List<OperacionLocal> get enConflicto => operaciones.where((o) => o.estado == Estado.enConflicto).toList();
+  List<OperacionLocal> get pendientes =>
+      operaciones.where((o) => o.pendiente).toList();
+  List<OperacionLocal> get enConflicto =>
+      operaciones.where((o) => o.estado == Estado.enConflicto).toList();
   bool get esCliente => _sesion?.rol == 'Cliente';
-  bool get habilitado => _sesion != null && _sesion!.offlineHabilitado && ['Cliente', 'Cajero', 'Encargado'].contains(_sesion!.rol);
+  bool get habilitado =>
+      _sesion != null &&
+      _sesion!.offlineHabilitado &&
+      ['Cliente', 'Cajero', 'Encargado'].contains(_sesion!.rol);
 
   /// Lo llama el proveedor cada vez que cambia la sesión (inicio y cierre de sesión).
   void usarSesion(Sesion? s) {
@@ -37,8 +46,10 @@ class OfflineController extends ChangeNotifier {
     _sesion = s;
     if (!cambio) return;
     _reintento?.cancel();
+    _red?.cancel();
     operaciones = [];
     if (habilitado) {
+      _red = _conectividad?.listen(_alCambiarLaRed);
       _reintento = Timer.periodic(const Duration(seconds: 30), (_) {
         if (pendientes.isNotEmpty) sincronizar();
       });
@@ -49,6 +60,13 @@ class OfflineController extends ChangeNotifier {
     } else {
       notifyListeners();
     }
+  }
+
+  /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
+  void _alCambiarLaRed(bool hayRed) {
+    enLinea = hayRed;
+    notifyListeners();
+    if (hayRed && pendientes.isNotEmpty) sincronizar();
   }
 
   Future<void> recargar() async {
@@ -78,10 +96,21 @@ class OfflineController extends ChangeNotifier {
   }
 
   /// RF19: registra una operación en el dispositivo y, si hay conexión, la sincroniza enseguida.
-  Future<void> registrar({required String tipo, required Map<String, dynamic> payload, required int sucursalId, required String resumen}) async {
+  Future<void> registrar(
+      {required String tipo,
+      required Map<String, dynamic> payload,
+      required int sucursalId,
+      required String resumen}) async {
     final s = _sesion!;
-    await _repo.registrar(tipo: tipo, payload: payload, sucursalId: sucursalId, resumen: resumen, usuarioId: s.usuarioId, empresaId: s.empresaId!);
-    await _repo.comprometerStock((payload['items'] as List).cast<Map<String, dynamic>>(), sucursalId);
+    await _repo.registrar(
+        tipo: tipo,
+        payload: payload,
+        sucursalId: sucursalId,
+        resumen: resumen,
+        usuarioId: s.usuarioId,
+        empresaId: s.empresaId!);
+    await _repo.comprometerStock(
+        (payload['items'] as List).cast<Map<String, dynamic>>(), sucursalId);
     await recargar();
     sincronizar();
   }
@@ -116,6 +145,7 @@ class OfflineController extends ChangeNotifier {
   @override
   void dispose() {
     _reintento?.cancel();
+    _red?.cancel();
     super.dispose();
   }
 }

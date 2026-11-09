@@ -23,6 +23,7 @@ dependencies:
   open_filex: ^5.0.0
   cached_network_image: ^4.0.6
   flutter_cache_manager: ^3.5.0
+  connectivity_plus: ^7.3.2
 
 dev_dependencies:
   flutter_test:

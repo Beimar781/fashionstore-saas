@@ -669,7 +669,7 @@ CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con
 - **Campos nuevos de `COMPRA`:** `tipo_entrega` (`RETIRO` o `DELIVERY`), `direccion_entrega` (obligatoria con `DELIVERY`: «Ingrese la dirección de entrega.»), `nit_ci` y `razon_social`; la sincronización los pasa al mismo servicio del checkout en línea. La tarjeta no se cobra sin conexión: el pedido queda por pagar y se paga con Stripe desde «Mis compras».
 - **Carrito sin conexión:** se guarda en el dispositivo y, al volver la red, `PUT /carrito/fusionar` lo une con el del servidor sin duplicar (idempotente por `fusion_id`) y revalida existencias: lo agotado se avisa y se quita. Migración 0016 (`carritos.ultima_fusion_id`).
 - **Lectura sin conexión:** catálogo con la fecha de la descarga, imágenes y PNG del vestidor guardados, últimas compras y reservas, comprobantes ya abiertos y avisos (marcar como leído sin red se envía luego). El asistente responde con reglas locales sobre el catálogo descargado, marcado «Respuesta local, sin IA (sin conexión)».
-- **Sincronización:** sola al volver la red (web: evento `online` y reintentos; móvil: reintento periódico) y con botón manual; contador de pendientes y franja «Sin conexión» visibles en la web y en el móvil.
+- **Sincronización:** sola al volver la red (web: evento `online` y reintentos; móvil: señal de red instantánea con `connectivity_plus` y reintento cada 30 s como respaldo) y con botón manual; contador de pendientes y franja «Sin conexión» visibles en la web y en el móvil.
 
 ### Mensajes nuevos
 

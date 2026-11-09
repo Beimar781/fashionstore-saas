@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'core/network/conectividad.dart';
 import 'core/ui/tema.dart';
 import 'core/ui/area_segura.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -51,7 +52,8 @@ class FashionStoreApp extends StatelessWidget {
               ..iniciar()),
         // el modo sin conexión sigue a la sesión: al iniciar sesión sincroniza lo pendiente y reintenta mientras haya operaciones sin enviar
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
-          create: (_) => OfflineController(OfflineRepository(authRepo.api))
+          create: (_) => OfflineController(OfflineRepository(authRepo.api),
+              conectividad: conectividadDelDispositivo())
             ..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(
                 SnackBar(
                     content: Text(texto),
