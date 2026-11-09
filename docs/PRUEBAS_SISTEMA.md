@@ -208,6 +208,8 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 14.20 | Web | Proveedor | Sin conexión, «Proponer producto». | «Propuesta guardada en este dispositivo…»; al volver la red llega a la administración. | ☐ |
 | 14.21 | Web | Cajero | Venta de contado sin conexión → Operaciones → botón «Comprobante LOC-…». | Se descarga un PDF provisional con el detalle, el total y el cambio. | ☐ |
 | 14.22 | Web | Administrador | Sin conexión, «Reportes con IA» → «Generar». | «Generar un reporte con IA necesita Internet.» La franja superior muestra «Datos al…». | ☐ |
+| 14.24 | Web (Chrome) | Administrador EMP-B | «Reportes con IA» → «🗣 Conversar», permitir el micrófono y decir «ventas de este mes». Después decir «repite» y por último «terminar». | La app saluda en voz, genera el reporte, lo lee en voz alta, vuelve a escuchar; «repite» lo lee otra vez y «terminar» cierra la conversación. Tres silencios seguidos también la cierran. | ☐ |
+| 14.25 | Web (Chrome) | Administrador | Con un reporte en pantalla, tocar «🔊 Escuchar» y luego «⏹ Detener lectura». | Lee el reporte sin símbolos de formato («bolivianos» en lugar de «Bs»); se detiene al instante. | ☐ |
 | 14.23 | Web | Cajero | Chrome: registrar una venta sin conexión, cambiar a otra pestaña y volver la red. | La cola se envía sola (Background Sync). | ☐ |
 
 ## Diferencias conocidas entre la web y el móvil
