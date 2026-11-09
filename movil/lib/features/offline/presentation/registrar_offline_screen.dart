@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/modelos.dart';
+import 'escaner_screen.dart';
 import 'offline_controller.dart';
 
 class _Linea {
@@ -90,6 +91,18 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     final r =
         await context.read<OfflineController>().repo.buscar(q, limite: 12);
     if (mounted) setState(() => _resultados = r);
+  }
+
+  /// B7: escanea el código de barras o QR y agrega la prenda a la operación (si el código no es único, se muestran las coincidencias).
+  Future<void> _escanear() async {
+    final codigo = await escanearCodigo(context);
+    if (codigo == null || !mounted) return;
+    _texto.text = codigo;
+    final r = await context.read<OfflineController>().repo.buscar(codigo, limite: 12);
+    if (!mounted) return;
+    setState(() => _resultados = r);
+    if (r.length == 1 && r.first.variante.stockEn(_sucursalId) > 0) _agregar(r.first);
+    if (r.isEmpty) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay una prenda con ese código en el catálogo guardado.')));
   }
 
   void _agregar(PrendaLocal p) {
@@ -358,9 +371,10 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       TextField(
           controller: _texto,
           onChanged: _buscar,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
               labelText: 'Buscar prenda (nombre, SKU o código de barras)',
-              prefixIcon: Icon(Icons.search))),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(tooltip: 'Escanear código', icon: const Icon(Icons.qr_code_scanner), onPressed: _escanear))),
       Wrap(spacing: 6, children: [
         for (final r in _resultados)
           ActionChip(

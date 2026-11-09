@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/modelos.dart';
+import 'escaner_screen.dart';
 import 'modo_offline_screen.dart' show fechaCorta;
 import 'offline_controller.dart';
 
@@ -154,7 +155,24 @@ class _BuscadorPrendaState extends State<_BuscadorPrenda> {
 
   @override
   Widget build(BuildContext context) => Column(children: [
-        TextField(controller: _texto, onChanged: (_) => _buscar(), decoration: const InputDecoration(labelText: 'Buscar por nombre, SKU o código de barras', prefixIcon: Icon(Icons.search))),
+        TextField(
+          controller: _texto,
+          onChanged: (_) => _buscar(),
+          decoration: InputDecoration(
+            labelText: 'Buscar por nombre, SKU o código de barras',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              tooltip: 'Escanear código',
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: () async {
+                final codigo = await escanearCodigo(context);
+                if (codigo == null) return;
+                _texto.text = codigo;
+                await _buscar();
+              },
+            ),
+          ),
+        ),
         for (final r in _resultados)
           ListTile(dense: true, title: Text(r.producto.nombre), subtitle: Text('${r.variante.talla} · ${r.variante.color} · ${r.variante.sku}'), onTap: () => widget.alElegir(r)),
       ]);
