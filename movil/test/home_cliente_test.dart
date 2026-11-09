@@ -15,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
+// ignore: depend_on_referenced_packages
+import 'package:sqflite_common/utils/utils.dart' as utilidades_sqflite;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Sesion _sesion({bool ia = false, bool restringido = false}) => Sesion({
@@ -110,6 +112,9 @@ Future<void> _cerrar(WidgetTester tester) async {
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
+    // ignore: deprecated_member_use
+    utilidades_sqflite.lockWarningDuration =
+        null; // sin el aviso de bloqueo de 10 s, que dejaría temporizadores pendientes en la prueba
     databaseFactory =
         databaseFactoryFfi; // las pantallas guardan lo visto en SQLite; aquí solo importa que no falle
   });
@@ -157,36 +162,38 @@ void main() {
     await _cerrar(tester);
   });
 
-  testWidgets('La campana y el carrito muestran su número y lo ocultan en cero',
-      (tester) async {
+  testWidgets('La campana y el carrito muestran su número', (tester) async {
     await _montar(tester, _sesion(), avisos: [
       AvisoPush(id: 1, titulo: 'A', mensaje: 'm', leido: false),
       AvisoPush(id: 2, titulo: 'B', mensaje: 'm', leido: false),
     ]);
-    final campana = find.byTooltip('Avisos');
-    final carrito = find.byTooltip('Carrito');
     expect(
-        find.descendant(of: campana, matching: find.text('2')), findsOneWidget);
+        find.descendant(of: find.byTooltip('Avisos'), matching: find.text('2')),
+        findsOneWidget);
     expect(
-        find.descendant(of: carrito, matching: find.text('3')), findsOneWidget);
-    await _cerrar(tester);
-
-    await _montar(tester, _sesion());
-    expect(
-        tester
-            .widget<Badge>(find.descendant(
-                of: find.byTooltip('Avisos'), matching: find.byType(Badge)))
-            .isLabelVisible,
-        isFalse);
+        find.descendant(
+            of: find.byTooltip('Carrito'), matching: find.text('3')),
+        findsOneWidget);
     await _cerrar(tester);
   });
 
-  testWidgets('El asistente flotante solo aparece con el plan que incluye IA',
+  testWidgets('Sin avisos la campana no muestra número', (tester) async {
+    await _montar(tester, _sesion());
+    final globito = tester.widget<Badge>(find.descendant(
+        of: find.byTooltip('Avisos'), matching: find.byType(Badge)));
+    expect(globito.isLabelVisible, isFalse);
+    await _cerrar(tester);
+  });
+
+  testWidgets('El asistente flotante aparece con el plan que incluye IA',
       (tester) async {
     await _montar(tester, _sesion(ia: true));
     expect(find.byTooltip('Asistente de compras'), findsOneWidget);
     await _cerrar(tester);
+  });
 
+  testWidgets('El asistente flotante no aparece con un plan sin IA',
+      (tester) async {
     await _montar(tester, _sesion());
     expect(find.byTooltip('Asistente de compras'), findsNothing);
     await _cerrar(tester);

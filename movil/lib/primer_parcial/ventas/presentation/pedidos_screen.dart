@@ -42,6 +42,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
     try {
       final vistas = await _repo.compras();
       final c = await _conPendientes(vistas);
+      if (!mounted) return; // la pantalla se cerró mientras llegaban las compras
       final sesion = context.read<OfflineController>().sesion;
       if (sesion?.empresaId != null) {
         await context
@@ -56,6 +57,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
         });
       }
     } on ApiException catch (e) {
+      if (!mounted) return;
       final offline = context.read<OfflineController>();
       final sesion = offline.sesion;
       final vistas = sesion?.empresaId == null
