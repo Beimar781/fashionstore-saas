@@ -7,6 +7,9 @@ import { Carrito, Pedido, ResultadoPago } from '../../../core/compras.models';
 import { mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
+import { LocalDbService } from '../../../core/offline/local-db.service';
+
+const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.';
 
 /** CU-11 · Checkout (entrega y facturación). El pago con tarjeta (CU-32) lo resuelve el componente compartido `app-pago-tarjeta`. */
 @Component({
@@ -78,6 +81,7 @@ export class CheckoutPage implements OnInit {
   private api = inject(ComprasApi);
   private estado = inject(CarritoEstadoService);
   readonly red = inject(ConnectivityService);
+  private db = inject(LocalDbService);
 
   readonly carrito = signal<Carrito | null>(null);
   readonly pedido = signal<Pedido | null>(null);
@@ -119,11 +123,15 @@ export class CheckoutPage implements OnInit {
   /** El stock se agotó mientras pagaba: se actualiza el carrito, que conserva sus prendas. */
   alAgotarse() { this.agotado.set(true); this.api.carrito().subscribe((c) => { this.carrito.set(c); this.estado.fijar(c); }); }
 
-  descargar(p: Pedido) {
+  async descargar(p: Pedido) {
     this.estado.fijar(null);
-    this.api.comprobante(p.id).subscribe((blob) => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = `${p.comprobante_numero}.pdf`; a.click(); URL.revokeObjectURL(a.href);
-    });
+    if (!this.red.online()) {
+      const guardado = await this.db.leerComprobanteLocal(p.id);
+      if (!guardado) { this.errorDatos.set(MSG_COMPROBANTE_SIN_CACHE); return; }
+      this.abrirPdf(guardado, p); return;
+    }
+    this.api.comprobante(p.id).subscribe((blob) => { void this.db.guardarComprobanteLocal(p.id, blob); this.abrirPdf(blob, p); });
   }
+
+  private abrirPdf(blob: Blob, p: Pedido) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${p.comprobante_numero}.pdf`; a.click(); URL.revokeObjectURL(a.href); }
 }

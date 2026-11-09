@@ -81,6 +81,8 @@ export class LocalDbService {
   async borrarCarritoLocal(clave: string): Promise<void> { try { await (await this.db()).delete('carrito_local', clave); } catch { /* noop */ } }
   async guardarComprasClienteLocal(clave: string, valor: unknown): Promise<void> { await (await this.db()).put('cache_meta', valor, `compras_cliente_${clave}`); }
   async leerComprasClienteLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('cache_meta', `compras_cliente_${clave}`)) as T | undefined; } catch { return undefined; } }
+  async guardarComprobanteLocal(id: number, blob: Blob): Promise<void> { await (await this.db()).put('cache_meta', blob, `comprobante_${id}`); }
+  async leerComprobanteLocal(id: number): Promise<Blob | undefined> { try { return (await (await this.db()).get('cache_meta', `comprobante_${id}`)) as Blob | undefined; } catch { return undefined; } }
 
   // ---- CU-38 y CU-39: cola de operaciones ----
   async guardarOperacion(o: OperacionLocal): Promise<void> { await (await this.db()).put('operaciones', o); }

@@ -5,6 +5,10 @@ import { ComprasApi } from '../../../core/api/compras.api';
 import { CLASE_ESTADO_PEDIDO, Pedido, TEXTO_ESTADO_PEDIDO } from '../../../core/compras.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
+import { LocalDbService } from '../../../core/offline/local-db.service';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
+
+const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.';
 
 /** CU-12 · Detalle de una compra: prendas, totales, entrega, facturación, pagos y descarga del comprobante. */
 @Component({
@@ -67,6 +71,8 @@ export class CompraDetallePage implements OnInit {
   private api = inject(ComprasApi);
   private ruta = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private db = inject(LocalDbService);
+  private red = inject(ConnectivityService);
 
   readonly TEXTO = TEXTO_ESTADO_PEDIDO;
   readonly CLASE = CLASE_ESTADO_PEDIDO;
@@ -82,12 +88,19 @@ export class CompraDetallePage implements OnInit {
   pagoCompletado(r: import('../../../core/compras.models').ResultadoPago) { this.pedido.set(r.pedido); this.toast.ok(r.aprobado ? 'Pago aprobado.' : r.mensaje); }
   sinStock(mensaje: string) { this.toast.error(mensaje); this.cargar(); }
 
-  descargar(p: Pedido) {
+  async descargar(p: Pedido) {
+    if (!this.red.online()) {
+      const guardado = await this.db.leerComprobanteLocal(p.id);
+      if (guardado) { this.abrirPdf(guardado, p); return; }
+      this.toast.error(MSG_COMPROBANTE_SIN_CACHE); return;
+    }
     this.api.comprobante(p.id).subscribe({
-      next: (blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${p.comprobante_numero}.pdf`; a.click(); URL.revokeObjectURL(a.href); },
+      next: (blob) => { void this.db.guardarComprobanteLocal(p.id, blob); this.abrirPdf(blob, p); },
       error: (e) => this.toast.error(mensajeError(e)),
     });
   }
+
+  private abrirPdf(blob: Blob, p: Pedido) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${p.comprobante_numero}.pdf`; a.click(); URL.revokeObjectURL(a.href); }
 
   verificar(p: Pedido) {
     const pago = [...p.pagos].reverse().find((g) => g.estado === 'PENDIENTE_CONFIRMACION');
