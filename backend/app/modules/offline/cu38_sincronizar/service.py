@@ -33,8 +33,9 @@ MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el
 MSG_CONFIRMADA = "Operación confirmada."
 MSG_RELOJ = "La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta."
 TOLERANCIA_RELOJ = 300  # segundos (5 minutos)
-NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva"}
-PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,)}
+NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario"}
+PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,)}
+CON_SUCURSAL = ("COMPRA", "RECEPCION", "AJUSTE_INVENTARIO")  # el ejecutor las aplica en la sucursal de la operación
 
 
 class SincronizacionService:
@@ -68,13 +69,18 @@ class SincronizacionService:
         if sucursal_id == -1:
             return self._sin_guardar(op, "RECHAZADA", MSG_OTRA_SUCURSAL)
         try:
-            resultado = Ejecutor(self.db, self.ctx).ejecutar(op.tipo, {**op.payload, "sucursal_id": sucursal_id} if op.tipo == "COMPRA" else op.payload)
+            resultado = Ejecutor(self.db, self.ctx).ejecutar(op.tipo, {**op.payload, "sucursal_id": sucursal_id} if op.tipo in CON_SUCURSAL else op.payload)
             fila = self._guardar(op, sucursal_id, "CONFIRMADA", MSG_CONFIRMADA, resultado)
             self.db.commit()  # la operación y todos sus efectos, en una sola transacción (RNF04)
         except Exception as e:  # noqa: BLE001
             self.db.rollback()
             return self._fallida(op, sucursal_id, e)
         avisos.avisar_confirmada(self.db, self.empresa_id, fila)  # regla 17: con la operación ya confirmada
+        if resultado.despues is not None:
+            try:
+                resultado.despues()  # por ejemplo, el aviso push de una devolución; un fallo se registra y no deshace la operación
+            except Exception:  # noqa: BLE001
+                logger.exception("sync operacion=%s: falló el aviso posterior", op.id)
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
 

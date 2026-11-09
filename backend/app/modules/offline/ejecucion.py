@@ -9,19 +9,21 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import Conflicto, DatosInvalidos
 from app.modules.acceso.dependencias import Contexto
-from app.modules.inventario.publico import disponible_por_variante
+from app.modules.inventario.publico import aplicar_movimientos, disponible_por_variante
 from app.modules.offline.repository import OperacionRepository
-from app.modules.offline.schemas import CompraOfflineIn, VentaOfflineIn
+from app.modules.offline.schemas import AjusteOfflineIn, CompraOfflineIn, DevolucionOfflineIn, RecepcionOfflineIn, VentaOfflineIn
 from app.modules.reservas.publico import ReservaClienteService, ReservaIn, ReservaService
 from app.modules.sucursales.publico import nombres_de_sucursales
-from app.modules.ventas.publico import LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
+from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
+from app.primer_parcial.ventas.models import Pedido
 from app.primer_parcial.ventas.publico import CobroCajaService, CobroIn, CompraService, Linea, SinStock
 
 
 class Resultado:
     def __init__(self, referencia: str | None, comprobante: str | None, pedido_id: int | None = None, reserva_id: int | None = None):
         self.referencia, self.comprobante, self.pedido_id, self.reserva_id = referencia, comprobante, pedido_id, reserva_id
+        self.despues = None  # lo que debe hacerse DESPUÉS de confirmar la operación (por ejemplo, el aviso push al cliente, regla 17)
 
 
 MSG_PRECIO = "El precio de una prenda cambió desde que se registró la venta."
@@ -36,7 +38,7 @@ class PrecioCambio(Conflicto):
 
 
 def es_falta_de_stock(e: Exception) -> bool:
-    return isinstance(e, SinStock) or (isinstance(e, Conflicto) and "stock suficiente" in e.message)
+    return isinstance(e, SinStock) or (isinstance(e, Conflicto) and ("stock suficiente" in e.message or e.message.startswith("Stock insuficiente")))
 
 
 class Ejecutor:
@@ -56,6 +58,12 @@ class Ejecutor:
             )
             cobro = CobroCajaService(self.db, self.ctx).cobrar(venta.id, CobroIn(metodo="EFECTIVO", monto_recibido=datos.monto_recibido), commit=False)  # RN13: de contado
             return Resultado(cobro.pedido.codigo, cobro.pedido.comprobante_numero, pedido_id=venta.id)
+        if tipo == "AJUSTE_INVENTARIO":
+            return self._ajuste(AjusteOfflineIn.model_validate(payload), payload.get("sucursal_id"))
+        if tipo == "RECEPCION":
+            return self._recepcion(RecepcionOfflineIn.model_validate(payload), payload.get("sucursal_id"))
+        if tipo == "DEVOLUCION":
+            return self._devolucion(DevolucionOfflineIn.model_validate(payload))
         if tipo == "CANCELAR_RESERVA":
             reserva_id = payload.get("reserva_id")
             if not isinstance(reserva_id, int) or reserva_id <= 0:
@@ -64,6 +72,37 @@ class Ejecutor:
             return Resultado(reserva.codigo, None, reserva_id=reserva.id)
         reserva = ReservaService(self.db, self.ctx.empresa_id).crear(self.ctx, ReservaIn.model_validate(payload), commit=False)
         return Resultado(reserva.codigo, None, reserva_id=reserva.id)
+
+    def _ajuste(self, datos: AjusteOfflineIn, sucursal_id: int) -> Resultado:
+        """B6: aplica la diferencia con el mismo servicio de inventario de la web. Si dejaría el stock negativo, la operación queda EN_CONFLICTO."""
+        tipo = "AJUSTE_ENTRADA" if datos.diferencia > 0 else "AJUSTE_SALIDA"
+        nota = f"{datos.motivo}: {datos.nota.strip()}".strip(": ") if datos.nota.strip() else f"Ajuste por {datos.motivo.lower()}"
+        aplicar_movimientos(self.db, self.ctx.empresa_id, sucursal_id, [(datos.variante_id, abs(datos.diferencia))], tipo, "MANUAL", usuario_id=self.ctx.usuario.id, nota=nota)
+        return Resultado(f"AJU-{datos.variante_id}", None)
+
+    def _recepcion(self, datos: RecepcionOfflineIn, sucursal_id: int) -> Resultado:
+        """B5: la mercadería recibida suma al inventario como cualquier recepción (ENTRADA_RECEPCION)."""
+        aplicar_movimientos(self.db, self.ctx.empresa_id, sucursal_id, [(datos.variante_id, datos.cantidad)], "ENTRADA_RECEPCION", "RECEPCION", usuario_id=self.ctx.usuario.id, nota=f"Recepción sin conexión: {datos.referencia.strip()}")
+        return Resultado(datos.referencia.strip()[:40], None)
+
+    def _devolucion(self, datos: DevolucionOfflineIn) -> Resultado:
+        """B3: es la devolución del CU-41 (regla 15): valida plazo, existencias y que no esté ya devuelta. El aviso al cliente sale después de confirmar."""
+        servicio = DevolucionService(self.db, self.ctx)
+        salida = servicio.registrar(
+            DevolucionIn(
+                comprobante=datos.comprobante, motivo=datos.motivo, items=[ItemDevueltoIn(**i) for i in datos.items], condicion=CondicionIn(**datos.condicion) if datos.condicion else CondicionIn(sin_danos=True, sin_desgaste=True, con_etiquetas=True),
+            ),
+            confirmar=False,
+        )
+        resultado = Resultado(salida.numero, None)
+        devolucion = self.db.get(Devolucion, salida.id)
+        resultado.pedido_id = devolucion.pedido_id
+
+        def avisar():
+            servicio._avisar_al_cliente(self.db.get(Pedido, devolucion.pedido_id), devolucion)
+
+        resultado.despues = avisar
+        return resultado
 
     def _validar_precios(self, datos: VentaOfflineIn) -> None:
         """Compara el precio usado sin conexión con el vigente en el servidor (con promociones). Si alguno cambió, nada se registra."""

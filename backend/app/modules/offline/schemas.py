@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA")
+TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO")
 
 
 class LineaOfflineIn(BaseModel):
@@ -43,9 +43,41 @@ class CompraOfflineIn(BaseModel):
         return self
 
 
+class AjusteOfflineIn(BaseModel):
+    """Conteo físico o ajuste (B6): se envía la DIFERENCIA y no el valor absoluto, para no pisar las ventas hechas mientras tanto."""
+
+    variante_id: int
+    diferencia: int = Field(ge=-100000, le=100000)
+    motivo: Literal["CONTEO", "MERMA", "DAÑO"]
+    nota: str = Field(default="", max_length=150)
+
+    @model_validator(mode="after")
+    def _distinta_de_cero(self):
+        if self.diferencia == 0:
+            raise ValueError("La diferencia del ajuste no puede ser cero.")
+        return self
+
+
+class RecepcionOfflineIn(BaseModel):
+    """Mercadería recibida (B5): variante, cantidad y la referencia del envío o del proveedor."""
+
+    variante_id: int
+    cantidad: int = Field(ge=1, le=100000)
+    referencia: str = Field(min_length=1, max_length=100)
+
+
+class DevolucionOfflineIn(BaseModel):
+    """Devolución registrada sin conexión (B3): se valida de nuevo al sincronizar (plazo, existencias, que no esté ya devuelta)."""
+
+    comprobante: str = Field(min_length=1, max_length=30)
+    motivo: str = Field(default="", max_length=200)
+    items: list[dict] = Field(min_length=1, max_length=60)  # {pedido_item_id, cantidad}
+    condicion: dict = Field(default_factory=dict)
+
+
 class OperacionIn(BaseModel):
     id: uuid.UUID  # RN11: lo genera el cliente al registrar la operación
-    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA"]
+    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO"]
     creada_en: datetime  # cuándo se registró en el dispositivo
     sucursal_id: int | None = None
     payload: dict
