@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../auth/data/sesion.dart';
 import '../data/modelos.dart';
 import '../data/offline_repository.dart';
@@ -30,6 +31,9 @@ class OfflineController extends ChangeNotifier {
   bool sincronizando = false;
   bool descargando = false;
   bool enLinea = true;
+
+  /// «Simular sin conexión» (§B11): fuerza el modo sin conexión aunque haya Internet. Al apagarlo se sincroniza en el acto.
+  bool simulado = false;
   String? error;
 
   OfflineRepository get repo => _repo;
@@ -67,6 +71,18 @@ class OfflineController extends ChangeNotifier {
     }
   }
 
+  void simularSinConexion(bool valor) {
+    simulado = valor;
+    ApiClient.simularSinConexion = valor;
+    enLinea = !valor;
+    if (!valor) {
+      _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
+      sincronizar();
+      actualizarSiVencido();
+    }
+    notifyListeners();
+  }
+
   void _registrarResultado(bool fallo) {
     if (!fallo) {
       _fallosSeguidos = 0;
@@ -83,6 +99,7 @@ class OfflineController extends ChangeNotifier {
 
   /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
   void _alCambiarLaRed(bool hayRed) {
+    if (simulado) return; // con la simulación activa, la red real no cambia el modo
     enLinea = hayRed;
     if (hayRed) _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0); // al volver la red se reintenta en el acto, sin esperar
     notifyListeners();

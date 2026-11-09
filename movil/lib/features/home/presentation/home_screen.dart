@@ -175,6 +175,7 @@ class HomeScreen extends StatelessWidget {
                   'Pida prendas en lenguaje natural (plan Profesional)',
                   const AsistenteScreen()),
           ],
+          const InterruptorSimulacion(),
           if (offline.habilitado && !s.restringido)
             _acceso(
                 context,
@@ -400,6 +401,7 @@ class _PerfilCliente extends StatelessWidget {
           if (!sesion.restringido)
             _acceso(context, Icons.credit_card, 'Tarjetas guardadas',
                 const TarjetasScreen()),
+          const InterruptorSimulacion(),
           Card(
               child: ListTile(
                   leading: const Icon(Icons.logout),
@@ -430,7 +432,7 @@ class _AvisosOffline extends StatelessWidget {
           leading:
               Icon(!offline.enLinea ? Icons.cloud_off : Icons.sync_problem),
           title: Text(!offline.enLinea
-              ? 'Sin conexión'
+              ? (offline.simulado ? 'Modo sin conexión simulado' : 'Sin conexión')
               : offline.enConflicto.isNotEmpty
                   ? '${offline.enConflicto.length} operación(es) en conflicto'
                   : '${offline.pendientes.length} operación(es) pendiente(s)'),
@@ -495,4 +497,23 @@ Future<void> cerrarSesionConAviso(BuildContext context) async {
     if (seguir != true) return;
   }
   await auth.cerrarSesion();
+}
+
+/// §B11 · «Simular sin conexión»: fuerza el modo sin conexión aunque haya Internet, para demostrar el offline sin apagar el WiFi. Visible para todos los roles.
+class InterruptorSimulacion extends StatelessWidget {
+  const InterruptorSimulacion({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = context.watch<OfflineController>();
+    return Card(
+      child: SwitchListTile(
+        secondary: const Icon(Icons.airplanemode_active),
+        title: const Text('Simular sin conexión'),
+        subtitle: Text(offline.simulado ? 'Modo sin conexión simulado: apáguelo para sincronizar.' : 'Fuerza el modo sin conexión aunque haya Internet.'),
+        value: offline.simulado,
+        onChanged: offline.simularSinConexion,
+      ),
+    );
+  }
 }

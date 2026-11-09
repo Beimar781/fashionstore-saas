@@ -95,12 +95,13 @@ const porRol: Record<string, Item[]> = {
             <strong>{{ s()?.usuario?.nombre }} {{ s()?.usuario?.apellidos }}</strong>
             <small>{{ s()?.usuario?.rol }}{{ s()?.empresa ? ' · ' + s()?.empresa?.codigo : '' }}</small>
           </div>
+          <label class="check small" title="Fuerza el modo sin conexión aunque haya Internet (para demostrar el offline)"><input type="checkbox" [checked]="net.simulado()" (change)="net.simular($any($event.target).checked)" /> Simular sin conexión</label>
           <button class="btn sm ghost out" (click)="confirmarSalida.set(true)">Cerrar sesión</button>
         </div>
       </aside>
       <div class="main">
         @if (!net.online()) {
-          <div class="offline" role="status">Sin conexión. Se muestra la información almacenada, que puede estar desactualizada.</div>
+          <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
         }
         @if (s()?.empresa) {
           <div class="topbar">

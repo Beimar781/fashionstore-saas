@@ -34,6 +34,9 @@ class ArchivoDescargado {
 /// Cliente REST compartido por todos los paquetes (la misma API que usa la PWA Angular).
 /// Agrega el token Bearer y, ante un 401, intenta renovar la sesión una vez.
 class ApiClient {
+  /// «Simular sin conexión» (§B11): con esto activo toda llamada falla como si no hubiera red. Sirve para demostrar el modo sin conexión sin apagar el WiFi.
+  static bool simularSinConexion = false;
+
   ApiClient({required this.obtenerToken, required this.renovarToken, http.Client? cliente}) : _cliente = cliente ?? http.Client();
 
   final Future<String?> Function() obtenerToken;
@@ -57,6 +60,7 @@ class ApiClient {
 
   /// GET de un archivo binario con el token de la sesión (si caduca, se renueva una vez).
   Future<ArchivoDescargado> descargar(String ruta, {bool reintento = false}) async {
+    if (simularSinConexion) throw ApiException('Sin conexión con el servidor.', sinConexion: true);
     final token = await obtenerToken();
     try {
       final respuesta = await _cliente
@@ -79,6 +83,7 @@ class ApiClient {
 
   Future<dynamic> _enviar(String metodo, String ruta,
       {Map<String, dynamic>? cuerpo, bool autenticado = true, bool reintento = false}) async {
+    if (simularSinConexion) throw ApiException('Sin conexión con el servidor.', sinConexion: true);
     final uri = Uri.parse('${ApiConfig.baseUrl}$ruta');
     final cabeceras = <String, String>{'Content-Type': 'application/json'};
     if (autenticado) {
