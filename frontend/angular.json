@@ -17,6 +17,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "allowedCommonJsDependencies": ["canvg", "core-js", "raf", "rgbcolor", "html2canvas", "dompurify"],
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [

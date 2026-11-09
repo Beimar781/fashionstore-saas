@@ -2,7 +2,10 @@ import { DatePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
-import { EstadoLocal } from '../../core/offline.models';
+import { EstadoLocal, OperacionLocal } from '../../core/offline.models';
+import { AuthService } from '../../core/auth/auth.service';
+import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
+import { comprobanteProvisional, numeroLocal } from '../../core/offline/comprobante-provisional';
 
 const TEXTO: Record<EstadoLocal, string> = {
   REGISTRADA_LOCAL: 'Registrada en el dispositivo', ENVIADA: 'Enviada, esperando respuesta', CONFIRMADA: 'Confirmada por el servidor', RECHAZADA: 'Rechazada', EN_CONFLICTO: 'En conflicto',
@@ -35,6 +38,7 @@ const TEXTO: Record<EstadoLocal, string> = {
               <td class="small">
                 @if (o.referencia) { <strong>{{ o.referencia }}</strong>@if (o.comprobante) { · comprobante {{ o.comprobante }} } <br /> }
                 {{ o.mensaje }}
+                @if (o.tipo === 'VENTA_CONTADO') { <div><button type="button" class="btn sm" (click)="descargarProvisional(o)">Comprobante {{ o.comprobante ?? numeroLocal(o) }}</button></div> }
                 @if (o.detalle?.faltantes?.length) { <ul class="faltantes">@for (f of o.detalle!.faltantes; track f.variante_id) { <li>{{ f.producto }} ({{ f.talla }}, {{ f.color }}): pidió {{ f.solicitadas }}, hay {{ f.disponibles }}</li> }</ul> }
               </td>
             </tr>
@@ -46,5 +50,14 @@ const TEXTO: Record<EstadoLocal, string> = {
 export class OperacionesLocalesComponent {
   readonly cola = inject(ColaOperacionesService);
   readonly red = inject(ConnectivityService);
+  private readonly auth = inject(AuthService);
+  private readonly local = inject(CatalogoLocalService);
+  readonly numeroLocal = numeroLocal;
+
+  /** B1: descarga el comprobante provisional LOC-… de una venta de contado registrada sin conexión. */
+  async descargarProvisional(o: OperacionLocal) {
+    const nombre = (id: number) => { for (const p of this.local.productos()) { const v = p.variantes.find((x) => x.id === id); if (v) return `${p.nombre} (${v.talla}, ${v.color})`; } return `Prenda ${id}`; };
+    (await comprobanteProvisional(o, this.auth.sesion()?.empresa?.razon_social ?? '', nombre)).save(`${numeroLocal(o)}.pdf`);
+  }
   texto(e: EstadoLocal) { return TEXTO[e]; }
 }

@@ -76,6 +76,8 @@ export class AuthService {
     localStorage.removeItem(K_ACCESS); localStorage.removeItem(K_REFRESH); localStorage.removeItem(K_SESION);
     this.sesion.set(null);
     void this.local.borrarSesion();
+    // A6 · los datos de la API guardados por el service worker son de la cuenta que sale: se borran
+    void (globalThis.caches?.keys().then((n) => Promise.all(n.filter((x) => x.includes('api-consultas')).map((x) => caches.delete(x)))));
     void this.router.navigateByUrl('/login');
   }
 

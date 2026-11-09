@@ -101,7 +101,7 @@ const porRol: Record<string, Item[]> = {
       </aside>
       <div class="main">
         @if (!net.online()) {
-          <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
+          <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (catalogoLocal.meta(); as m) { <span> Datos al {{ m.generado_en.slice(8, 10) }}/{{ m.generado_en.slice(5, 7) }} {{ m.generado_en.slice(11, 16) }} (UTC).</span> }@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
         }
         @if (s()?.empresa) {
           <div class="topbar">
@@ -150,7 +150,7 @@ export class ShellComponent {
   readonly net = inject(ConnectivityService);
   readonly borrador = inject(ReservaBorradorService);
   readonly carrito = inject(CarritoEstadoService);
-  private readonly catalogoLocal = inject(CatalogoLocalService);  // al crearse, actualiza solo el catálogo descargado si tiene más de 6 horas
+  readonly catalogoLocal = inject(CatalogoLocalService);  // al crearse, actualiza solo el catálogo descargado si tiene más de 6 horas
   readonly cola = inject(ColaOperacionesService);  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);

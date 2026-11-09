@@ -3,6 +3,7 @@ import { Component, NgZone, OnDestroy, OnInit, inject, signal } from '@angular/c
 import { FormsModule } from '@angular/forms';
 import { ReportesApi } from '../../core/api/reportes.api';
 import { ReporteGenerativo } from '../../core/reportes.models';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
 const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana', 'Reservas de la sucursal centro', 'Pagos rechazados de este mes', 'Estado del inventario y stock bajo'];
@@ -61,6 +62,7 @@ export class ReporteGenerativoPage implements OnInit, OnDestroy {
   private api = inject(ReportesApi);
   private toast = inject(ToastService);
   private zona = inject(NgZone);
+  private red = inject(ConnectivityService);
 
   readonly ejemplos = EJEMPLOS;
   readonly actual = signal<ReporteGenerativo | null>(null);
@@ -76,6 +78,7 @@ export class ReporteGenerativoPage implements OnInit, OnDestroy {
   ngOnDestroy() { this.reconocimiento?.stop?.(); }
 
   generar() {
+    if (!this.red.online()) { this.error.set('Generar un reporte con IA necesita Internet.'); return; }
     this.error.set(''); this.generando.set(true);
     this.api.generarReporte(this.prompt).subscribe({
       next: (r) => { this.generando.set(false); this.actual.set(r); this.historial.update((h) => [r, ...h]); },

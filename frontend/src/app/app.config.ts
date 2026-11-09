@@ -13,6 +13,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding(), withNavigationErrorHandler(() => { if (!navigator.onLine) window.location.assign('/sin-conexion.html'); })),
     provideHttpClient(withInterceptors([simularSinConexionInterceptor, authInterceptor])),
     // PWA: el Service Worker se registra solo en la compilación de producción (ng build)
-    provideServiceWorker('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' }),
+    provideServiceWorker('sw-sync.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' }),
   ],
 };

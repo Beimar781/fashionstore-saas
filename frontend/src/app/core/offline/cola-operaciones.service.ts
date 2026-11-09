@@ -34,6 +34,7 @@ export class ColaOperacionesService {
   readonly enConflicto = computed(() => this.operaciones().filter((o) => o.estado === 'EN_CONFLICTO'));
 
   constructor() {
+    navigator.serviceWorker?.addEventListener('message', (m) => { if (m.data?.tipo === 'SINCRONIZAR_COLA' && this.auth.autenticado()) void this.sincronizar(); });
     void this.cargar();
     // al volver la conexión se sincroniza solo, y mientras haya pendientes se reintenta cada 30 segundos
     effect(() => { if (this.red.online() && this.auth.autenticado()) void this.sincronizar(); });
@@ -47,6 +48,14 @@ export class ColaOperacionesService {
     this.ultimaSync.set((await this.db.ultimaSincronizacion()) ?? null);
   }
 
+  /** B10 · Pide al navegador que despierte la sincronización cuando vuelva la red, incluso con la pestaña en segundo plano. Sin soporte, basta el evento 'online' de la app. */
+  private async pedirSincronizacionEnSegundoPlano() {
+    try {
+      const reg = await navigator.serviceWorker?.ready;
+      await (reg as any)?.sync?.register('sincronizar-cola');
+    } catch { /* el navegador no lo permite: queda el reintento normal */ }
+  }
+
   /** Registra una operación en el dispositivo (estado REGISTRADA_LOCAL) y, si hay conexión, la sincroniza enseguida. */
   async registrar(tipo: TipoOperacion, payload: Record<string, unknown>, sucursalId: number | null, resumen: string): Promise<OperacionLocal> {
     const s = this.auth.sesion()!;
@@ -57,6 +66,7 @@ export class ColaOperacionesService {
     await this.db.guardarOperacion(op);
     this.operaciones.update((l) => [op, ...l]);
     if (this.red.online()) void this.sincronizar();
+    else void this.pedirSincronizacionEnSegundoPlano();
     return op;
   }
 
