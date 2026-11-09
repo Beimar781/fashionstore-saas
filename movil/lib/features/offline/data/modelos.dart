@@ -7,6 +7,7 @@ class Estado {
   static const confirmada = 'CONFIRMADA';
   static const rechazada = 'RECHAZADA';
   static const enConflicto = 'EN_CONFLICTO';
+  static const todos = [registradaLocal, enviada, confirmada, rechazada, enConflicto];
 
   static const textos = {
     registradaLocal: 'Registrada en el dispositivo',

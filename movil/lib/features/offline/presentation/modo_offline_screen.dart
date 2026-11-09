@@ -6,6 +6,7 @@ import '../data/modelos.dart';
 import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
 import 'registro_sync_screen.dart';
+import 'resumen_turno_screen.dart';
 
 String fechaCorta(String? iso) {
   if (iso == null) return '—';
@@ -28,6 +29,11 @@ class ModoOfflineScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Modo sin conexión'),
           actions: [
+            if (!c.esCliente)
+              IconButton(
+                  tooltip: 'Resumen de mi turno',
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ResumenTurnoScreen()))),
             IconButton(
                 tooltip: 'Registro de sincronización',
                 icon: const Icon(Icons.history),
