@@ -10,6 +10,7 @@ import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
 import 'registro_sync_screen.dart';
 import 'resumen_turno_screen.dart';
+import 'tareas_sucursal_screen.dart';
 
 String fechaCorta(String? iso) {
   if (iso == null) return '—';
@@ -32,6 +33,11 @@ class ModoOfflineScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Modo sin conexión'),
           actions: [
+            if (!c.esCliente)
+              IconButton(
+                  tooltip: 'Tareas de la sucursal',
+                  icon: const Icon(Icons.assignment_outlined),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TareasSucursalScreen()))),
             if (!c.esCliente)
               IconButton(
                   tooltip: 'Resumen de mi turno',

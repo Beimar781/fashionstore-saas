@@ -133,6 +133,8 @@ class OfflineRepository {
       await tx.insert(
           'meta', {'clave': 'ultima_sincronizacion', 'valor': ahora},
           conflictAlgorithm: ConflictAlgorithm.replace);
+      // lo que el personal necesita para trabajar la sucursal sin conexión (B3, B4): ventas recientes con su plazo de devolución y reservas activas
+      await tx.insert('meta', {'clave': 'sucursal_extras', 'valor': jsonEncode({'plazo': c['plazo_devolucion_dias'], 'ventas': c['ventas_recientes'] ?? [], 'reservas': c['reservas_sucursal'] ?? []})}, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 
@@ -512,4 +514,64 @@ class OfflineRepository {
         where: 'usuario_id = ? AND empresa_id = ? AND estado IN (?, ?)',
         whereArgs: [usuarioId, empresaId, Estado.confirmada, Estado.rechazada],
       );
+
+  // ---------------- B3 a B6: tareas de la sucursal sin conexión ----------------
+  Future<Map<String, dynamic>> _extras() async {
+    final texto = await _meta('sucursal_extras');
+    return texto == null ? {'plazo': null, 'ventas': [], 'reservas': []} : jsonDecode(texto) as Map<String, dynamic>;
+  }
+
+  Future<void> _guardarExtras(Map<String, dynamic> extras) => _poner('sucursal_extras', jsonEncode(extras));
+
+  /// Ventas recientes de la sucursal, dentro del plazo de devolución, descargadas con el catálogo.
+  Future<List<Map<String, dynamic>>> ventasRecientes() async => ((await _extras())['ventas'] as List).cast<Map<String, dynamic>>();
+
+  /// Reservas activas de la sucursal descargadas (solo el Encargado).
+  Future<List<Map<String, dynamic>>> reservasSucursal() async => ((await _extras())['reservas'] as List).cast<Map<String, dynamic>>();
+
+  Future<int?> plazoDevolucionDias() async => (await _extras())['plazo'] as int?;
+
+  /// B3: lo devuelto sin conexión ya no se puede devolver otra vez desde este dispositivo.
+  Future<void> descontarDevolvible(String comprobante, Map<int, int> cantidades) async {
+    final extras = await _extras();
+    for (final v in (extras['ventas'] as List).cast<Map<String, dynamic>>().where((v) => v['comprobante'] == comprobante)) {
+      for (final i in (v['items'] as List).cast<Map<String, dynamic>>()) {
+        final cantidad = cantidades[i['pedido_item_id']];
+        if (cantidad != null) i['devolvible'] = ((i['devolvible'] as int) - cantidad).clamp(0, 1 << 30);
+      }
+    }
+    await _guardarExtras(extras);
+  }
+
+  /// B4: refleja en la copia local lo que se hizo sin conexión (la reserva preparada, la prenda no encontrada o la reserva ya atendida).
+  Future<void> actualizarReservaLocal(int reservaId, {String? estado, int? itemNoEncontrado, bool quitar = false}) async {
+    final extras = await _extras();
+    final reservas = (extras['reservas'] as List).cast<Map<String, dynamic>>();
+    if (quitar) {
+      reservas.removeWhere((r) => r['id'] == reservaId);
+    } else {
+      for (final r in reservas.where((r) => r['id'] == reservaId)) {
+        if (estado != null) r['estado'] = estado;
+        for (final i in (r['items'] as List).cast<Map<String, dynamic>>().where((i) => i['id'] == itemNoEncontrado)) {
+          i['estado'] = 'NO_ENCONTRADO';
+        }
+      }
+    }
+    await _guardarExtras(extras);
+  }
+
+  /// B5 y B6: el inventario local se mueve de forma provisional con lo recibido o ajustado; el servidor aplica la operación al sincronizar.
+  Future<void> moverStockLocal(int varianteId, int sucursalId, int diferencia) async {
+    final db = await _db;
+    for (final p in await _productos()) {
+      var cambio = false;
+      for (final v in p.variantes.where((v) => v.id == varianteId)) {
+        v.stock[sucursalId] = ((v.stock[sucursalId] ?? 0) + diferencia).clamp(0, 1 << 30).toInt();
+        cambio = true;
+      }
+      if (cambio) {
+        await db.update('productos_locales', {'variantes_json': jsonEncode([for (final v in p.variantes) v.toJson()])}, where: 'id = ?', whereArgs: [p.id]);
+      }
+    }
+  }
 }

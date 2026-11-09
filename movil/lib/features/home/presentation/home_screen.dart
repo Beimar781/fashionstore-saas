@@ -439,7 +439,7 @@ class _AvisosOffline extends StatelessWidget {
           subtitle: Text(offline.pendientes.isNotEmpty ||
                   offline.enConflicto.isNotEmpty
               ? 'Consulte las operaciones en Perfil → Modo sin conexión.'
-              : 'Se muestra el catálogo guardado hasta recuperar la red.')));
+              : 'Datos al ${fechaCorta(offline.catalogoGeneradoEn)}; pueden estar desactualizados. Se muestra el catálogo guardado hasta recuperar la red.')));
 }
 
 class _AvisosScreen extends StatelessWidget {

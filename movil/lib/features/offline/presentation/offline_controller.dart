@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -9,7 +11,7 @@ import '../data/offline_repository.dart';
 
 /// Estado del modo sin conexión para la capa de presentación (CU-37 a CU-39).
 /// Cuando hay sesión, sincroniza al abrir la app, en el instante en que vuelve la red y, como respaldo, cada 30 segundos mientras queden operaciones pendientes (RNF06).
-class OfflineController extends ChangeNotifier {
+class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
   OfflineController(this._repo, {Stream<bool>? conectividad})
       : _conectividad = conectividad;
@@ -20,6 +22,7 @@ class OfflineController extends ChangeNotifier {
 
   /// RNF06: tras cada fallo de red o respuesta 5xx la espera se duplica (30 s, 1 min, 2 min…, máximo 15 min); un 4xx de negocio no se reintenta (queda RECHAZADA).
   int _fallosSeguidos = 0;
+  bool _repetir = false;
   DateTime _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
 
   Sesion? _sesion;
@@ -57,6 +60,11 @@ class OfflineController extends ChangeNotifier {
     _red?.cancel();
     operaciones = [];
     if (habilitado) {
+      try {
+        WidgetsBinding.instance.addObserver(this); // B10: al volver la app a primer plano se sincroniza
+      } catch (_) {
+        // sin enlace con Flutter (pruebas de lógica): no hay ciclo de vida que observar
+      }
       _red = _conectividad?.listen(_alCambiarLaRed);
       _reintento = Timer.periodic(const Duration(seconds: 30), (_) {
         if (pendientes.isNotEmpty && !DateTime.now().isBefore(_proximoIntento)) sincronizar();
@@ -107,6 +115,14 @@ class OfflineController extends ChangeNotifier {
 
   /// Segundos que faltan para el próximo reintento automático (0 si puede reintentar ya).
   int get esperaRestante => _proximoIntento.difference(DateTime.now()).inSeconds.clamp(0, 900);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !habilitado) return;
+    _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
+    sincronizar();
+    actualizarSiVencido();
+  }
 
   /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
   void _alCambiarLaRed(bool hayRed) {
@@ -179,13 +195,25 @@ class OfflineController extends ChangeNotifier {
     sincronizar();
   }
 
+  /// Registra una operación de la sucursal (devolución, recepción, ajuste o atención de reservas) y, si hay conexión, la sincroniza enseguida.
+  Future<void> registrarTarea({required String tipo, required Map<String, dynamic> payload, required String resumen}) async {
+    final s = _sesion!;
+    await _repo.registrar(tipo: tipo, payload: payload, sucursalId: s.sucursalId, resumen: resumen, usuarioId: s.usuarioId, empresaId: s.empresaId!);
+    await recargar();
+    sincronizar();
+  }
+
   /// CU-38: envía lo pendiente. No hace nada si ya hay una sincronización en curso.
   /// Quién muestra el mensaje emergente al cliente (lo conecta la app con su ScaffoldMessenger).
   void Function(String)? alAvisar;
 
   Future<ResumenSync?> sincronizar() async {
     final s = _sesion;
-    if (s == null || s.empresaId == null || sincronizando) return null;
+    if (s == null || s.empresaId == null) return null;
+    if (sincronizando) {
+      _repetir = true; // alguien pidió sincronizar mientras ya había un envío en curso: se repite al terminar, para no esperar al siguiente reintento
+      return null;
+    }
     sincronizando = true;
     notifyListeners();
     final resumen = await _repo.sincronizar(s.usuarioId, s.empresaId!);
@@ -196,6 +224,13 @@ class OfflineController extends ChangeNotifier {
     await recargar();
     for (final aviso in resumen.avisos) {
       alAvisar?.call(aviso);
+    }
+    if (resumen.confirmadas > 0 || resumen.enConflicto > 0) {
+      alAvisar?.call('Se sincronizaron ${resumen.confirmadas} operaciones; ${resumen.enConflicto} en conflicto.'); // B10: aviso al terminar
+    }
+    if (_repetir) {
+      _repetir = false;
+      sincronizar();
     }
     return resumen;
   }
@@ -211,6 +246,9 @@ class OfflineController extends ChangeNotifier {
   void dispose() {
     _reintento?.cancel();
     _red?.cancel();
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
     super.dispose();
   }
 }

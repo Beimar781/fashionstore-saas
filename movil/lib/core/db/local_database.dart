@@ -12,7 +12,7 @@ class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const version = 5;
+  static const version = 6;
 
   Database? _db;
   String? _rutaPrueba;
@@ -83,9 +83,33 @@ class LocalDatabase {
           }
           await DetalleLocal.crearTablas(db);
           await DetalleLocal.poblarDesdeOperaciones(db);
+        } else if (anterior == 5) {
+          await _rehacerOperacionesSinTipoFijo(db);
         }
       },
     );
+  }
+
+  /// v5 → v6: quita el CHECK del tipo (devolución, recepción, ajuste y atención de reservas lo necesitan). Las tablas que cuelgan de la cola se respaldan,
+  /// porque borrar la cola vieja las vaciaría en cascada; después se rehacen y se restauran SIN perder ninguna operación ni su detalle.
+  Future<void> _rehacerOperacionesSinTipoFijo(Database db) async {
+    const hijas = ['ventas_locales', 'detalle_venta_local', 'reservas_locales', 'detalle_reserva_local', 'resultados_sincronizacion'];
+    for (final t in hijas) {
+      await db.execute('CREATE TABLE _copia_$t AS SELECT * FROM $t');
+    }
+    for (final t in hijas.reversed) {
+      await db.execute('DROP TABLE $t');
+    }
+    await db.execute('ALTER TABLE operaciones_pendientes RENAME TO operaciones_pendientes_v5');
+    await db.execute('DROP INDEX IF EXISTS ix_operaciones_estado');
+    await _crearOperaciones(db);
+    await db.execute('INSERT INTO operaciones_pendientes SELECT * FROM operaciones_pendientes_v5');
+    await db.execute('DROP TABLE operaciones_pendientes_v5');
+    await DetalleLocal.crearTablas(db);
+    for (final t in hijas) {
+      await db.execute('INSERT INTO $t SELECT * FROM _copia_$t');
+      await db.execute('DROP TABLE _copia_$t');
+    }
   }
 
   Future<void> _crearTablasOffline(Database db) async {
@@ -129,7 +153,7 @@ class LocalDatabase {
         empresa_id INTEGER NOT NULL,
         sucursal_id INTEGER,
         usuario_id INTEGER NOT NULL,
-        tipo TEXT NOT NULL CHECK (tipo IN ('VENTA_CONTADO','RESERVA','COMPRA','CANCELAR_RESERVA')),
+        tipo TEXT NOT NULL,
         payload_json TEXT NOT NULL,
         estado TEXT NOT NULL CHECK (estado IN
           ('REGISTRADA_LOCAL','ENVIADA','CONFIRMADA','RECHAZADA','EN_CONFLICTO')),
