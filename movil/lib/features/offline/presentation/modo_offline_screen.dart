@@ -5,6 +5,7 @@ import '../../../core/network/imagen_prenda.dart';
 import '../data/modelos.dart';
 import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
+import 'registro_sync_screen.dart';
 
 String fechaCorta(String? iso) {
   if (iso == null) return '—';
@@ -26,6 +27,12 @@ class ModoOfflineScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Modo sin conexión'),
+          actions: [
+            IconButton(
+                tooltip: 'Registro de sincronización',
+                icon: const Icon(Icons.history),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RegistroSyncScreen()))),
+          ],
           bottom: TabBar(tabs: [
             const Tab(text: 'Catálogo'),
             const Tab(text: 'Registrar'),

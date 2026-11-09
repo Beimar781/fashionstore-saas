@@ -11,6 +11,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/url_imagen.dart';
 import '../../../core/network/imagen_prenda.dart';
 import '../../../core/util/uuid.dart';
+import 'detalle_local.dart';
 import 'modelos.dart';
 
 /// Acceso a datos del paquete Operación offline (CU-37 a CU-39): SQLite local + la API de sincronización.
@@ -295,13 +296,36 @@ class OfflineRepository {
       resumen: resumen,
       creadoEn: DateTime.now().toUtc().toIso8601String(),
     );
-    await _guardar(op);
+    final db = await _db;
+    await db.transaction((tx) async {
+      await tx.insert('operaciones_pendientes', op.aFila());
+      await DetalleLocal.guardar(tx, id: op.id, tipo: tipo, empresaId: empresaId, sucursalId: sucursalId, usuarioId: usuarioId, payload: payload, creadoEn: op.creadoEn);
+    });
     return op;
   }
 
-  Future<void> _guardar(OperacionLocal o) async =>
-      (await _db).insert('operaciones_pendientes', o.aFila(),
-          conflictAlgorithm: ConflictAlgorithm.replace);
+  /// Actualiza la operación (o la crea). No usa «reemplazar»: borrar y volver a insertar eliminaría en cascada su detalle.
+  Future<void> _guardar(OperacionLocal o) async {
+    final db = await _db;
+    final cambiadas = await db.update('operaciones_pendientes', o.aFila(), where: 'id = ?', whereArgs: [o.id]);
+    if (cambiadas == 0) await db.insert('operaciones_pendientes', o.aFila());
+  }
+
+  /// El cuerpo que viaja al servidor: se arma desde el detalle relacional (la fuente de los datos), no desde un JSON aparte.
+  Future<Map<String, dynamic>> _cuerpoDe(OperacionLocal o) async => DetalleLocal.payloadDesdeDetalle(await _db, o.id, o.tipo, o.payload);
+
+  /// Deja el resultado de la operación y una fila técnica del intento (RNF10). El motivo nunca lleva datos personales.
+  Future<void> _anotarResultado(OperacionLocal o, String resultado, String codigo) async {
+    final db = await _db;
+    await DetalleLocal.guardarResultado(db, id: o.id, estado: o.estado, mensaje: o.mensaje, referencia: o.referencia, comprobante: o.comprobante);
+    await DetalleLocal.anotarIntento(db, id: o.id, tipo: o.tipo, intento: o.intentos, resultado: resultado, codigo: codigo, motivo: o.estado == Estado.rechazada || o.estado == Estado.enConflicto ? o.mensaje : '');
+  }
+
+  /// Texto del registro técnico de sincronización, para copiarlo y mandarlo a soporte.
+  Future<String> diagnostico() async => DetalleLocal.diagnostico(await _db);
+
+  Future<List<Map<String, Object?>>> registroSincronizacion({int limite = 100}) async =>
+      (await _db).query('registro_sincronizacion', orderBy: 'id DESC', limit: limite);
 
   /// Las operaciones del usuario en este dispositivo, de la más reciente a la más antigua.
   Future<List<OperacionLocal>> operaciones(int usuarioId, int empresaId) async {
@@ -390,7 +414,7 @@ class OfflineRepository {
               'tipo': o.tipo,
               'creada_en': o.creadoEn,
               'sucursal_id': o.sucursalId,
-              'payload': o.payload
+              'payload': await _cuerpoDe(o)
             },
         ],
         'hora_dispositivo': DateTime.now().toUtc().toIso8601String(), // con zona horaria: el servidor compara con su reloj (§7.2)
@@ -418,12 +442,14 @@ class OfflineRepository {
         }
         o.mensaje = res['mensaje'] as String;
         await _guardar(o);
+        await _anotarResultado(o, o.estado, estado == 'ERROR' ? '5xx' : '200');
       }
       await _poner('ultima_sincronizacion', DateTime.now().toIso8601String());
     } on ApiException catch (e) {
       for (final o in lote) {
         o.estado = Estado.registradaLocal; // sin respuesta no se pierde nada
         await _guardar(o);
+        await _anotarResultado(o, 'SIN_RESPUESTA', e.sinConexion ? 'SIN_RED' : '${e.statusCode ?? 'ERROR'}');
       }
       resumen.sinConexion = e.sinConexion;
       resumen.error = e.sinConexion

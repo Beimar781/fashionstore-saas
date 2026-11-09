@@ -1,6 +1,8 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../features/offline/data/detalle_local.dart';
+
 /// Persistencia local en SQLite (RNF03: lo registrado sin conexión sobrevive al cierre de la app).
 ///
 /// - `sesion`: contexto de sesión (CU-02, paso 8: guardar la sesión para operar sin conexión).
@@ -10,7 +12,7 @@ class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const version = 4;
+  static const version = 5;
 
   Database? _db;
   String? _rutaPrueba;
@@ -69,6 +71,19 @@ class LocalDatabase {
           await db.execute(
               'CREATE TABLE vestidor_local (producto_id INTEGER PRIMARY KEY, producto_json TEXT NOT NULL)');
         }
+        if (anterior < 5) {
+          // la versión 5 admite CANCELAR_RESERVA en la cola (antes el CHECK la rechazaba) y agrega el almacenamiento relacional de §6.3.
+          // La cola se rehace SIN perder ninguna operación pendiente y las ventas y reservas que ya tenía pasan a sus tablas de detalle.
+          if (anterior >= 2) {
+            await db.execute('ALTER TABLE operaciones_pendientes RENAME TO operaciones_pendientes_v4');
+            await db.execute('DROP INDEX IF EXISTS ix_operaciones_estado');
+            await _crearOperaciones(db);
+            await db.execute('INSERT INTO operaciones_pendientes SELECT * FROM operaciones_pendientes_v4');
+            await db.execute('DROP TABLE operaciones_pendientes_v4');
+          }
+          await DetalleLocal.crearTablas(db);
+          await DetalleLocal.poblarDesdeOperaciones(db);
+        }
       },
     );
   }
@@ -104,6 +119,7 @@ class LocalDatabase {
     await db.execute(
         'CREATE TABLE meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)');
     await _crearOperaciones(db);
+    await DetalleLocal.crearTablas(db); // las tablas de detalle cuelgan de la cola: se crean después de ella (y nunca antes de rehacerla en una migración)
   }
 
   Future<void> _crearOperaciones(Database db) async {
@@ -113,7 +129,7 @@ class LocalDatabase {
         empresa_id INTEGER NOT NULL,
         sucursal_id INTEGER,
         usuario_id INTEGER NOT NULL,
-        tipo TEXT NOT NULL CHECK (tipo IN ('VENTA_CONTADO','RESERVA','COMPRA')),
+        tipo TEXT NOT NULL CHECK (tipo IN ('VENTA_CONTADO','RESERVA','COMPRA','CANCELAR_RESERVA')),
         payload_json TEXT NOT NULL,
         estado TEXT NOT NULL CHECK (estado IN
           ('REGISTRADA_LOCAL','ENVIADA','CONFIRMADA','RECHAZADA','EN_CONFLICTO')),
