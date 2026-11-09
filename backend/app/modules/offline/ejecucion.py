@@ -16,8 +16,7 @@ from app.modules.reservas.publico import ReservaClienteService, ReservaIn, Reser
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
-from app.primer_parcial.ventas.models import Pedido
-from app.primer_parcial.ventas.publico import CobroCajaService, CobroIn, CompraService, Linea, SinStock
+from app.primer_parcial.ventas.publico import CobroCajaService, CobroIn, CompraService, Linea, Pedido, SinStock
 
 
 class Resultado:
