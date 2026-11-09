@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
   "assetGroups": [
-    { "name": "app", "installMode": "prefetch", "resources": { "files": ["/favicon.ico", "/index.csr.html", "/index.html", "/manifest.webmanifest", "/*.css", "/*.js", "!/config.js"] } },
+    { "name": "app", "installMode": "prefetch", "resources": { "files": ["/favicon.ico", "/index.csr.html", "/index.html", "/sin-conexion.html", "/manifest.webmanifest", "/*.css", "/*.js", "!/config.js"] } },
     { "name": "assets", "installMode": "lazy", "updateMode": "prefetch", "resources": { "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"] } },
     { "name": "mediapipe-local", "installMode": "lazy", "updateMode": "prefetch", "resources": { "files": ["/mediapipe/pose_landmarker_lite.task", "/mediapipe/wasm/**/*.js", "/mediapipe/wasm/**/*.wasm"] } }
   ],

@@ -1,3 +1,4 @@
+import { InstalarAppComponent } from '../core/ui/instalar-app.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
@@ -72,7 +73,7 @@ const porRol: Record<string, Item[]> = {
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent, InstalarAppComponent],
   template: `
     <div class="layout">
       <aside class="side">
@@ -103,7 +104,7 @@ const porRol: Record<string, Item[]> = {
         @if (s()?.empresa) {
           <div class="topbar">
             <span><strong>{{ s()?.empresa?.razon_social }}</strong></span>
-            <span class="row"><app-notificaciones />
+            <span class="row"><app-instalar-app /><app-notificaciones />
             @if (s()?.suscripcion; as sus) {
              @if (auth.rol() !== 'Cliente') {
               <span class="badge" [class.ok]="sus.estado === 'ACTIVA'" [class.danger]="sus.estado !== 'ACTIVA'">

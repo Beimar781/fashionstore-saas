@@ -1,6 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, isDevMode, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withNavigationErrorHandler } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { routes } from './app.routes';
@@ -8,7 +8,8 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withComponentInputBinding()),
+    // §5.2: sin red y con una ruta que no está en caché (su módulo no se pudo cargar), se muestra la página de respaldo en vez de una pantalla en blanco
+    provideRouter(routes, withComponentInputBinding(), withNavigationErrorHandler(() => { if (!navigator.onLine) window.location.assign('/sin-conexion.html'); })),
     provideHttpClient(withInterceptors([authInterceptor])),
     // PWA: el Service Worker se registra solo en la compilación de producción (ng build)
     provideServiceWorker('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' }),
