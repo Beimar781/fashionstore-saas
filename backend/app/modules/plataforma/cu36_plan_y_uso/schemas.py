@@ -1,7 +1,9 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
+
+from app.core.dinero import precio_plan_texto
 
 
 class PlanDetalleOut(BaseModel):
@@ -10,6 +12,16 @@ class PlanDetalleOut(BaseModel):
     descripcion: str | None
     precio: Decimal
     periodicidad: str
+
+    @computed_field
+    @property
+    def moneda(self) -> str:
+        return "BOB"
+
+    @computed_field
+    @property
+    def precio_texto(self) -> str:
+        return precio_plan_texto(self.precio, self.periodicidad)
 
 
 class VigenciaOut(BaseModel):

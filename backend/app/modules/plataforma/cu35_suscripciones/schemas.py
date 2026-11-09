@@ -1,9 +1,10 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.core.constantes import FORMAS_PAGO, SUS_CANCELADA, SUS_SUSPENDIDA
+from app.core.dinero import formato_bs
 
 
 class SuscripcionIn(BaseModel):
@@ -60,6 +61,16 @@ class SuscripcionOut(BaseModel):
     estado: str
     forma_pago: str | None
     monto: Decimal | None
+
+    @computed_field
+    @property
+    def moneda(self) -> str:
+        return "BOB"
+
+    @computed_field
+    @property
+    def monto_texto(self) -> str | None:
+        return formato_bs(self.monto) if self.monto is not None else None
 
 
 class UsoPlan(BaseModel):

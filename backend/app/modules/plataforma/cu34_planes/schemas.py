@@ -1,6 +1,8 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+
+from app.core.dinero import precio_plan_texto
 
 
 def _limite_positivo(v: int | None) -> int | None:
@@ -52,6 +54,16 @@ class PlanOut(BaseModel):
     es_prueba: bool
     activo: bool
     empresas_suscritas: int = 0
+
+    @computed_field
+    @property
+    def moneda(self) -> str:
+        return "BOB"
+
+    @computed_field
+    @property
+    def precio_texto(self) -> str:
+        return precio_plan_texto(self.precio, self.periodicidad)
 
 
 class EmpresaExcedida(BaseModel):
