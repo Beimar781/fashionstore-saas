@@ -661,3 +661,29 @@ CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con
 # Prompt Q · Autenticación del Cliente sin conexión (bloque 2)
 
 - **Regla:** crear una cuenta e iniciar o recuperar una contraseña necesitan Internet. La web y el móvil conservan el texto de los formularios tras un fallo de conexión y muestran el mensaje de la tabla; no guardan contraseñas ni tokens como operaciones pendientes.
+
+## Prompt Q · Cliente en línea y sin conexión (cierre)
+
+- **Regla:** cada función del Cliente funciona con conexión y sin conexión, o muestra un mensaje claro si depende de Internet (iniciar sesión por primera vez, crear cuenta, recuperar contraseña, cobrar con tarjeta, guardar tarjetas). Lo que el Cliente escribe no se pierde y, donde corresponde, la acción queda en la cola (estados REGISTRADA_LOCAL → ENVIADA → CONFIRMADA | RECHAZADA | EN_CONFLICTO; reenvío idempotente por UUID del cliente, RN11, RN12 y RNF05).
+- **Nueva operación `CANCELAR_RESERVA`:** el Cliente cancela una reserva sin conexión (con su motivo opcional). Si la reserva aún no se sincronizó, cancelar solo quita la operación local. Al sincronizar, el servidor la cancela (aviso «Su reserva fue cancelada») o la deja `RECHAZADA` si la reserva ya fue atendida o cancelada. Migración 0017 amplía el `CHECK` de `operaciones_offline.tipo`.
+- **Campos nuevos de `COMPRA`:** `tipo_entrega` (`RETIRO` o `DELIVERY`), `direccion_entrega` (obligatoria con `DELIVERY`: «Ingrese la dirección de entrega.»), `nit_ci` y `razon_social`; la sincronización los pasa al mismo servicio del checkout en línea. La tarjeta no se cobra sin conexión: el pedido queda por pagar y se paga con Stripe desde «Mis compras».
+- **Carrito sin conexión:** se guarda en el dispositivo y, al volver la red, `PUT /carrito/fusionar` lo une con el del servidor sin duplicar (idempotente por `fusion_id`) y revalida existencias: lo agotado se avisa y se quita. Migración 0016 (`carritos.ultima_fusion_id`).
+- **Lectura sin conexión:** catálogo con la fecha de la descarga, imágenes y PNG del vestidor guardados, últimas compras y reservas, comprobantes ya abiertos y avisos (marcar como leído sin red se envía luego). El asistente responde con reglas locales sobre el catálogo descargado, marcado «Respuesta local, sin IA (sin conexión)».
+- **Sincronización:** sola al volver la red (web: evento `online` y reintentos; móvil: reintento periódico) y con botón manual; contador de pendientes y franja «Sin conexión» visibles en la web y en el móvil.
+
+### Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Iniciar sesión, crear cuenta o recuperar contraseña sin red | «Sin conexión: necesita Internet para iniciar sesión / crear su cuenta / recuperar su contraseña.» | — (solo en la app) | Pendiente |
+| Comprobante nunca descargado, sin red | «Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.» | — (solo en la app) | Pendiente |
+| Compra sin conexión | «Se pagará con tarjeta al recuperar la conexión, desde Mis compras.» | — (solo en la app) | Pendiente |
+| Tarjetas guardadas sin red (móvil) | «Sin conexión: las tarjetas guardadas necesitan Internet.» | — (solo en la app) | Pendiente |
+| Asistente sin red | «Respuesta local, sin IA (sin conexión)» | — (solo en la app) | Pendiente |
+| Vestidor sin lo descargado | «Descargue el catálogo con conexión para usar el vestidor sin Internet.» | — (solo en la app) | Pendiente |
+| Cancelar una reserva ya cancelada o atendida desde la cola | Mensaje del servicio de reservas («no se puede cancelar…») en la operación `RECHAZADA` | 200 con estado `RECHAZADA` (la sincronización responde por operación) | Pendiente |
+| Compra sin conexión con domicilio y sin dirección | «Ingrese la dirección de entrega.» | 422 | Pendiente |
+
+### Para el Word
+
+CU-37 a CU-40 y los casos de uso del Cliente: el tipo de operación `CANCELAR_RESERVA`, los campos nuevos de `COMPRA` y la regla de paridad en línea y sin conexión. Ruta nueva `PUT /carrito/fusionar` (queda en la bitácora: «Fusionó el carrito guardado en su dispositivo con el del servidor»).

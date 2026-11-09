@@ -159,6 +159,29 @@ Marca cada fila cuando el resultado real coincida con el esperado.
 | 12.3 | Web instalada como PWA | Cliente | Con conexión, descargar el catálogo; esperar a que estén disponibles los recursos de MediaPipe; desconectar Internet y abrir un producto admitido del catálogo descargado. | El vestidor carga el modelo local y los PNG guardados, y permite probarse la prenda sin enviar video. Si falta un recurso descargado se informa «Descargue el catálogo con conexión para usar el vestidor sin Internet.». | ☐ |
 | 12.4 | Móvil Android | Cliente | Repetir el flujo móvil existente con una prenda y color listos. | La cámara y el ajuste de la prenda en móvil se mantienen sin cambios. | ☐ |
 
+## 13. Funciones del Cliente con y sin conexión (Prompt Q)
+
+Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **modo avión**. Antes de cortar la red, iniciar sesión con el Cliente, abrir «Modo sin conexión» y tocar «Descargar catálogo»; abrir una vez un comprobante y la lista de compras.
+
+| # | Dónde | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|
+| 13.1 | Web y móvil | Con sesión abierta, cortar la red y abrir la app (cerrarla y volverla a abrir). | Entra directo con el nombre, la empresa y el plan guardados. Al volver la red no pide iniciar sesión otra vez. | ☐ |
+| 13.2 | Web y móvil | Sin red y **sin sesión**: escribir los datos en iniciar sesión, crear cuenta y recuperar contraseña. | «Sin conexión: necesita Internet para iniciar sesión / crear su cuenta / recuperar su contraseña.» y el formulario conserva lo escrito. | ☐ |
+| 13.3 | Web y móvil | Sin red, abrir el catálogo, filtrar, ver el detalle y las promociones. | Se ve lo descargado con «Datos al …»; las fotos ya vistas o precargadas se ven. | ☐ |
+| 13.4 | Web y móvil | Sin red, abrir el vestidor de una prenda descargada. | Funciona con el modelo local y el PNG guardado. Sin catálogo descargado: «Descargue el catálogo con conexión para usar el vestidor sin Internet.» | ☐ |
+| 13.5 | Web y móvil | Sin red, usar el asistente (plan Profesional). | Responde con «Respuesta local, sin IA (sin conexión)» sobre el catálogo descargado. Con plan Básico no aparece. | ☐ |
+| 13.6 | Web y móvil | Sin red, agregar prendas al carrito y reiniciar la app. | El carrito se conserva. Con red, se fusiona con el del servidor sin duplicar; una prenda agotada se avisa y se quita. | ☐ |
+| 13.7 | Web y móvil | Sin red, «Finalizar compra» con retiro, y otra con domicilio sin dirección, y con NIT vacío. | Pide los mismos datos que en línea con los mismos mensajes; la compra queda `REGISTRADA_LOCAL`. | ☐ |
+| 13.8 | Web y móvil | Volver la red. | La compra se sincroniza sola (`ENVIADA` → `CONFIRMADA`), llega el aviso y aparece «por pagar» en «Mis compras»; desde ahí se paga con Stripe. | ☐ |
+| 13.9 | Web y móvil | Sin red, abrir «Mis compras». | La última lista vista más las operaciones pendientes con la etiqueta «Pendiente de sincronizar». | ☐ |
+| 13.10 | Web y móvil | Sin red, abrir un comprobante ya visto y otro nunca abierto. | El visto se abre. El otro: «Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.» | ☐ |
+| 13.11 | Web y móvil | Sin red, «Agregar a mi reserva» → «Mi reserva» → confirmar. | La reserva queda en la cola y en «Mis reservas» como pendiente; al volver la red se confirma. | ☐ |
+| 13.12 | Web y móvil | Sin red, cancelar una reserva ya confirmada (con motivo) y otra que aún no se sincronizó. | La primera queda como `CANCELAR_RESERVA` pendiente y al sincronizar se cancela (o queda `RECHAZADA` con mensaje si ya fue atendida o cancelada). La segunda solo desaparece de la cola. | ☐ |
+| 13.13 | Web y móvil | Sin red, abrir los avisos y marcar uno como leído. | Se ven los últimos avisos guardados; al volver la red se envía la lectura y el contador se actualiza. | ☐ |
+| 13.14 | Web y móvil | Sin red, abrir «Tarjetas guardadas» o pagar con tarjeta. | «Sin conexión: las tarjetas guardadas necesitan Internet.» y no se cobra nada. | ☐ |
+| 13.15 | Web y móvil | Con operaciones pendientes, mirar el aviso y el contador. | Franja «Sin conexión» y contador de pendientes visibles (en la web, en el menú y la franja del layout). Al volver la red se sincroniza sola; también hay botón manual. | ☐ |
+| 13.16 | Web | Compilar en producción, servir `dist` en local, cargar una vez con red, cortar la red y recorrer las pantallas del Cliente. | Todas abren sin red desde el Service Worker (shell y rutas del Cliente). | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

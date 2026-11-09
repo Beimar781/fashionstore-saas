@@ -118,6 +118,7 @@ ETIQUETAS: list[Etiqueta] = [
     E("POST", "/carrito/items", "CREAR", "carrito", "Agregó una prenda al carrito"),
     E("PUT", "/carrito/items/{item_id}", "MODIFICAR", "carrito", "Cambió la cantidad de una prenda del carrito"),
     E("DELETE", "/carrito/items/{item_id}", "ELIMINAR", "carrito", "Quitó una prenda del carrito"),
+    E("PUT", "/carrito/fusionar", "MODIFICAR", "carrito", "Fusionó el carrito guardado en su dispositivo con el del servidor"),
     E("PUT", "/carrito/sucursal", "MODIFICAR", "carrito", "Cambió la sucursal del carrito"),
     E("DELETE", "/carrito", "ELIMINAR", "carrito", "Vació el carrito"),
     E("POST", "/compras/checkout", "CREAR", "pedido", "Confirmó el pedido[ {codigo}][ por Bs {total}]"),

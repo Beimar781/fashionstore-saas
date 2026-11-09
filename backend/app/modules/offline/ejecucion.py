@@ -10,8 +10,7 @@ from app.modules.acceso.dependencias import Contexto
 from app.modules.inventario.publico import disponible_por_variante
 from app.modules.offline.repository import OperacionRepository
 from app.modules.offline.schemas import CompraOfflineIn, VentaOfflineIn
-from app.modules.reservas.publico import ReservaIn, ReservaService
-from app.modules.reservas.cu10_consultar_cancelar.service import ReservaClienteService
+from app.modules.reservas.publico import ReservaClienteService, ReservaIn, ReservaService
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
