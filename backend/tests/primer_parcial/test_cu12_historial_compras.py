@@ -90,3 +90,13 @@ def test_09_solo_se_ven_las_compras_propias(inv, mundo, tienda_b, datos, client)
 def test_10_solo_el_cliente_consulta_su_historial(inv, client):
     for h in (inv.h_enc_centro, inv.h_cajero, inv.h_admin):
         assert client.get("/api/compras", headers=h).status_code == 403
+
+
+def test_09_el_comprobante_muestra_el_dinero_en_bolivianos_con_formato_unico(inv, mundo, client):
+    from app.primer_parcial.ventas.cu12_historial_compras.comprobante import _fmt
+
+    assert _fmt(1250.5) == "Bs 1.250,50" and _fmt("0") == "Bs 0,00"
+    stock_listo(inv, mundo)
+    p = comprar(client, inv.h_cliente, inv, inv.v_sm_rojo, 1)
+    r = client.get(f"/api/compras/{p['id']}/comprobante", headers=inv.h_cliente)
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")  # el PDF se arma con la misma función de formato

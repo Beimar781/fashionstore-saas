@@ -4,12 +4,14 @@ Reglas de RN15: la devolución requiere el comprobante de la venta y se acepta d
 devolución y reingresa la prenda al inventario de la sucursal; el cambio está sujeto a disponibilidad. Todo se registra en una sola
 transacción: si algo falla (por ejemplo, el reembolso en la pasarela), no queda nada a medias.
 """
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
 from app.core.constantes import ADMIN
+from app.core.dinero import formato_bs
 from app.core.errors import AppError, Conflicto, DatosInvalidos, NoEncontrado
 from app.core.tiempo import a_local, ahora
 from app.modules.acceso.dependencias import Contexto
@@ -36,6 +38,8 @@ MSG_SIN_PRENDAS = "Seleccione al menos una prenda a devolver."
 MSG_CONDICION = "La prenda no cumple las condiciones de devolución: debe estar sin daños, sin desgaste y conservar sus etiquetas."  # RN15
 MSG_AJENA = "La prenda indicada no pertenece a esa venta."
 MSG_CAMBIO_SIN_NUEVAS = "Un cambio requiere al menos una prenda nueva."
+logger = logging.getLogger(__name__)
+
 MSG_DEVOLUCION_CON_NUEVAS = "Una devolución no lleva prendas nuevas; registre un cambio."
 MSG_NO_DISPONIBLE = "Una o más prendas del cambio ya no están disponibles en el catálogo."
 MSG_COBRO_TARJETA = "Inicie el cobro con tarjeta de la diferencia antes de registrar el cambio."
@@ -121,12 +125,13 @@ class DevolucionService:
         pasarela = obtener_pasarela()
         try:
             intento = pasarela.crear_intento(
-                monto_bob=adicional, descripcion=f"Cambio de la venta {pedido.codigo}", metadata={"pedido": pedido.codigo, "empresa_id": str(self.empresa_id)},
+                monto_bob=adicional, descripcion=f"Cambio de la venta {pedido.codigo} · {formato_bs(adicional)}", metadata={"pedido": pedido.codigo, "empresa_id": str(self.empresa_id)},
                 cliente_ref=None, metodo_ref=None, guardar=False,
             )
         except AppError:
             raise
         except Exception as e:
+            logger.exception("No se pudo crear el cobro de la diferencia del cambio de %s", pedido.codigo)
             raise PasarelaNoDisponible(MSG_PASARELA) from e
         for abierto in self.intentos.abiertos(pedido.id, self.ctx.usuario.id):  # un solo cobro abierto por venta y cajero
             self._anular_cobro(abierto.id, abierto.referencia, pasarela_para(abierto.proveedor), confirmar=False)

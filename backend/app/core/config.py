@@ -42,7 +42,6 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     anthropic_api_key: str = ""
     ia_modelo: str = ""  # vacío = el modelo por defecto del proveedor
-    tasa_bob_por_usd: float = 6.96  # Stripe no cobra en bolivianos: en modo prueba se cobra el equivalente en dólares
 
     # Avisos push (regla 17): sin claves VAPID / sin cuenta de servicio de Firebase quedan en modo simulado. Las claves van en .env, nunca en el código.
     vapid_public_key: str = ""

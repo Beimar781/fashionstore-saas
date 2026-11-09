@@ -5,11 +5,11 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from app.core.dinero import formato_bs
 from app.modules.ventas.models import Devolucion
 
 
-def _fmt(n) -> str:
-    return f"Bs {n:,.2f}"
+_fmt = formato_bs
 
 
 def generar_nota(empresa: dict, sucursal: dict, devolucion: Devolucion, comprobante: str, registrada_por: str) -> bytes:

@@ -139,7 +139,7 @@ def test_09_la_diferencia_se_paga_con_tarjeta(inv, mundo, client, db):
     v_jean = _jean(inv, mundo)
     p = venta_en_caja(client, inv, (inv.v_sm_rojo, 1))  # Bs 100 → jean de Bs 180: diferencia de Bs 80
     ini = _iniciar(client, inv, p, v_jean)
-    assert (ini["monto"], ini["modo"], ini["moneda_pasarela"]) == ("80.00", "simulado", "USD") and ini["client_secret"] is None
+    assert (ini["monto"], ini["modo"], ini["moneda_pasarela"]) == ("80.00", "simulado", "BOB") and ini["client_secret"] is None
     r = _cambio(client, inv.h_cajero, p, v_jean, cobro=_con_tarjeta(ini["pago_id"]))
     assert r.status_code == 201, r.text
     d = r.json()

@@ -35,15 +35,15 @@ def _pedido(inv, mundo, client, cantidad=2):
 
 
 # ---- el adaptador ----
-def test_01_crear_el_intento_cobra_en_dolares_con_captura_manual(pasarela, stripe_falso):
+def test_01_crear_el_intento_cobra_en_bolivianos_con_captura_manual(pasarela, stripe_falso):
     i = pasarela.crear_intento(monto_bob=Decimal("200.00"), descripcion="Pedido X", metadata={"pedido": "X"}, cliente_ref="cus_1", metodo_ref=None, guardar=True)
     p = stripe_falso.intentos[i.referencia].params
-    assert (p["amount"], p["currency"], p["capture_method"], p["customer"], p["setup_future_usage"]) == (2874, "usd", "manual", "cus_1", "on_session")
-    assert i.client_secret == f"{i.referencia}_secret" and i.monto_pasarela == 2874 and i.moneda_pasarela == "usd"
+    assert (p["amount"], p["currency"], p["capture_method"], p["customer"], p["setup_future_usage"]) == (20000, "bob", "manual", "cus_1", "on_session")
+    assert i.client_secret == f"{i.referencia}_secret" and i.monto_pasarela == 20000 and i.moneda_pasarela == "bob"
     guardada = pasarela.crear_intento(monto_bob=Decimal("10"), descripcion="", metadata={}, cliente_ref="cus_1", metodo_ref="pm_guardado", guardar=False)
     p2 = stripe_falso.intentos[guardada.referencia].params
     assert p2["payment_method"] == "pm_guardado" and "setup_future_usage" not in p2
-    assert guardada.monto_pasarela == 144  # 10 / 6,96 → US$ 1,44
+    assert guardada.monto_pasarela == 1000  # Bs 10 → 1000 centavos, sin conversión
 
 
 def test_01b_no_se_envia_payment_method_types_y_se_usan_los_metodos_automaticos(pasarela, stripe_falso):
@@ -54,8 +54,21 @@ def test_01b_no_se_envia_payment_method_types_y_se_usan_los_metodos_automaticos(
         assert p["automatic_payment_methods"] == {"enabled": True, "allow_redirects": "never"} and p["capture_method"] == "manual"
 
 
-def test_02_el_monto_minimo_de_stripe(pasarela):
-    assert pasarela.crear_intento(monto_bob=Decimal("1.00"), descripcion="", metadata={}, cliente_ref=None, metodo_ref=None, guardar=False).monto_pasarela == 50
+def test_02_el_monto_minimo_de_la_pasarela(pasarela):
+    from app.core.errors import DatosInvalidos
+
+    with pytest.raises(DatosInvalidos) as e:
+        pasarela.crear_intento(monto_bob=Decimal("1.00"), descripcion="", metadata={}, cliente_ref=None, metodo_ref=None, guardar=False)
+    assert e.value.message == "El monto mínimo para pagar con tarjeta es Bs 3,50."
+    assert pasarela.crear_intento(monto_bob=Decimal("3.50"), descripcion="", metadata={}, cliente_ref=None, metodo_ref=None, guardar=False).monto_pasarela == 350
+
+
+def test_02b_conversion_de_bolivianos_a_centavos_y_formato():
+    from app.core.dinero import bs_a_centavos, formato_bs, precio_plan_texto
+
+    assert (bs_a_centavos("10.005"), bs_a_centavos(Decimal("199.994")), bs_a_centavos(200), bs_a_centavos("0.01")) == (1001, 19999, 20000, 1)
+    assert (formato_bs(1250.5), formato_bs("0"), formato_bs(Decimal("1234567.891"))) == ("Bs 1.250,50", "Bs 0,00", "Bs 1.234.567,89")
+    assert (precio_plan_texto(150, "mensual"), precio_plan_texto("350.50", "anual")) == ("Bs 150 / mes", "Bs 350,50 / año")
 
 
 def test_03_leer_la_respuesta_de_stripe(pasarela, stripe_falso):
@@ -93,9 +106,12 @@ def test_05_pago_aprobado_con_stripe_guarda_la_tarjeta(inv, mundo, client, db, p
     p = _pedido(inv, mundo, client)
     servicio = _servicio(db, mundo, pasarela)
     i = servicio.iniciar(p["id"], schemas.IniciarIn(guardar_tarjeta=True))
-    assert i.modo == "stripe" and i.publishable_key == "pk_test_falsa" and i.client_secret and i.monto_pasarela == 28.74
+    assert i.modo == "stripe" and i.publishable_key == "pk_test_falsa" and i.client_secret and i.monto_pasarela == 200.0 and i.moneda_pasarela == "BOB"
     assert db.query(ClientePasarela).filter_by(empresa_id=mundo.a.id).one().referencia == "cus_prueba"  # Customer creado una sola vez
     assert stripe_falso.intentos[db.get(Pago, i.pago_id).referencia_externa].params["setup_future_usage"] == "on_session"
+    params = stripe_falso.intentos[db.get(Pago, i.pago_id).referencia_externa].params
+    assert params["currency"] == "bob" and params["amount"] == 20000 and "payment_method_types" not in params
+    assert params["description"].startswith("Pedido ") and params["description"].endswith(" · Bs 200,00") and params["metadata"]["detalle"] == params["description"]
     stripe_falso.autorizar(db.get(Pago, i.pago_id).referencia_externa)  # el navegador confirmó la tarjeta con Stripe.js
     r = servicio.confirmar(i.pago_id, schemas.ConfirmarIn())
     assert r.aprobado and r.pedido.estado == "PAGADO" and r.pago.tarjeta_ultimos4 == "4242"

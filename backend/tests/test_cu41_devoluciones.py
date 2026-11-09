@@ -164,16 +164,16 @@ def test_13_reembolso_de_stripe_se_hace_con_la_misma_tarjeta(inv, mundo, client,
     from tests.stripe_falso import StripeFalso
 
     stock_listo(inv, mundo)
-    p = comprar(client, inv.h_cliente, inv, inv.v_sm_rojo, 2)  # Bs 200 = 2874 centavos de dólar
+    p = comprar(client, inv.h_cliente, inv, inv.v_sm_rojo, 2)  # Bs 200 = 20000 centavos
     db.execute(Pago.__table__.update().where(Pago.pedido_id == p["id"]).values(proveedor="STRIPE", referencia_externa="pi_prueba"))
     db.commit()
     falso = StripeFalso()
     monkeypatch.setattr(service, "pasarela_para", lambda proveedor: PasarelaStripe("sk_test_falsa", "pk_test_falsa", sdk=falso) if proveedor == "STRIPE" else None)
     d = devolver_ok(client, inv.h_cajero, p["comprobante_numero"], [(p["items"][0], 1)])
-    assert falso.hizo("reembolsar")[0][1]["payment_intent"] == "pi_prueba" and falso.hizo("reembolsar")[0][1]["amount"] == 1437  # la mitad
+    assert falso.hizo("reembolsar")[0][1]["payment_intent"] == "pi_prueba" and falso.hizo("reembolsar")[0][1]["amount"] == 10000  # la mitad (Bs 100 → 10000 centavos, sin conversión)
     assert d["referencia_reembolso"] == "re_1"
     devolver_ok(client, inv.h_cajero, p["comprobante_numero"], [(p["items"][0], 1)])
-    assert falso.hizo("reembolsar")[1][1]["amount"] == 2874 - 1437  # el último devuelve exactamente el resto
+    assert falso.hizo("reembolsar")[1][1]["amount"] == 20000 - 10000  # el último devuelve exactamente el resto
 
 
 def test_14_stripe_ya_no_configurado_no_permite_reembolsar_ese_pago(inv, mundo, client, db):

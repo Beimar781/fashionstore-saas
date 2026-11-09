@@ -19,7 +19,7 @@ def test_01_enviar_el_payload_consolida_el_monto_del_pedido(inv, mundo, client):
     r = iniciar(client, inv.h_cliente, p["id"])
     assert r.status_code == 201
     i = r.json()
-    assert (i["modo"], i["monto"], i["moneda"], i["monto_pasarela"], i["moneda_pasarela"]) == ("simulado", "200.00", "BOB", 28.74, "USD")  # 200 / 6,96
+    assert (i["modo"], i["monto"], i["moneda"], i["monto_pasarela"], i["moneda_pasarela"]) == ("simulado", "200.00", "BOB", 200.0, "BOB")  # sin conversión: se cobra en bolivianos
     assert i["client_secret"] is None and i["publishable_key"] is None  # sin claves de Stripe: pasarela simulada
     estado = client.get(f"/api/pagos/{i['pago_id']}", headers=inv.h_cliente).json()
     assert estado["pago"]["estado"] == "PENDIENTE" and estado["pago"]["monto"] == "200.00" and estado["aprobado"] is False
@@ -178,7 +178,7 @@ def test_14_un_pago_rechazado_no_se_puede_confirmar_otra_vez(inv, mundo, client)
 
 def test_15_configuracion_de_pago_y_tarjetas_de_prueba(inv, client):
     c = client.get("/api/pagos/config", headers=inv.h_cliente).json()
-    assert c["modo"] == "simulado" and c["publishable_key"] is None and c["moneda_pasarela"] == "USD"
+    assert c["modo"] == "simulado" and c["publishable_key"] is None and c["moneda_pasarela"] == "BOB"
     assert {t["numero"] for t in c["tarjetas_prueba"]} >= {"4242 4242 4242 4242", "4000 0000 0000 9995", "4000 0000 0000 0119"}
 
 

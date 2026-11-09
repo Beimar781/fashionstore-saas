@@ -40,7 +40,7 @@ class IniciarOut(BaseModel):
     client_secret: str | None  # solo con Stripe: lo usa Stripe.js en el navegador para confirmar el pago
     monto: Dinero
     moneda: str
-    monto_pasarela: float  # lo que se cobra en la pasarela (dólares)
+    monto_pasarela: float  # lo que se cobra en la pasarela (bolivianos)
     moneda_pasarela: str
     tarjeta_guardada: TarjetaGuardadaOut | None
 

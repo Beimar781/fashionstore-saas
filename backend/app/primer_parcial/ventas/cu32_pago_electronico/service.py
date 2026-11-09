@@ -8,8 +8,8 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.constantes import CLIENTE
+from app.core.dinero import formato_bs
 from app.core.errors import AppError, Conflicto, NoEncontrado
 from app.modules.acceso.dependencias import Contexto
 from app.modules.reservas.publico import avisar_cliente
@@ -52,7 +52,7 @@ class PagoService:
         return schemas.ConfigPagoOut(
             modo=self.pasarela.modo, publishable_key=self.pasarela.publishable_key,
             tarjetas_prueba=[schemas.TarjetaPruebaOut(numero=t["numero"], marca=t["marca"], resultado=t["resultado"]) for t in TARJETAS_PRUEBA] if simulado else [],
-            moneda_pasarela="USD", tasa_bob_por_usd=get_settings().tasa_bob_por_usd,
+            moneda_pasarela="BOB", tasa_bob_por_usd=1.0,  # sin conversión; el campo se conserva solo por compatibilidad con la app
         )
 
     def listar_tarjetas(self) -> list[TarjetaGuardada]:
@@ -88,7 +88,8 @@ class PagoService:
 
         try:
             intento = self.pasarela.crear_intento(
-                monto_bob=pedido.total, descripcion=f"Pedido {pedido.codigo}", metadata={"pedido": pedido.codigo, "empresa_id": str(self.empresa_id)},
+                monto_bob=pedido.total, descripcion=f"Pedido {pedido.codigo} · {formato_bs(pedido.total)}",
+                metadata={"pedido": pedido.codigo, "detalle": f"Pedido {pedido.codigo} · {formato_bs(pedido.total)}", "empresa_id": str(self.empresa_id)},
                 cliente_ref=self._cliente_pasarela(), metodo_ref=guardada.referencia if guardada else None, guardar=guardar,
             )
         except AppError:

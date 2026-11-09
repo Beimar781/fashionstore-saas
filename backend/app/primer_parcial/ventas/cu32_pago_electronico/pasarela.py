@@ -10,6 +10,7 @@ from datetime import date
 from decimal import Decimal
 
 from app.core.config import get_settings
+from app.core.dinero import MINIMO_PAGO_BS, MONEDA_PAGO, bs_a_centavos, formato_bs
 from app.core.errors import DatosInvalidos
 
 MOTIVO_BANCO = "Transacción denegada por su banco"  # mensaje de la ficha CU-32 (fondos insuficientes)
@@ -95,12 +96,14 @@ def centavos_a_reembolsar(monto_bob: Decimal, restante_bob: Decimal, restante_ce
     """Centavos de la pasarela que corresponden a un reembolso; el último reembolso de un pago devuelve exactamente lo que quede (sin descuadres por redondeo)."""
     if monto_bob >= restante_bob:
         return restante_centavos
-    return min(max(int((monto_bob / Decimal(str(get_settings().tasa_bob_por_usd)) * 100).to_integral_value()), 1), restante_centavos)
+    return min(max(bs_a_centavos(monto_bob), 1), restante_centavos)
 
 
 def centavos_pasarela(monto_bob: Decimal) -> int:
-    """Stripe no cobra en bolivianos: se cobra el equivalente en dólares (mínimo US$ 0,50)."""
-    return max(int((monto_bob / Decimal(str(get_settings().tasa_bob_por_usd)) * 100).to_integral_value()), 50)
+    """Se cobra en bolivianos, sin conversión: total × 100. Por debajo del mínimo de la pasarela se responde con un mensaje claro."""
+    if Decimal(str(monto_bob)) < MINIMO_PAGO_BS:
+        raise DatosInvalidos(f"El monto mínimo para pagar con tarjeta es {formato_bs(MINIMO_PAGO_BS)}.")
+    return bs_a_centavos(monto_bob)
 
 
 class PasarelaSimulada:
@@ -112,7 +115,7 @@ class PasarelaSimulada:
         return previa or ""
 
     def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar) -> Intento:
-        return Intento(f"sim_pi_{secrets.token_hex(10)}", None, centavos_pasarela(monto_bob), "usd")
+        return Intento(f"sim_pi_{secrets.token_hex(10)}", None, centavos_pasarela(monto_bob), MONEDA_PAGO)
 
     def confirmar(self, *, referencia: str, tarjeta: Tarjeta | None, escenario_guardado: str | None) -> Resultado:
         """Decide como lo haría el banco, según la tarjeta de prueba. Con una tarjeta guardada se repite el escenario con que se guardó."""
@@ -182,7 +185,7 @@ class PasarelaStripe:
     def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar) -> Intento:
         centavos = centavos_pasarela(monto_bob)
         params = dict(
-            amount=centavos, currency="usd", capture_method="manual", automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+            amount=centavos, currency=MONEDA_PAGO, capture_method="manual", automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
             description=descripcion, metadata=metadata,
         )
         if cliente_ref:
@@ -192,7 +195,7 @@ class PasarelaStripe:
         elif guardar and cliente_ref:
             params["setup_future_usage"] = "on_session"  # Stripe guarda la tarjeta para las próximas compras
         pi = self.sdk.PaymentIntent.create(api_key=self.clave, **params)
-        return Intento(pi.id, pi.client_secret, centavos, "usd")
+        return Intento(pi.id, pi.client_secret, centavos, MONEDA_PAGO)
 
     def confirmar(self, *, referencia: str, tarjeta=None, escenario_guardado=None) -> Resultado:
         """Consulta a Stripe cómo quedó el pago que el navegador confirmó."""

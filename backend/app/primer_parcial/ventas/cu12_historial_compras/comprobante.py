@@ -5,13 +5,13 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from app.core.dinero import formato_bs
 from app.primer_parcial.ventas.models import Pago, Pedido
 
 ENTREGA = {"DELIVERY": "Entrega a domicilio", "RETIRO": "Retiro en sucursal", "EN_TIENDA": "Compra en tienda"}
 
 
-def _fmt(n) -> str:
-    return f"Bs {n:,.2f}"
+_fmt = formato_bs
 
 
 def generar_pdf(empresa: dict, sucursal: dict, cliente: str, pedido: Pedido, pago: Pago | None, iva_porcentaje: int, atendio: str | None = None) -> bytes:
@@ -64,8 +64,8 @@ def generar_pdf(empresa: dict, sucursal: dict, cliente: str, pedido: Pedido, pag
         c.setFont("Helvetica", 9)
         c.drawString(x, y, f"{item.producto} · {item.talla} · {item.color}"[:60])
         c.drawRightString(ancho - x - 70 * mm, y, str(item.cantidad))
-        c.drawRightString(ancho - x - 38 * mm, y, f"{item.precio_final:,.2f}")
-        c.drawRightString(ancho - x, y, f"{item.subtotal:,.2f}")
+        c.drawRightString(ancho - x - 38 * mm, y, formato_bs(item.precio_final))
+        c.drawRightString(ancho - x, y, formato_bs(item.subtotal))
         y -= 4.6 * mm
         c.setFont("Helvetica", 7.5)
         c.drawString(x, y, f"SKU {item.sku}")

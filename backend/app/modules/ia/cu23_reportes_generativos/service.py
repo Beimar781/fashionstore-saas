@@ -8,6 +8,7 @@ from decimal import Decimal
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
+from app.core.dinero import formato_bs
 from app.core.errors import DatosInvalidos, NoEncontrado
 from app.core.exportar import FORMATOS, exportar
 from app.core.ia import obtener_ia
@@ -69,8 +70,7 @@ def _a_json(valor):
     return jsonable_encoder(valor)
 
 
-def _bs(valor) -> str:
-    return f"Bs {Decimal(valor):,.2f}"
+_bs = formato_bs
 
 
 class ReporteGenerativoService(ReportesBase):
