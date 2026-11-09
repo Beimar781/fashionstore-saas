@@ -22,6 +22,10 @@ export class ColaOperacionesService {
   private red = inject(ConnectivityService);
   private toast = inject(ToastService);
 
+  /** RNF06: tras cada fallo de red o respuesta 5xx la espera se duplica (30 s, 1 min, 2 min…, máximo 15 min); un 4xx de negocio no se reintenta (la operación queda RECHAZADA). */
+  private fallosSeguidos = 0;
+  private proximoIntento = 0;
+
   readonly operaciones = signal<OperacionLocal[]>([]);
   readonly sincronizando = signal(false);
   readonly errorSync = signal('');
@@ -33,7 +37,7 @@ export class ColaOperacionesService {
     void this.cargar();
     // al volver la conexión se sincroniza solo, y mientras haya pendientes se reintenta cada 30 segundos
     effect(() => { if (this.red.online() && this.auth.autenticado()) void this.sincronizar(); });
-    setInterval(() => { if (this.red.online() && this.auth.autenticado() && this.pendientes().length) void this.sincronizar(); }, REINTENTO_MS);
+    setInterval(() => { if (this.red.online() && this.auth.autenticado() && this.pendientes().length && Date.now() >= this.proximoIntento) void this.sincronizar(); }, REINTENTO_MS);
   }
 
   async cargar() {
@@ -56,6 +60,19 @@ export class ColaOperacionesService {
     return op;
   }
 
+  private fallo() {
+    this.fallosSeguidos++;
+    this.proximoIntento = Date.now() + Math.min(REINTENTO_MS * 2 ** this.fallosSeguidos, 15 * 60 * 1000);
+  }
+
+  /** Aviso local (§B10): «Se sincronizaron N operaciones; M en conflicto.» como notificación del navegador si hay permiso y, si no, solo dentro de la app. */
+  private avisarResumen(confirmadas: number, conflictos: number) {
+    if (!confirmadas && !conflictos) return;
+    const texto = `Se sincronizaron ${confirmadas} operaciones; ${conflictos} en conflicto.`;
+    if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('FashionStore', { body: texto, icon: 'icons/icon-192.png' }); return; } catch { /* sin notificaciones: se avisa dentro de la app */ } }
+    this.toast.ok(texto);
+  }
+
   async sincronizar(): Promise<void> {
     if (this.sincronizando() || !this.red.online()) return;
     const lote = this.operaciones().filter((o) => o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA').sort((a, b) => a.creada_en.localeCompare(b.creada_en));
@@ -67,20 +84,27 @@ export class ColaOperacionesService {
     try {
       const r = await new Promise<import('../offline.models').RespuestaSync>((ok, mal) =>
         this.api.sincronizar(lote.map((o) => ({ id: o.id, tipo: o.tipo, creada_en: o.creada_en, sucursal_id: o.sucursal_id, payload: o.payload }))).subscribe({ next: ok, error: mal }));
+      let confirmadas = 0, conflictos = 0, conError = false;
       for (const res of r.resultados) {
         const o = lote.find((x) => x.id === res.id);
         if (!o) continue;
-        if (res.estado === 'ERROR') o.estado = 'REGISTRADA_LOCAL';  // el servidor no pudo procesarla ahora: se conserva y se reintenta (RNF06)
+        if (res.estado === 'ERROR') { o.estado = 'REGISTRADA_LOCAL'; conError = true; }  // el servidor no pudo procesarla ahora: se conserva y se reintenta (RNF06)
         else { o.estado = res.estado; o.referencia = res.referencia; o.comprobante = res.comprobante; o.detalle = res.detalle; }
         o.mensaje = res.mensaje;
         await this.db.guardarOperacion(o);
         this.avisarAlCliente(o);
+        if (o.estado === 'CONFIRMADA') confirmadas++;
+        if (o.estado === 'EN_CONFLICTO') conflictos++;
       }
+      if (conError) this.fallo(); else { this.fallosSeguidos = 0; this.proximoIntento = 0; }
+      this.avisarResumen(confirmadas, conflictos);
       await this.db.marcarSincronizacion();
       this.ultimaSync.set(r.sincronizado_en);
       if (r.aviso_reloj) this.errorSync.set(r.aviso_reloj);  // §7.2: la hora del dispositivo parece incorrecta
     } catch (e) {
       for (const o of lote) { o.estado = 'REGISTRADA_LOCAL'; await this.db.guardarOperacion(o); }  // sin respuesta: nada se pierde
+      const estadoHttp = (e as { status?: number }).status;
+      if (estadoHttp === undefined || estadoHttp === 0 || estadoHttp >= 500) this.fallo();  // un 4xx de negocio no se reintenta con espera: el servidor ya respondió
       const err = e as { status?: number; error?: { detail?: string } };
       this.errorSync.set(err.status === 0 || err.status === undefined ? 'Sin conexión con el servidor: las operaciones siguen guardadas y se reintentarán.' : (typeof err.error?.detail === 'string' ? err.error.detail : 'No se pudo sincronizar. Se reintentará.'));
     }

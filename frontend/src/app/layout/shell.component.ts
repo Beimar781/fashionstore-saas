@@ -117,7 +117,7 @@ const porRol: Record<string, Item[]> = {
         }
         <router-outlet />
       </div>
-      @if (confirmarSalida()) { <app-confirmar-salida (cancelar)="confirmarSalida.set(false)" (confirmar)="salir()" /> }
+      @if (confirmarSalida()) { <app-confirmar-salida [pendientes]="cola.pendientes().length" (cancelar)="confirmarSalida.set(false)" (confirmar)="salir()" /> }
     </div>`,
   styles: `
     .layout { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }

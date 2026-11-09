@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
           IconButton(
               tooltip: 'Cerrar sesión',
               icon: const Icon(Icons.logout),
-              onPressed: auth.cerrarSesion),
+              onPressed: () => cerrarSesionConAviso(context)),
         ],
       ),
       body: ListView(
@@ -404,7 +404,7 @@ class _PerfilCliente extends StatelessWidget {
               child: ListTile(
                   leading: const Icon(Icons.logout),
                   title: const Text('Cerrar sesión'),
-                  onTap: auth.cerrarSesion)),
+                  onTap: () => cerrarSesionConAviso(context))),
         ]);
   }
 
@@ -474,4 +474,25 @@ class _AvisosScreen extends StatelessWidget {
                                   onPressed: () => push.leer(a))))
                   ]));
   }
+}
+
+/// §5.4: cerrar sesión nunca borra operaciones. Si hay pendientes, se avisa que se conservan en este dispositivo (ligadas a este usuario y empresa).
+Future<void> cerrarSesionConAviso(BuildContext context) async {
+  final auth = context.read<AuthController>();
+  final pendientes = context.read<OfflineController>().pendientes.length;
+  if (pendientes > 0) {
+    final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar sesión?'),
+        content: Text('Tiene $pendientes operaciones sin sincronizar. Se conservarán en este dispositivo.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, cerrar sesión')),
+        ],
+      ),
+    );
+    if (seguir != true) return;
+  }
+  await auth.cerrarSesion();
 }

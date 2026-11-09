@@ -1,4 +1,4 @@
-import { Component, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 /** Ventana emergente de confirmación al cerrar sesión. */
 @Component({
@@ -9,6 +9,7 @@ import { Component, output } from '@angular/core';
         <div class="body">
           <h2 id="t-salir">¿Cerrar sesión?</h2>
           <p class="muted">Saldrá de su cuenta en este dispositivo. Para volver a ingresar necesitará su correo y contraseña.</p>
+          @if (pendientes() > 0) { <div class="alert warn small" role="status">Tiene {{ pendientes() }} operaciones sin sincronizar. Se conservarán en este dispositivo.</div> }
         </div>
         <footer>
           <button class="btn" type="button" (click)="cancelar.emit()">Cancelar</button>
@@ -19,6 +20,7 @@ import { Component, output } from '@angular/core';
   styles: `.confirmar { width: min(420px, 100%); } .confirmar h2 { font-size: 1.25rem; }`,
 })
 export class ConfirmarSalidaComponent {
+  readonly pendientes = input(0);
   readonly cancelar = output<void>();
   readonly confirmar = output<void>();
 }

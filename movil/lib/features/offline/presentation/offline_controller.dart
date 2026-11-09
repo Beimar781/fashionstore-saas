@@ -17,6 +17,10 @@ class OfflineController extends ChangeNotifier {
   final Stream<bool>? _conectividad;
   StreamSubscription<bool>? _red;
 
+  /// RNF06: tras cada fallo de red o respuesta 5xx la espera se duplica (30 s, 1 min, 2 min…, máximo 15 min); un 4xx de negocio no se reintenta (queda RECHAZADA).
+  int _fallosSeguidos = 0;
+  DateTime _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
+
   Sesion? _sesion;
   Timer? _reintento;
   List<OperacionLocal> operaciones = [];
@@ -51,7 +55,7 @@ class OfflineController extends ChangeNotifier {
     if (habilitado) {
       _red = _conectividad?.listen(_alCambiarLaRed);
       _reintento = Timer.periodic(const Duration(seconds: 30), (_) {
-        if (pendientes.isNotEmpty) sincronizar();
+        if (pendientes.isNotEmpty && !DateTime.now().isBefore(_proximoIntento)) sincronizar();
         actualizarSiVencido();
       });
       Future.microtask(() async {
@@ -63,9 +67,24 @@ class OfflineController extends ChangeNotifier {
     }
   }
 
+  void _registrarResultado(bool fallo) {
+    if (!fallo) {
+      _fallosSeguidos = 0;
+      _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
+      return;
+    }
+    _fallosSeguidos++;
+    final segundos = (30 * (1 << _fallosSeguidos)).clamp(30, 900);
+    _proximoIntento = DateTime.now().add(Duration(seconds: segundos));
+  }
+
+  /// Segundos que faltan para el próximo reintento automático (0 si puede reintentar ya).
+  int get esperaRestante => _proximoIntento.difference(DateTime.now()).inSeconds.clamp(0, 900);
+
   /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
   void _alCambiarLaRed(bool hayRed) {
     enLinea = hayRed;
+    if (hayRed) _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0); // al volver la red se reintenta en el acto, sin esperar
     notifyListeners();
     if (hayRed && pendientes.isNotEmpty) sincronizar();
     if (hayRed) actualizarSiVencido();
@@ -141,6 +160,7 @@ class OfflineController extends ChangeNotifier {
     sincronizando = true;
     notifyListeners();
     final resumen = await _repo.sincronizar(s.usuarioId, s.empresaId!);
+    _registrarResultado(resumen.sinConexion || resumen.reintentar > 0);
     enLinea = !resumen.sinConexion;
     error = resumen.error;
     sincronizando = false;
