@@ -10,7 +10,7 @@ import logging
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.core.constantes import CAJERO, CLIENTE, ENCARGADO
+from app.core.constantes import CAJERO, CLIENTE, ENCARGADO, PROVEEDOR
 from app.core.errors import AppError
 from app.core.tiempo import a_local, ahora
 from app.modules.acceso.dependencias import Contexto
@@ -33,8 +33,9 @@ MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el
 MSG_CONFIRMADA = "Operación confirmada."
 MSG_RELOJ = "La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta."
 TOLERANCIA_RELOJ = 300  # segundos (5 minutos)
-NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario", "PREPARAR_RESERVA": "preparación de reserva", "PRENDA_NO_ENCONTRADA": "prenda no encontrada", "ATENDER_RESERVA": "atención de reserva"}
-PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,), "PREPARAR_RESERVA": (ENCARGADO,), "PRENDA_NO_ENCONTRADA": (ENCARGADO,), "ATENDER_RESERVA": (ENCARGADO,)}
+NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario", "PREPARAR_RESERVA": "preparación de reserva", "PRENDA_NO_ENCONTRADA": "prenda no encontrada", "ATENDER_RESERVA": "atención de reserva", "PROPUESTA_PROVEEDOR": "propuesta de producto"}
+PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,), "PREPARAR_RESERVA": (ENCARGADO,), "PRENDA_NO_ENCONTRADA": (ENCARGADO,), "ATENDER_RESERVA": (ENCARGADO,), "PROPUESTA_PROVEEDOR": (PROVEEDOR,)}
+SIN_SUCURSAL = ("PROPUESTA_PROVEEDOR",)  # el portal del proveedor no pertenece a una sucursal
 CON_SUCURSAL = ("COMPRA", "RECEPCION", "AJUSTE_INVENTARIO")  # el ejecutor las aplica en la sucursal de la operación
 
 
@@ -63,11 +64,12 @@ class SincronizacionService:
             return resultado_de(previa, ya_procesada=True)  # RN12: el resultado original
         if self.ctx.rol not in PERMISOS[op.tipo]:
             return self._sin_guardar(op, "RECHAZADA", MSG_PERMISOS)
-        sucursal_id = self._sucursal(op)
+        sucursal_id = self._sucursal(op) if op.tipo not in SIN_SUCURSAL else 0
         if sucursal_id is None:
             return self._sin_guardar(op, "RECHAZADA", MSG_SUCURSAL)
         if sucursal_id == -1:
             return self._sin_guardar(op, "RECHAZADA", MSG_OTRA_SUCURSAL)
+        sucursal_id = sucursal_id or None  # 0 = operación sin sucursal
         try:
             resultado = Ejecutor(self.db, self.ctx).ejecutar(op.tipo, {**op.payload, "sucursal_id": sucursal_id} if op.tipo in CON_SUCURSAL else op.payload)
             fila = self._guardar(op, sucursal_id, "CONFIRMADA", MSG_CONFIRMADA, resultado)

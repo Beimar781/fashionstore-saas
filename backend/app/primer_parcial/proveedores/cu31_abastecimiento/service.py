@@ -96,7 +96,7 @@ class AbastecimientoService:
         return self._lote_out(lote)
 
     # ---- propuestas de producto ----
-    def crear_propuesta(self, datos: schemas.PropuestaIn) -> schemas.PropuestaOut:
+    def crear_propuesta(self, datos: schemas.PropuestaIn, commit: bool = True) -> schemas.PropuestaOut:
         proveedor = self._proveedor_de_la_cuenta()
         if self.colecciones.obtener(datos.coleccion_id) is None:
             raise NoEncontrado("Colección no encontrada.")
@@ -104,7 +104,7 @@ class AbastecimientoService:
             proveedor_id=proveedor.id, coleccion_id=datos.coleccion_id, nombre=datos.nombre.strip(), descripcion=datos.descripcion,
             genero=datos.genero, precio_base=datos.precio_base, material=datos.material,
         ))
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return self._propuesta_out(propuesta)
 
     def listar_propuestas(self, estado: str | None) -> list[schemas.PropuestaOut]:

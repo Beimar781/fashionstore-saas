@@ -8,8 +8,8 @@ from app.modules.acceso.publico import cliente_por_email
 from app.modules.offline.models import OperacionOffline
 from app.modules.reservas.publico import avisar_cliente
 
-TEXTO = {"COMPRA": "compra", "RESERVA": "reserva", "VENTA_CONTADO": "compra", "CANCELAR_RESERVA": "reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción", "AJUSTE_INVENTARIO": "ajuste", "PREPARAR_RESERVA": "reserva", "PRENDA_NO_ENCONTRADA": "reserva", "ATENDER_RESERVA": "reserva"}
-PREFIJO = {"COMPRA": "COM", "RESERVA": "RES", "VENTA_CONTADO": "VTA", "CANCELAR_RESERVA": "RES", "DEVOLUCION": "DEV", "RECEPCION": "REC", "AJUSTE_INVENTARIO": "AJU", "PREPARAR_RESERVA": "RES", "PRENDA_NO_ENCONTRADA": "RES", "ATENDER_RESERVA": "RES"}
+TEXTO = {"COMPRA": "compra", "RESERVA": "reserva", "VENTA_CONTADO": "compra", "CANCELAR_RESERVA": "reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción", "AJUSTE_INVENTARIO": "ajuste", "PREPARAR_RESERVA": "reserva", "PRENDA_NO_ENCONTRADA": "reserva", "ATENDER_RESERVA": "reserva", "PROPUESTA_PROVEEDOR": "propuesta"}
+PREFIJO = {"COMPRA": "COM", "RESERVA": "RES", "VENTA_CONTADO": "VTA", "CANCELAR_RESERVA": "RES", "DEVOLUCION": "DEV", "RECEPCION": "REC", "AJUSTE_INVENTARIO": "AJU", "PREPARAR_RESERVA": "RES", "PRENDA_NO_ENCONTRADA": "RES", "ATENDER_RESERVA": "RES", "PROPUESTA_PROVEEDOR": "PRO"}
 
 
 def codigo_visible(tipo: str, operacion_id) -> str:

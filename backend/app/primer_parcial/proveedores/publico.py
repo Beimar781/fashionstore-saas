@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.acceso.dependencias import Contexto
 from app.primer_parcial.proveedores.cu31_abastecimiento.repository import LoteRepository
-from app.primer_parcial.proveedores.cu31_abastecimiento.schemas import LoteOut  # noqa: F401
+from app.primer_parcial.proveedores.cu31_abastecimiento.schemas import LoteOut, PropuestaIn  # noqa: F401
 from app.primer_parcial.proveedores.cu31_abastecimiento.service import AbastecimientoService
 
 

@@ -20,7 +20,7 @@ class OperacionOffline(Base):
     empresa_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("empresas.id"))
     operacion_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))  # lo genera el cliente
     usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
-    sucursal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sucursales.id"))
+    sucursal_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("sucursales.id"))  # nula solo en la propuesta del proveedor
     tipo: Mapped[str] = mapped_column(String(24))  # VENTA_CONTADO | RESERVA | COMPRA | CANCELAR_RESERVA
     estado: Mapped[str] = mapped_column(String(12))
     payload: Mapped[dict] = mapped_column(JSONB)

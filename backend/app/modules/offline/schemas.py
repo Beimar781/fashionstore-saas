@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA")
+TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA", "PROPUESTA_PROVEEDOR")
 
 
 class LineaOfflineIn(BaseModel):
@@ -85,7 +85,7 @@ class AtencionReservaOfflineIn(BaseModel):
 
 class OperacionIn(BaseModel):
     id: uuid.UUID  # RN11: lo genera el cliente al registrar la operación
-    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA"]
+    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA", "PROPUESTA_PROVEEDOR"]
     creada_en: datetime  # cuándo se registró en el dispositivo
     sucursal_id: int | None = None
     payload: dict

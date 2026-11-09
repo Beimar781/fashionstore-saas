@@ -13,6 +13,7 @@ from app.modules.inventario.publico import aplicar_movimientos, disponible_por_v
 from app.modules.offline.repository import OperacionRepository
 from app.modules.offline.schemas import AjusteOfflineIn, AtencionReservaOfflineIn, CompraOfflineIn, DevolucionOfflineIn, RecepcionOfflineIn, VentaOfflineIn
 from app.modules.reservas.publico import ReservaClienteService, ReservaIn, ReservaService
+from app.primer_parcial.proveedores.publico import AbastecimientoService, PropuestaIn
 from app.primer_parcial.reservas.publico import AtencionService, CompletarIn, ReservasSucursalService
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
@@ -60,6 +61,10 @@ class Ejecutor:
             return Resultado(cobro.pedido.codigo, cobro.pedido.comprobante_numero, pedido_id=venta.id)
         if tipo in ("PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA"):
             return self._atencion(tipo, AtencionReservaOfflineIn.model_validate(payload))
+        if tipo == "PROPUESTA_PROVEEDOR":
+            # B9: es la propuesta del portal del proveedor (CU-31), con las mismas validaciones que el formulario en línea
+            propuesta = AbastecimientoService(self.db, self.ctx).crear_propuesta(PropuestaIn.model_validate(payload), commit=False)
+            return Resultado(f"PRO-{propuesta.id}", None)
         if tipo == "AJUSTE_INVENTARIO":
             return self._ajuste(AjusteOfflineIn.model_validate(payload), payload.get("sucursal_id"))
         if tipo == "RECEPCION":
