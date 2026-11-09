@@ -21,7 +21,7 @@ class OperacionOffline(Base):
     operacion_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))  # lo genera el cliente
     usuario_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("usuarios.id"))
     sucursal_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sucursales.id"))
-    tipo: Mapped[str] = mapped_column(String(14))  # VENTA_CONTADO | RESERVA
+    tipo: Mapped[str] = mapped_column(String(20))  # VENTA_CONTADO | RESERVA | COMPRA | CANCELAR_RESERVA
     estado: Mapped[str] = mapped_column(String(12))
     payload: Mapped[dict] = mapped_column(JSONB)
     creada_en_cliente: Mapped[datetime] = mapped_column(DateTime(timezone=True))

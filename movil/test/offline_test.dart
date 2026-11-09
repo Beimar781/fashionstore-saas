@@ -154,6 +154,14 @@ void main() {
     expect(await repo.comprasVistas(5, 1), compras);
   });
 
+  test('CU-10: las reservas vistas se conservan en SQLite', () async {
+    final reservas = [
+      {'id': 7, 'codigo': 'RES-7', 'estado': 'PENDIENTE'}
+    ];
+    await repo.guardarReservasVistas(reservas, 5, 1);
+    expect(await repo.reservasVistas(5, 1), reservas);
+  });
+
   test('CU-08: el carrito cliente y los datos de entrega sobreviven en SQLite',
       () async {
     final carrito = {

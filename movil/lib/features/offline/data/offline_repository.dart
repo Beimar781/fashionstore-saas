@@ -311,6 +311,34 @@ class OfflineRepository {
     return [for (final f in filas) OperacionLocal.desdeFila(f)];
   }
 
+  Future<void> borrarOperacionLocal(String id) async => (await _db)
+      .delete('operaciones_pendientes', where: 'id = ?', whereArgs: [id]);
+
+  Future<void> guardarReservasVistas(
+      List<Map<String, dynamic>> reservas, int usuarioId, int empresaId) async {
+    await (await _db).insert(
+        'meta',
+        {
+          'clave': 'reservas_vistas_${empresaId}_$usuarioId',
+          'valor': jsonEncode(reservas),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> reservasVistas(
+      int usuarioId, int empresaId) async {
+    final filas = await (await _db).query('meta',
+        where: 'clave = ?',
+        whereArgs: ['reservas_vistas_${empresaId}_$usuarioId']);
+    if (filas.isEmpty) return [];
+    try {
+      return (jsonDecode(filas.first['valor'] as String) as List)
+          .cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<void> guardarComprasVistas(
       List<Map<String, dynamic>> compras, int usuarioId, int empresaId) async {
     await (await _db).insert(

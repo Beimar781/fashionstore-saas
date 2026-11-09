@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA")
+TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA")
 
 
 class LineaOfflineIn(BaseModel):
@@ -43,7 +43,7 @@ class CompraOfflineIn(BaseModel):
 
 class OperacionIn(BaseModel):
     id: uuid.UUID  # RN11: lo genera el cliente al registrar la operación
-    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA"]
+    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA"]
     creada_en: datetime  # cuándo se registró en el dispositivo
     sucursal_id: int | None = None
     payload: dict

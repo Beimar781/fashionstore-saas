@@ -1,8 +1,10 @@
 """CU-37 Descargar catálogo, CU-39 Consultar operaciones y CU-40 Gestionar conflictos de sincronización."""
 from datetime import date, timedelta
+import uuid
 
 from tests.compras_util import existencias
 from tests.offline_util import agregar_stock, op_reserva, op_venta, sincronizar_ok, stock_listo
+from tests.reservas_util import cuando
 
 MSG_PLAN = "Su plan no incluye esta funcionalidad. Cambie al plan Profesional."
 
@@ -34,6 +36,31 @@ def test_02_el_cliente_descarga_todas_las_sucursales_y_ningun_cliente(inv, mundo
     assert sorted(s["nombre"] for s in c["sucursales"]) == ["Centro", "Norte"] and c["clientes"] == []
     v = next(v for p in c["productos"] for v in p["variantes"] if v["id"] == inv.v_sm_rojo["id"])
     assert v["stock"] == {str(inv.centro.id): 10, str(inv.norte.id): 4}
+
+
+def test_cancelar_reserva_offline_confirma_y_reenviar_es_idempotente(inv, mundo, client):
+    stock_listo(inv, mundo)
+    creada = client.post("/api/reservas", json={"sucursal_id": inv.centro.id, "programada_para": cuando(1), "notas": "", "items": [{"variante_id": inv.v_sm_rojo["id"], "cantidad": 1}]}, headers=inv.h_cliente)
+    assert creada.status_code == 201, creada.text
+    reserva = creada.json()
+    operacion_id = str(uuid.uuid4())
+    operacion = {"id": operacion_id, "tipo": "CANCELAR_RESERVA", "creada_en": "2026-11-08T12:00:00Z", "sucursal_id": inv.centro.id, "payload": {"reserva_id": reserva["id"], "motivo": "Cambio de planes"}}
+    primera = sincronizar_ok(client, inv.h_cliente, operacion)[0]
+    segunda = sincronizar_ok(client, inv.h_cliente, operacion)[0]
+    assert (primera["estado"], primera["referencia"], segunda["ya_procesada"]) == ("CONFIRMADA", reserva["codigo"], True)
+    detalle = client.get(f"/api/reservas/{reserva['id']}", headers=inv.h_cliente).json()
+    assert detalle["estado"] == "CANCELADA"
+
+
+def test_cancelar_reserva_offline_rechaza_reserva_ya_cancelada(inv, mundo, client):
+    stock_listo(inv, mundo)
+    creada = client.post("/api/reservas", json={"sucursal_id": inv.centro.id, "programada_para": cuando(1), "notas": "", "items": [{"variante_id": inv.v_sm_rojo["id"], "cantidad": 1}]}, headers=inv.h_cliente)
+    reserva = creada.json()
+    assert client.post(f"/api/reservas/{reserva['id']}/cancelar", json={"motivo": "prueba"}, headers=inv.h_cliente).status_code == 200
+    operacion = {"id": str(uuid.uuid4()), "tipo": "CANCELAR_RESERVA", "creada_en": "2026-11-08T12:00:00Z", "sucursal_id": inv.centro.id, "payload": {"reserva_id": reserva["id"], "motivo": "sin conexión"}}
+    resultado = sincronizar_ok(client, inv.h_cliente, operacion)[0]
+    assert resultado["estado"] == "RECHAZADA"
+    assert "no se puede cancelar" in resultado["mensaje"].lower()
 
 
 def test_03_el_catalogo_trae_el_precio_con_promocion_y_omite_lo_inactivo(inv, mundo, client):

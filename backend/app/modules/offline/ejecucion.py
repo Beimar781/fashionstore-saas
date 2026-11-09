@@ -11,6 +11,7 @@ from app.modules.inventario.publico import disponible_por_variante
 from app.modules.offline.repository import OperacionRepository
 from app.modules.offline.schemas import CompraOfflineIn, VentaOfflineIn
 from app.modules.reservas.publico import ReservaIn, ReservaService
+from app.modules.reservas.cu10_consultar_cancelar.service import ReservaClienteService
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
@@ -41,6 +42,12 @@ class Ejecutor:
             )
             cobro = CobroCajaService(self.db, self.ctx).cobrar(venta.id, CobroIn(metodo="EFECTIVO", monto_recibido=datos.monto_recibido), commit=False)  # RN13: de contado
             return Resultado(cobro.pedido.codigo, cobro.pedido.comprobante_numero, pedido_id=venta.id)
+        if tipo == "CANCELAR_RESERVA":
+            reserva_id = payload.get("reserva_id")
+            if not isinstance(reserva_id, int) or reserva_id <= 0:
+                raise DatosInvalidos("La operación no tiene una reserva válida para cancelar.")
+            reserva = ReservaClienteService(self.db, self.ctx).cancelar(reserva_id, str(payload.get("motivo", "")), commit=False)
+            return Resultado(reserva.codigo, None, reserva_id=reserva.id)
         reserva = ReservaService(self.db, self.ctx.empresa_id).crear(self.ctx, ReservaIn.model_validate(payload), commit=False)
         return Resultado(reserva.codigo, None, reserva_id=reserva.id)
 

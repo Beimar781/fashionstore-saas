@@ -31,8 +31,8 @@ MSG_SUCURSAL = "Sucursal no encontrada."
 MSG_CONFLICTO = "No hay existencias suficientes para esta operación. No se descontó nada del inventario; el Encargado debe resolverla."
 MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el dispositivo y se reintentará."
 MSG_CONFIRMADA = "Operación confirmada."
-NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra"}
-PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,)}
+NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva"}
+PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,)}
 
 
 class SincronizacionService:

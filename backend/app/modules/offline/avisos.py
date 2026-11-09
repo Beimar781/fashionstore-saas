@@ -8,8 +8,8 @@ from app.modules.acceso.publico import cliente_por_email
 from app.modules.offline.models import OperacionOffline
 from app.modules.reservas.publico import avisar_cliente
 
-TEXTO = {"COMPRA": "compra", "RESERVA": "reserva", "VENTA_CONTADO": "compra"}
-PREFIJO = {"COMPRA": "COM", "RESERVA": "RES", "VENTA_CONTADO": "VTA"}
+TEXTO = {"COMPRA": "compra", "RESERVA": "reserva", "VENTA_CONTADO": "compra", "CANCELAR_RESERVA": "reserva"}
+PREFIJO = {"COMPRA": "COM", "RESERVA": "RES", "VENTA_CONTADO": "VTA", "CANCELAR_RESERVA": "RES"}
 
 
 def codigo_visible(tipo: str, operacion_id) -> str:
@@ -18,7 +18,7 @@ def codigo_visible(tipo: str, operacion_id) -> str:
 
 
 def cliente_de(db: Session, empresa_id: int, fila: OperacionOffline) -> int | None:
-    if fila.tipo in ("COMPRA", "RESERVA"):
+    if fila.tipo in ("COMPRA", "RESERVA", "CANCELAR_RESERVA"):
         return fila.usuario_id  # la hizo el propio cliente
     email = (fila.payload or {}).get("cliente_email")
     cliente = cliente_por_email(db, empresa_id, email) if email else None
@@ -41,6 +41,10 @@ def avisar_confirmada(db: Session, empresa_id: int, fila: OperacionOffline) -> N
                 f"Su compra {fila.referencia} se registró y hay stock. Pague con tarjeta en «Mis compras» para confirmarla.", "PEDIDO", fila.pedido_id)
     elif fila.tipo == "RESERVA":
         _avisar(db, empresa_id, fila, "Su reserva fue confirmada", f"Su reserva {fila.referencia} quedó confirmada.", "RESERVA", fila.reserva_id)
+
+
+    elif fila.tipo == "CANCELAR_RESERVA":
+        _avisar(db, empresa_id, fila, "Su reserva fue cancelada", f"Su reserva {fila.referencia} fue cancelada.", "RESERVA", fila.reserva_id)
 
 
 def avisar_descartada(db: Session, empresa_id: int, fila: OperacionOffline, motivo: str, devuelto: str | None = None, nota: str | None = None) -> None:

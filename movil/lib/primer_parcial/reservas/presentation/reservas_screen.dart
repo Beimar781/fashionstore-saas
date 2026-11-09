@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
+import '../../../features/offline/presentation/offline_controller.dart';
 import '../data/reserva_borrador.dart';
 import '../data/reservas_repository.dart';
 import 'mi_reserva_screen.dart';
@@ -33,19 +34,95 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Future<void> _cargar() async {
     try {
       final r = await _repo.reservas();
+      final offline = context.read<OfflineController>();
+      final sesion = offline.sesion;
+      if (sesion?.empresaId != null) {
+        await offline.repo
+            .guardarReservasVistas(r, sesion!.usuarioId, sesion.empresaId!);
+      }
+      final combinadas = await _conPendientes(r);
       if (mounted) {
         setState(() {
-          _reservas = r;
+          _reservas = combinadas;
           _error = null;
         });
       }
     } on ApiException catch (e) {
+      final offline = context.read<OfflineController>();
+      final sesion = offline.sesion;
+      final vistas = sesion?.empresaId == null
+          ? <Map<String, dynamic>>[]
+          : await offline.repo
+              .reservasVistas(sesion!.usuarioId, sesion.empresaId!);
+      final locales = await _conPendientes(vistas);
       if (mounted) {
-        setState(() => _error = e.sinConexion
-            ? 'Sin conexión: no se pueden consultar las reservas del servidor.'
-            : e.mensaje);
+        setState(() {
+          _reservas = locales;
+          _error = locales.isNotEmpty
+              ? null
+              : (e.sinConexion
+                  ? 'Sin conexión: todavía no se descargaron sus reservas.'
+                  : e.mensaje);
+        });
       }
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _conPendientes(
+      List<Map<String, dynamic>> vistas) async {
+    final offline = context.read<OfflineController>();
+    final sesion = offline.sesion;
+    if (sesion?.empresaId == null) return vistas;
+    final operaciones =
+        await offline.repo.operaciones(sesion!.usuarioId, sesion.empresaId!);
+    final resultado = [...vistas];
+    for (final op
+        in operaciones.where((o) => o.tipo == 'RESERVA' && o.pendiente)) {
+      final items = (op.payload['items'] as List? ?? const [])
+          .cast<Map<String, dynamic>>();
+      resultado.insert(0, {
+        'id': op.id,
+        'codigo': op.referencia ?? 'RES-${op.id.substring(0, 8).toUpperCase()}',
+        'estado': op.estado,
+        'estado_local': op.estado,
+        'pendiente_local': true,
+        'sucursal_id': op.sucursalId,
+        'sucursal': (await offline.repo.sucursales())
+                .where((s) => s.id == op.sucursalId)
+                .firstOrNull
+                ?.nombre ??
+            'Sucursal',
+        'programada_para': op.payload['programada_para'] ?? op.creadoEn,
+        'puede_cancelar': true,
+        'notas': op.resumen,
+        'total_unidades':
+            items.fold<int>(0, (s, i) => s + (i['cantidad'] as int? ?? 1)),
+        'items': items
+            .map((i) => {
+                  'cantidad': i['cantidad'],
+                  'producto': 'Variante #${i['variante_id']}'
+                })
+            .toList()
+      });
+    }
+    for (var i = 0; i < resultado.length; i++) {
+      final reservaId = resultado[i]['id'];
+      final cancelacion = operaciones
+          .where((o) =>
+              o.tipo == 'CANCELAR_RESERVA' &&
+              ['REGISTRADA_LOCAL', 'ENVIADA'].contains(o.estado) &&
+              o.payload['reserva_id'] == reservaId)
+          .firstOrNull;
+      if (cancelacion != null) {
+        resultado[i] = {
+          ...resultado[i],
+          'pendiente_local': true,
+          'estado_local': 'Cancelación pendiente',
+          'puede_cancelar': false
+        };
+      }
+    }
+    return resultado;
   }
 
   Future<String?> _pedirMotivo() {
@@ -78,11 +155,36 @@ class _ReservasScreenState extends State<ReservasScreen> {
   Future<void> _cancelar(Map<String, dynamic> r) async {
     final motivo = await _pedirMotivo();
     if (motivo == null) return; // el cliente se arrepintió
+    final offline = context.read<OfflineController>();
+    if (r['pendiente_local'] == true) {
+      await offline.repo.borrarOperacionLocal(r['id'] as String);
+      await offline.recargar();
+      await _cargar();
+      return;
+    }
+    if (!offline.enLinea) {
+      await offline.registrar(
+          tipo: 'CANCELAR_RESERVA',
+          payload: {'reserva_id': r['id'], 'motivo': motivo},
+          sucursalId: r['sucursal_id'] as int,
+          resumen: 'Cancelar reserva ${r['codigo']}');
+      await _cargar();
+      return;
+    }
     try {
       await _repo.cancelar(r['id'] as int, motivo: motivo);
       await _cargar();
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.mensaje);
+      if (e.sinConexion) {
+        await offline.registrar(
+            tipo: 'CANCELAR_RESERVA',
+            payload: {'reserva_id': r['id'], 'motivo': motivo},
+            sucursalId: r['sucursal_id'] as int,
+            resumen: 'Cancelar reserva ${r['codigo']}');
+        await _cargar();
+      } else if (mounted) {
+        setState(() => _error = e.mensaje);
+      }
     }
   }
 
@@ -115,7 +217,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   child: ListTile(
                     title: Text('${r['codigo']} · ${r['estado']}'),
                     subtitle: Text(
-                        '${r['sucursal']} · ${fechaCorta(r['programada_para'] as String?)}\n${((r['items'] as List?) ?? const []).map((i) => '${(i as Map)['cantidad']}× ${i['producto']}').join(', ')}'),
+                        '${r['pendiente_local'] == true ? 'Pendiente de sincronizar · ${r['estado_local']} · ' : ''}${r['sucursal']} · ${fechaCorta(r['programada_para'] as String?)}\n${((r['items'] as List?) ?? const []).map((i) => '${(i as Map)['cantidad']}× ${i['producto']}').join(', ')}'),
                     isThreeLine: true,
                     trailing: r['puede_cancelar'] == true
                         ? TextButton(

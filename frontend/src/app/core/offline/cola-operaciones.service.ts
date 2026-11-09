@@ -91,6 +91,7 @@ export class ColaOperacionesService {
   /** Mensaje emergente para el cliente cuando el servidor resuelve su compra o su reserva (además del aviso push y de la campana). */
   private avisarAlCliente(o: OperacionLocal) {
     if (o.tipo === 'VENTA_CONTADO') return;
+    if (o.tipo === 'CANCELAR_RESERVA' && o.estado === 'CONFIRMADA') { this.toast.ok(`Reserva ${o.referencia ?? ''} cancelada.`); return; }
     const nombre = o.tipo === 'COMPRA' ? 'compra' : 'reserva';
     if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar porque la prenda se agotó. No se le cobró nada.`);
     else if (o.estado === 'RECHAZADA') this.toast.error(`Su ${nombre} no se pudo realizar: ${o.mensaje}`);

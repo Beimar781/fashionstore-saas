@@ -5,6 +5,13 @@ import { RouterLink } from '@angular/router';
 import { ReservasApi } from '../../core/api/reservas.api';
 import { CLASE_ESTADO_RESERVA, EstadoReserva, Reserva, TEXTO_ESTADO_ITEM, TEXTO_ESTADO_RESERVA } from '../../core/reservas.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { LocalDbService } from '../../core/offline/local-db.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
+
+type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local?: boolean; estadoLocal?: string };
 
 /** CU-10 · Consultar el estado de las reservas y cancelarlas (RF12). */
 @Component({
@@ -25,7 +32,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
           @for (r of reservas(); track r.id) {
             <section class="card pad stack">
               <div class="row between">
-                <div><span class="codigo">{{ r.codigo }}</span> <span class="badge" [class]="clase(r.estado)">{{ texto(r.estado) }}</span>
+                <div><span class="codigo">{{ r.codigo }}</span> @if (r.pendiente_local) { <span class="badge warn">Pendiente de sincronizar · {{ r.estadoLocal }}</span> } @else { <span class="badge" [class]="clase(r.estado)">{{ texto(r.estado) }}</span> }
                   <p class="muted small">{{ r.sucursal }} · {{ r.programada_para | date: 'dd/MM/yyyy HH:mm' }} · {{ r.total_unidades }} prenda(s)</p></div>
                 @if (r.puede_cancelar) { <button class="btn danger sm" (click)="pedirCancelar(r)">Cancelar reserva</button> }
               </div>
@@ -62,15 +69,20 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 export class MisReservasPage implements OnInit {
   private api = inject(ReservasApi);
   private toast = inject(ToastService);
+  private db = inject(LocalDbService);
+  private auth = inject(AuthService);
+  private cola = inject(ColaOperacionesService);
+  private red = inject(ConnectivityService);
+  private catalogoLocal = inject(CatalogoLocalService);
 
   readonly filtros: { valor: string; texto: string }[] = [
     { valor: '', texto: 'Todas' }, { valor: 'PENDIENTE', texto: 'Pendientes' }, { valor: 'PREPARADA', texto: 'Preparadas' },
     { valor: 'COMPLETADA', texto: 'Completadas' }, { valor: 'CANCELADA', texto: 'Canceladas' }, { valor: 'EXPIRADA', texto: 'Expiradas' },
   ];
-  readonly reservas = signal<Reserva[]>([]);
+  readonly reservas = signal<ReservaLista[]>([]);
   readonly estado = signal('');
   readonly cargando = signal(true);
-  readonly cancelando = signal<Reserva | null>(null);
+  readonly cancelando = signal<ReservaLista | null>(null);
   readonly enviando = signal(false);
   readonly error = signal('');
   motivo = '';
@@ -78,26 +90,50 @@ export class MisReservasPage implements OnInit {
   readonly clase = (e: EstadoReserva) => CLASE_ESTADO_RESERVA[e];
   readonly itemTexto = (e: string) => TEXTO_ESTADO_ITEM[e] ?? e;
 
-  ngOnInit() { this.cargar(); }
+  async ngOnInit() { await this.cola.cargar(); await this.cargar(); }
 
   filtrar(valor: string) { this.estado.set(valor); this.cargar(); }
 
-  cargar() {
+  async cargar() {
     this.cargando.set(true);
+    const s = this.auth.sesion();
+    const clave = `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`;
+    const cache = await this.db.leerReservasClienteLocal<Reserva[]>(clave);
+    if (!this.red.online()) { this.reservas.set(this.conPendientes(cache ?? [])); this.cargando.set(false); return; }
     this.api.misReservas(this.estado()).subscribe({
-      next: (r) => { this.reservas.set(r); this.cargando.set(false); },
-      error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); },
+      next: (r) => { if (!this.estado() && s) void this.db.guardarReservasClienteLocal(clave, r); this.reservas.set(this.conPendientes(r)); this.cargando.set(false); },
+      error: (e) => { this.reservas.set(this.conPendientes(cache ?? [])); this.cargando.set(false); if (!cache?.length) this.toast.error(mensajeError(e)); },
     });
   }
 
-  pedirCancelar(r: Reserva) { this.motivo = ''; this.error.set(''); this.cancelando.set(r); }
+  private conPendientes(vistas: Reserva[]): ReservaLista[] {
+    const meta = this.catalogoLocal.meta();
+    const locales = this.cola.operaciones().filter((o) => o.tipo === 'RESERVA' && ['REGISTRADA_LOCAL', 'ENVIADA', 'EN_CONFLICTO'].includes(o.estado)).map((o) => {
+      const items = (o.payload['items'] as { variante_id: number; cantidad: number }[] | undefined) ?? [];
+      return { id: o.id as unknown as number, codigo: o.referencia ?? `RES-${o.id.slice(0, 8).toUpperCase()}`, estado: 'PENDIENTE', estadoLocal: o.estado, pendiente_local: true, sucursal_id: o.sucursal_id ?? 0, sucursal: meta?.sucursales.find((x) => x.id === o.sucursal_id)?.nombre ?? 'Sucursal', cliente_id: 0, cliente: '', programada_para: String(o.payload['programada_para'] ?? o.creada_en), vence_en: '', notas: String(o.payload['notas'] ?? o.resumen), creada_en: o.creada_en, total_unidades: items.reduce((s, i) => s + i.cantidad, 0), puede_cancelar: true, items: items.map((i, n) => { const v = this.catalogoLocal.productos().flatMap((p) => p.variantes).find((x) => x.id === i.variante_id); return { id: n, variante_id: i.variante_id, sku: v?.sku ?? '', producto: this.catalogoLocal.productos().find((p) => p.variantes.some((x) => x.id === i.variante_id))?.nombre ?? 'Prenda', talla: v?.talla ?? '', color: v?.color ?? '', cantidad: i.cantidad, estado: 'RESERVADO' }; }) } as unknown as Reserva;
+    }) as ReservaLista[];
+    const cancelaciones = this.cola.operaciones().filter((o) => o.tipo === 'CANCELAR_RESERVA' && ['REGISTRADA_LOCAL', 'ENVIADA'].includes(o.estado));
+    const vistasConEstado = vistas.map((r) => cancelaciones.some((o) => o.payload['reserva_id'] === r.id) ? { ...r, pendiente_local: true, estadoLocal: 'Cancelación pendiente', puede_cancelar: false } : r);
+    return [...locales, ...vistasConEstado];
+  }
+
+  pedirCancelar(r: ReservaLista) { this.motivo = ''; this.error.set(''); this.cancelando.set(r); }
 
   cancelar() {
     const r = this.cancelando()!;
     this.enviando.set(true); this.error.set('');
-    this.api.cancelar(r.id, this.motivo).subscribe({
+    if (r.pendiente_local) {
+      const operacion = this.cola.operaciones().find((o) => o.id === String(r.id) && o.tipo === 'RESERVA');
+      if (operacion) void this.db.borrarOperacion(operacion.id).then(() => this.cola.cargar()).then(() => { this.enviando.set(false); this.cancelando.set(null); this.toast.ok('Reserva local cancelada.'); void this.cargar(); });
+      return;
+    }
+    if (!this.red.online()) {
+      void this.cola.registrar('CANCELAR_RESERVA', { reserva_id: r.id, motivo: this.motivo }, r.sucursal_id, `Cancelar reserva ${r.codigo}`).then(() => { this.enviando.set(false); this.cancelando.set(null); this.toast.ok('Cancelación guardada. Se enviará al recuperar la conexión.'); void this.cargar(); }).catch((e) => { this.enviando.set(false); this.error.set(mensajeError(e)); });
+      return;
+    }
+    this.api.cancelar(r.id as number, this.motivo).subscribe({
       next: () => { this.enviando.set(false); this.cancelando.set(null); this.toast.ok(`Reserva ${r.codigo} cancelada.`); this.cargar(); },
-      error: (e) => { this.enviando.set(false); this.error.set(mensajeError(e)); },
+      error: (e) => { if (e.status === 0) void this.cola.registrar('CANCELAR_RESERVA', { reserva_id: r.id, motivo: this.motivo }, r.sucursal_id, `Cancelar reserva ${r.codigo}`).then(() => { this.enviando.set(false); this.cancelando.set(null); void this.cargar(); }); else { this.enviando.set(false); this.error.set(mensajeError(e)); } },
     });
   }
 }

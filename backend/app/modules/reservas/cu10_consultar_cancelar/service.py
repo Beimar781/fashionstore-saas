@@ -26,7 +26,7 @@ class ReservaClienteService:
         self.motor.expirar_vencidas()
         return self.motor.salida([self._propia(reserva_id)])[0]
 
-    def cancelar(self, reserva_id: int, motivo: str) -> ReservaOut:
+    def cancelar(self, reserva_id: int, motivo: str, commit: bool = True) -> ReservaOut:
         self.motor.expirar_vencidas()
         reserva = self._propia(reserva_id)
         if reserva.estado not in ("PENDIENTE", "PREPARADA"):
@@ -40,7 +40,8 @@ class ReservaClienteService:
             f"{self.ctx.usuario.nombre} {self.ctx.usuario.apellidos} canceló su reserva. Las prendas volvieron a estar disponibles.",
             sucursal_id=reserva.sucursal_id, referencia_tipo="RESERVA", referencia_id=reserva.id,
         )
-        self.db.commit()
+        if commit:
+            self.db.commit()
         return self.motor.salida([reserva])[0]
 
     def _propia(self, reserva_id: int) -> Reserva:
