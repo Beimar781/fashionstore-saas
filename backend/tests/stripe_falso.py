@@ -30,6 +30,8 @@ class StripeFalso:
         return SimpleNamespace(id="cus_prueba")
 
     def _crear(self, **kw):
+        if "payment_method_types" in kw:  # la API 2026-10-28 de Stripe ya no lo acepta (400)
+            raise ErrorStripe("The `payment_method_types` parameter is no longer supported. Payment methods are now managed from your Dashboard settings")
         pi = SimpleNamespace(id=f"pi_{len(self.intentos) + 1}", client_secret=f"pi_{len(self.intentos) + 1}_secret", status="requires_payment_method",
                              payment_method=None, last_payment_error=None, params=kw)
         self.intentos[pi.id] = pi

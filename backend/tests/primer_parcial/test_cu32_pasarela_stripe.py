@@ -46,6 +46,14 @@ def test_01_crear_el_intento_cobra_en_dolares_con_captura_manual(pasarela, strip
     assert guardada.monto_pasarela == 144  # 10 / 6,96 → US$ 1,44
 
 
+def test_01b_no_se_envia_payment_method_types_y_se_usan_los_metodos_automaticos(pasarela, stripe_falso):
+    for metodo in (None, "pm_guardado"):  # tarjeta nueva y tarjeta guardada
+        i = pasarela.crear_intento(monto_bob=Decimal("50"), descripcion="", metadata={}, cliente_ref="cus_1", metodo_ref=metodo, guardar=metodo is None)
+        p = stripe_falso.intentos[i.referencia].params
+        assert "payment_method_types" not in p
+        assert p["automatic_payment_methods"] == {"enabled": True, "allow_redirects": "never"} and p["capture_method"] == "manual"
+
+
 def test_02_el_monto_minimo_de_stripe(pasarela):
     assert pasarela.crear_intento(monto_bob=Decimal("1.00"), descripcion="", metadata={}, cliente_ref=None, metodo_ref=None, guardar=False).monto_pasarela == 50
 

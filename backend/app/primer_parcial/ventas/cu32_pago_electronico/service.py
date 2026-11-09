@@ -94,6 +94,7 @@ class PagoService:
         except AppError:
             raise
         except Exception as e:  # error de red o de la pasarela
+            logger.exception("No se pudo crear el intento de pago del pedido %s", pedido.codigo)
             raise PasarelaNoDisponible("No se pudo comunicar con la pasarela de pago. Intente nuevamente.") from e
         pago = self.pagos.agregar(Pago(
             pedido_id=pedido.id, metodo="TARJETA", proveedor=self.pasarela.proveedor, estado="PENDIENTE", monto=pedido.total, moneda=pedido.moneda,

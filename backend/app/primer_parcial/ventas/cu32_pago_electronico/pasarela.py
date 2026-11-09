@@ -182,7 +182,7 @@ class PasarelaStripe:
     def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar) -> Intento:
         centavos = centavos_pasarela(monto_bob)
         params = dict(
-            amount=centavos, currency="usd", capture_method="manual", payment_method_types=["card"],
+            amount=centavos, currency="usd", capture_method="manual", automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
             description=descripcion, metadata=metadata,
         )
         if cliente_ref:
