@@ -27,16 +27,16 @@ class AtencionService:
             raise Conflicto("La reserva corresponde a otra sucursal.")
         return self.motor.salida([reserva])[0]
 
-    def atender(self, reserva_id: int) -> ReservaOut:
+    def atender(self, reserva_id: int, commit: bool = True) -> ReservaOut:
         """Paso 4: se entregan las prendas y el cliente pasa a los vestidores."""
         reserva = self._propia(reserva_id)
         if reserva.estado not in ("PENDIENTE", "PREPARADA"):
             raise Conflicto("La reserva debe estar pendiente o preparada para atender al cliente.")
         self.motor.cambiar_estado(reserva, "EN_PROBADOR")
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return self.motor.salida([reserva])[0]
 
-    def completar(self, reserva_id: int, datos: schemas.CompletarIn) -> schemas.AtencionOut:
+    def completar(self, reserva_id: int, datos: schemas.CompletarIn, commit: bool = True) -> schemas.AtencionOut:
         """Paso 5. Si el cliente no lleva nada, la reserva se completa y el stock apartado vuelve a disponible.
         Si decide llevar las prendas, sigue en probador y se cobra con la venta presencial (CU-29)."""
         reserva = self._propia(reserva_id)
@@ -46,7 +46,7 @@ class AtencionService:
             return schemas.AtencionOut(reserva=self.motor.salida([reserva])[0], habilita_venta=True)
         self.motor.liberar(reserva, reserva.items, self.ctx.usuario.id, f"Reserva {reserva.codigo} completada sin compra")
         self.motor.cambiar_estado(reserva, "COMPLETADA")
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return schemas.AtencionOut(reserva=self.motor.salida([reserva])[0], habilita_venta=False)
 
     def _propia(self, reserva_id: int) -> Reserva:

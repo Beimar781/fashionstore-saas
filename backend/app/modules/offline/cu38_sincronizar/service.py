@@ -33,8 +33,8 @@ MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el
 MSG_CONFIRMADA = "Operación confirmada."
 MSG_RELOJ = "La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta."
 TOLERANCIA_RELOJ = 300  # segundos (5 minutos)
-NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario"}
-PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,)}
+NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario", "PREPARAR_RESERVA": "preparación de reserva", "PRENDA_NO_ENCONTRADA": "prenda no encontrada", "ATENDER_RESERVA": "atención de reserva"}
+PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,), "PREPARAR_RESERVA": (ENCARGADO,), "PRENDA_NO_ENCONTRADA": (ENCARGADO,), "ATENDER_RESERVA": (ENCARGADO,)}
 CON_SUCURSAL = ("COMPRA", "RECEPCION", "AJUSTE_INVENTARIO")  # el ejecutor las aplica en la sucursal de la operación
 
 

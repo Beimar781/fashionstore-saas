@@ -8,13 +8,18 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.constantes import CLIENTE
+from datetime import timedelta
+
+from app.core.constantes import CAJERO, CLIENTE, ENCARGADO
 from app.core.tiempo import ahora
 from app.modules.acceso.dependencias import Contexto
 from app.modules.acceso.publico import nombres_y_correos_de_clientes
 from app.modules.inventario.publico import Existencia
 from app.modules.offline.cu37_catalogo_offline import schemas
 from app.modules.sucursales.publico import sucursales_activas
+from app.modules.ventas.publico import DevolucionService
+from app.primer_parcial.reservas.publico import ReservasSucursalService
+from app.primer_parcial.ventas.publico import Pedido
 from app.primer_parcial.catalogo.publico import Producto, descuentos_vigentes
 
 
@@ -57,4 +62,31 @@ class CatalogoOfflineService:
                     variantes=variantes,
                 ))
         clientes = [] if self.ctx.rol == CLIENTE else [schemas.ClienteLocalOut(id=i, nombre=n, email=e) for i, n, e in nombres_y_correos_de_clientes(self.db, self.empresa_id)]
-        return schemas.CatalogoLocalOut(generado_en=ahora(), empresa_id=self.empresa_id, sucursales=[schemas.SucursalLocalOut(**s) for s in sucursales], productos=salida, clientes=clientes)
+        extra = self._para_el_personal() if self.ctx.rol in (CAJERO, ENCARGADO) and self.ctx.sucursal_id is not None else {}
+        return schemas.CatalogoLocalOut(generado_en=ahora(), empresa_id=self.empresa_id, sucursales=[schemas.SucursalLocalOut(**s) for s in sucursales], productos=salida, clientes=clientes, **extra)
+
+    def _para_el_personal(self) -> dict:
+        """Lo que el personal necesita para atender sin conexión: las ventas recientes de su sucursal con el plazo de devolución (B3) y, el Encargado, las reservas activas (B4)."""
+        devoluciones = DevolucionService(self.db, self.ctx)
+        plazo = devoluciones.plazo().plazo_dias
+        pedidos = self.db.scalars(
+            select(Pedido).where(
+                Pedido.empresa_id == self.empresa_id, Pedido.sucursal_id == self.ctx.sucursal_id, Pedido.estado == "PAGADO", Pedido.comprobante_numero.is_not(None),
+                Pedido.pagado_en >= ahora() - timedelta(days=plazo),
+            ).order_by(Pedido.pagado_en.desc()).limit(60)
+        ).all()
+        ventas = []
+        for p in pedidos:
+            v = devoluciones.venta(p.comprobante_numero)
+            ventas.append(schemas.VentaRecienteLocalOut(
+                comprobante=p.comprobante_numero, pagado_en=p.pagado_en, total=p.total, vence_el=v.vence_el,
+                items=[schemas.ItemVentaLocalOut(pedido_item_id=i.pedido_item_id, producto=i.producto, talla=i.talla, color=i.color, vendida=i.vendida, devolvible=i.devolvible, precio_final=i.precio_final) for i in v.items],
+            ))
+        reservas = []
+        if self.ctx.rol == ENCARGADO:
+            for r in ReservasSucursalService(self.db, self.ctx).listar(None, None):
+                reservas.append(schemas.ReservaSucursalLocalOut(
+                    id=r.id, codigo=r.codigo, estado=r.estado, programada_para=r.programada_para,
+                    items=[schemas.ItemReservaLocalOut(id=i.id, variante_id=i.variante_id, producto=i.producto, talla=i.talla, color=i.color, cantidad=i.cantidad, estado=i.estado) for i in r.items],
+                ))
+        return {"plazo_devolucion_dias": plazo, "ventas_recientes": ventas, "reservas_sucursal": reservas}

@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO")
+TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA")
 
 
 class LineaOfflineIn(BaseModel):
@@ -75,9 +75,17 @@ class DevolucionOfflineIn(BaseModel):
     condicion: dict = Field(default_factory=dict)
 
 
+class AtencionReservaOfflineIn(BaseModel):
+    """Atención de una reserva de la sucursal sin conexión (B4): preparar, marcar una prenda no encontrada o atender y completar."""
+
+    reserva_id: int = Field(gt=0)
+    item_id: int | None = None  # solo para PRENDA_NO_ENCONTRADA
+    llevara_prendas: bool = False  # solo para ATENDER_RESERVA: si las lleva, el cobro es una venta de contado aparte
+
+
 class OperacionIn(BaseModel):
     id: uuid.UUID  # RN11: lo genera el cliente al registrar la operación
-    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO"]
+    tipo: Literal["VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA"]
     creada_en: datetime  # cuándo se registró en el dispositivo
     sucursal_id: int | None = None
     payload: dict

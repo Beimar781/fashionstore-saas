@@ -11,8 +11,9 @@ from app.core.errors import Conflicto, DatosInvalidos
 from app.modules.acceso.dependencias import Contexto
 from app.modules.inventario.publico import aplicar_movimientos, disponible_por_variante
 from app.modules.offline.repository import OperacionRepository
-from app.modules.offline.schemas import AjusteOfflineIn, CompraOfflineIn, DevolucionOfflineIn, RecepcionOfflineIn, VentaOfflineIn
+from app.modules.offline.schemas import AjusteOfflineIn, AtencionReservaOfflineIn, CompraOfflineIn, DevolucionOfflineIn, RecepcionOfflineIn, VentaOfflineIn
 from app.modules.reservas.publico import ReservaClienteService, ReservaIn, ReservaService
+from app.primer_parcial.reservas.publico import AtencionService, CompletarIn, ReservasSucursalService
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
@@ -57,6 +58,8 @@ class Ejecutor:
             )
             cobro = CobroCajaService(self.db, self.ctx).cobrar(venta.id, CobroIn(metodo="EFECTIVO", monto_recibido=datos.monto_recibido), commit=False)  # RN13: de contado
             return Resultado(cobro.pedido.codigo, cobro.pedido.comprobante_numero, pedido_id=venta.id)
+        if tipo in ("PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA"):
+            return self._atencion(tipo, AtencionReservaOfflineIn.model_validate(payload))
         if tipo == "AJUSTE_INVENTARIO":
             return self._ajuste(AjusteOfflineIn.model_validate(payload), payload.get("sucursal_id"))
         if tipo == "RECEPCION":
@@ -70,6 +73,20 @@ class Ejecutor:
             reserva = ReservaClienteService(self.db, self.ctx).cancelar(reserva_id, str(payload.get("motivo", "")), commit=False)
             return Resultado(reserva.codigo, None, reserva_id=reserva.id)
         reserva = ReservaService(self.db, self.ctx.empresa_id).crear(self.ctx, ReservaIn.model_validate(payload), commit=False)
+        return Resultado(reserva.codigo, None, reserva_id=reserva.id)
+
+    def _atencion(self, tipo: str, datos: AtencionReservaOfflineIn) -> Resultado:
+        """B4: son los mismos casos de uso CU-24 y CU-25 de la web (regla 15). Si la reserva ya fue cancelada o atendida desde otro dispositivo, el servicio lo dice y la operación queda RECHAZADA."""
+        if tipo == "PREPARAR_RESERVA":
+            reserva = ReservasSucursalService(self.db, self.ctx).preparar(datos.reserva_id, commit=False)
+        elif tipo == "PRENDA_NO_ENCONTRADA":
+            if datos.item_id is None:
+                raise DatosInvalidos("Indique la prenda de la reserva que no se encontró.")
+            reserva = ReservasSucursalService(self.db, self.ctx).marcar_no_encontrado(datos.reserva_id, datos.item_id, commit=False)
+        else:
+            servicio = AtencionService(self.db, self.ctx)
+            servicio.atender(datos.reserva_id, commit=False)
+            reserva = servicio.completar(datos.reserva_id, CompletarIn(llevara_prendas=datos.llevara_prendas), commit=False).reserva
         return Resultado(reserva.codigo, None, reserva_id=reserva.id)
 
     def _ajuste(self, datos: AjusteOfflineIn, sucursal_id: int) -> Resultado:

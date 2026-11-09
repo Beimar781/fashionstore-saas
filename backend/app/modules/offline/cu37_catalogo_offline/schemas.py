@@ -52,9 +52,52 @@ class ClienteLocalOut(BaseModel):
     email: str
 
 
+class ItemReservaLocalOut(BaseModel):
+    id: int
+    variante_id: int
+    producto: str
+    talla: str
+    color: str
+    cantidad: int
+    estado: str
+
+
+class ReservaSucursalLocalOut(BaseModel):
+    """Reserva de la sucursal descargada para atenderla sin conexión (B4): solo la ven los Encargados."""
+
+    id: int
+    codigo: str
+    estado: str
+    programada_para: datetime
+    items: list[ItemReservaLocalOut]
+
+
+class ItemVentaLocalOut(BaseModel):
+    pedido_item_id: int
+    producto: str
+    talla: str
+    color: str
+    vendida: int
+    devolvible: int
+    precio_final: Dinero
+
+
+class VentaRecienteLocalOut(BaseModel):
+    """Venta reciente de la sucursal, dentro del plazo de devolución, para registrar una devolución sin conexión (B3)."""
+
+    comprobante: str
+    pagado_en: datetime
+    total: Dinero
+    vence_el: datetime
+    items: list[ItemVentaLocalOut]
+
+
 class CatalogoLocalOut(BaseModel):
     generado_en: datetime  # RN16: el cliente muestra esta fecha para avisar que la información puede estar desactualizada
     empresa_id: int
     sucursales: list[SucursalLocalOut]
     productos: list[ProductoLocalOut]
     clientes: list[ClienteLocalOut]  # solo para el personal (datos mínimos)
+    plazo_devolucion_dias: int | None = None
+    reservas_sucursal: list[ReservaSucursalLocalOut] = []
+    ventas_recientes: list[VentaRecienteLocalOut] = []

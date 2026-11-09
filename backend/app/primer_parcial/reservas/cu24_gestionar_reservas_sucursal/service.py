@@ -36,7 +36,7 @@ class ReservasSucursalService:
     def obtener(self, reserva_id: int) -> ReservaOut:
         return self.motor.salida([self._de_mi_sucursal(reserva_id)])[0]
 
-    def preparar(self, reserva_id: int) -> ReservaOut:
+    def preparar(self, reserva_id: int, commit: bool = True) -> ReservaOut:
         """Paso 5 de la ficha: las prendas quedan apartadas y el cliente recibe el aviso de que puede pasar a la tienda."""
         self.motor.expirar_vencidas()
         reserva = self._de_mi_sucursal(reserva_id)
@@ -49,10 +49,10 @@ class ReservasSucursalService:
             "Sus prendas ya están preparadas: puede pasar a la tienda con su código de reserva.",
             usuario_id=reserva.cliente_id, referencia_tipo="RESERVA", referencia_id=reserva.id,
         )
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return self.motor.salida([reserva])[0]
 
-    def marcar_no_encontrado(self, reserva_id: int, item_id: int) -> ReservaOut:
+    def marcar_no_encontrado(self, reserva_id: int, item_id: int, commit: bool = True) -> ReservaOut:
         """Excepción de la ficha: la prenda no está en físico. Se ajusta el stock y se avisa al cliente con disculpas."""
         self.motor.expirar_vencidas()
         reserva = self._de_mi_sucursal(reserva_id)
@@ -78,7 +78,7 @@ class ReservasSucursalService:
             + (" Su reserva fue cancelada." if sin_prendas else " Preparamos el resto de su reserva."),
             usuario_id=reserva.cliente_id, referencia_tipo="RESERVA", referencia_id=reserva.id,
         )
-        self.db.commit()
+        self.db.commit() if commit else self.db.flush()
         return self.motor.salida([reserva])[0]
 
     def _de_mi_sucursal(self, reserva_id: int) -> Reserva:
