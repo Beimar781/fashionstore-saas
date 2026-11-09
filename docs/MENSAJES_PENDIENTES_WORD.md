@@ -687,3 +687,44 @@ CU-12, CU-11, CU-09, CU-07 y CU-01: agregar el móvil como canal del Cliente con
 ### Para el Word
 
 CU-37 a CU-40 y los casos de uso del Cliente: el tipo de operación `CANCELAR_RESERVA`, los campos nuevos de `COMPRA` y la regla de paridad en línea y sin conexión. Ruta nueva `PUT /carrito/fusionar` (queda en la bitácora: «Fusionó el carrito guardado en su dispositivo con el del servidor»).
+
+# Prompt R · Cierre del enunciado
+
+## Reglas y decisiones
+
+- **Exportación de reportes:** el reporte generativo (`GET /api/ia/reportes/{id}/exportar?formato=xlsx|pdf`, solo plan Profesional) y los reportes convencionales (`GET /api/reportes/exportar/{tipo}?formato=csv|xlsx|pdf`, tipos `ventas`, `reservas`, `pagos` e `inventario`) se arman con el mismo exportador: encabezado con la empresa, título, filtros, fecha y hora, tablas, gráfico (Excel nativo; PDF con `reportlab`) y pie «Generado por FashionStore». Librería nueva: `openpyxl`.
+- **Inventario por sucursal:** `GET /api/reportes/inventario` (por prenda, talla y color, con bajo stock y agotados, filtros por sucursal y categoría, paginado).
+- **Regla de precio de la venta offline:** la venta lleva el precio con que se registró. Al sincronizar, si alguno difiere del vigente (con promociones), la venta pasa a EN_CONFLICTO con el mensaje de abajo y no descuenta nada; el Encargado la reintenta y se acepta el precio actual.
+- **Reloj del dispositivo:** el cliente envía su hora al sincronizar; si difiere más de 5 minutos del servidor se avisa y se guardan ambas horas (`desfase_reloj_segundos`).
+- **Forma de pago de la venta offline:** campo `forma_pago` (hoy solo `EFECTIVO`), preparado para otras.
+- **Almacenamiento local relacional (§6.3):** SQLite v5 y IndexedDB v3 con ventas, reservas y sus detalles, resultados de sincronización y registro técnico; el detalle es la fuente de los datos y el cuerpo que viaja al servidor se arma al enviar. Una operación enviada nunca se borra: solo cambia de estado. La migración conserva la cola anterior. Además se corrigió que la cola del móvil rechazaba `CANCELAR_RESERVA`.
+- **Reintentos con espera creciente (RNF06):** 30 s, 1 min, 2 min… hasta 15 min ante fallos de red o 5xx; un rechazo de negocio es un estado final y no se reintenta. Al volver la red se reintenta en el acto.
+- **Cerrar sesión con pendientes:** se avisa y se conservan; la cola está ligada a usuario y empresa.
+- **Registro de sincronización (RNF10):** una fila por intento (operación, intento, fecha, resultado, código y motivo técnico, sin datos personales) con «Copiar diagnóstico».
+- **Actualización automática:** con conexión, un catálogo descargado de hace más de 6 horas se actualiza solo; «Actualizar ahora» lo hace a mano.
+- **PWA:** botón «Instalar aplicación», página de respaldo sin conexión, `navigator.storage.persist()` y aviso de cuota llena.
+- **Nuevas operaciones de la cola (servidor):** `DEVOLUCION` (Cajero y Encargado; reutiliza CU-41: valida plazo, existencias y que no esté ya devuelta; el aviso push sale después de confirmar), `RECEPCION` (Encargado; suma como ENTRADA_RECEPCION) y `AJUSTE_INVENTARIO` (Encargado; diferencia positiva o negativa con motivo CONTEO, MERMA o DAÑO; si deja el stock negativo queda EN_CONFLICTO). Migración 0020 amplía el `CHECK`.
+- **Comprobante provisional (móvil):** PDF generado en el dispositivo con numeración `LOC-<sucursal>-<código corto del UUID>`.
+- **Resumen de mi turno:** lectura local de ventas, efectivo, cambio y estados, con PDF en el móvil e impresión en la web.
+- **Simular sin conexión:** interruptor para la defensa en la web y el móvil que fuerza el modo sin conexión con Internet encendido.
+- **Índices:** migración 0019 (`existencias`, `pedido_items`, `bitacora`); decisiones en `docs/RENDIMIENTO.md`.
+- **Historial de demostración:** `python -m app.demo_historial` (3 meses por sucursal, idempotente, códigos `DEMO-`); no lo corre el arranque.
+- **Migraciones nuevas:** 0018 (reloj), 0019 (índices), 0020 (tipos de operación).
+
+## Mensajes nuevos
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Exportar con un formato desconocido | «Formato de exportación no válido. Use xlsx o pdf.» (reportes con IA) / «Formato de exportación no válido. Use csv, xlsx o pdf.» (convencionales) | 422 | Pendiente |
+| Tipo de exportación no soportado (cambió el texto al sumar el inventario) | «Tipo de exportación no soportado. Use ventas, reservas, pagos o inventario.» | 422 | Pendiente |
+| Venta offline con precio cambiado | «El precio de una prenda cambió desde que se registró la venta.» | 200 con estado `EN_CONFLICTO` | Pendiente |
+| Reloj del dispositivo desfasado | «La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta.» | 200 con `aviso_reloj` | Pendiente |
+| Ajuste con diferencia cero | «La diferencia del ajuste no puede ser cero.» | 200 con estado `RECHAZADA` | Pendiente |
+| Cerrar sesión con pendientes | «Tiene N operaciones sin sincronizar. Se conservarán en este dispositivo.» | — (solo en la app) | Pendiente |
+| Almacenamiento lleno | «No hay espacio para guardar más datos sin conexión. Libere espacio o sincronice las operaciones pendientes.» | — (solo en la app) | Pendiente |
+| Datos desactualizados | «Datos al dd/mm hh:mm; pueden estar desactualizados» | — (solo en la app) | Pendiente |
+| Modo de demostración | «Modo sin conexión simulado» | — (solo en la app) | Pendiente |
+
+## Para el Word
+
+Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de arriba. Modelo de datos local: las tablas de §6.3 con sus claves foráneas. Nuevos tipos de operación en CU-38 y CU-39. Matriz de requisitos: `docs/COBERTURA_ENUNCIADO.md`.

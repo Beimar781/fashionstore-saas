@@ -182,6 +182,26 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 13.15 | Web y móvil | Con operaciones pendientes, mirar el aviso y el contador. | Franja «Sin conexión» y contador de pendientes visibles (en la web, en el menú y la franja del layout). Al volver la red se sincroniza sola; también hay botón manual. | ☐ |
 | 13.16 | Web | Compilar en producción, servir `dist` en local, cargar una vez con red, cortar la red y recorrer las pantallas del Cliente. | Todas abren sin red desde el Service Worker (shell y rutas del Cliente). | ☐ |
 
+## 14. Cierre del enunciado (Prompt R)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 14.1 | Web | Administrador EMP-B | «Reportes con IA»: pedir «los productos más vendidos de este mes y las ventas». Tocar «Descargar Excel» y «Descargar PDF». | Se descargan `reporte-N.xlsx` y `reporte-N.pdf` con la empresa, el periodo, las tablas y el pie «Generado por FashionStore»; el Excel trae un gráfico. | ☐ |
+| 14.2 | Web | Administrador EMP-A (plan Básico) | Intentar exportar un reporte con IA. | 403 «Su plan no incluye esta funcionalidad. Cambie al plan Profesional.» | ☐ |
+| 14.3 | Web | Administrador | «Reportes» → pestaña «Inventario»; filtrar por sucursal; botones Excel, PDF y CSV. | Tabla paginada con bajo stock y agotados; los tres archivos descargan el mismo contenido. | ☐ |
+| 14.4 | Web | SuperAdministrador o equipo | En el servidor: `python -m app.demo_historial` y luego pedir «ventas de los últimos tres meses por sucursal». | El reporte trae ventas de EMP-A y EMP-B de 3 meses; correrlo otra vez no agrega nada. | ☐ |
+| 14.5 | Web | Cualquiera | Chrome: aparece «⬇ Instalar aplicación»; instalarla. Ya instalada, el botón desaparece. | La app se abre en su propia ventana. | ☐ |
+| 14.6 | Web | Cualquiera | Con la app cargada, cortar la red y abrir una ruta que nunca se visitó. | Página «Sin conexión» con los botones «Ir al inicio» y «Reintentar». | ☐ |
+| 14.7 | Móvil | Cajero | Con modo avión, registrar una venta de contado. Abrir «Modo sin conexión» → Operaciones → «Comprobante provisional». | Se abre un PDF con `LOC-<sucursal>-<código>`, el detalle, el efectivo y el cambio, y «Válido una vez sincronizada la venta». | ☐ |
+| 14.8 | Móvil y web | Cajero | «Resumen de mi turno» (icono del recibo en el móvil; pestaña «Mi turno» en la web). | Cantidad de ventas, efectivo, cambio y el desglose por estado; en el móvil, «Descargar PDF». | ☐ |
+| 14.9 | Móvil y web | Cajero | Registrar una venta sin conexión y, antes de sincronizar, cambiar el precio de la prenda en la web. Volver la red. | La venta queda EN_CONFLICTO: «El precio de una prenda cambió desde que se registró la venta.» El Encargado la reintenta y se confirma con el precio actual. | ☐ |
+| 14.10 | Móvil | Cajero | Poner el reloj del teléfono 20 minutos adelantado y sincronizar. | Aviso «La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta.» | ☐ |
+| 14.11 | Web y móvil | Cualquiera | Activar «Simular sin conexión» (Perfil en el móvil; menú lateral en la web) con Internet encendido. | Franja «Modo sin conexión simulado»; las operaciones quedan pendientes. Al apagar el interruptor se sincronizan solas. | ☐ |
+| 14.12 | Web y móvil | Cliente | Cerrar sesión con operaciones pendientes. | «Tiene N operaciones sin sincronizar. Se conservarán en este dispositivo.» Al volver a entrar el mismo usuario, siguen ahí; otro usuario del mismo dispositivo no las ve. | ☐ |
+| 14.13 | Web y móvil | Cualquiera | Ver «Registro de sincronización» y «Copiar diagnóstico». | Una fila por intento con resultado y código; el texto copiado no trae correos ni NIT. | ☐ |
+| 14.14 | Web y móvil | Cliente | Con el catálogo descargado hace más de 6 horas y con Internet. | Se actualiza solo en segundo plano; el botón «Actualizar ahora» lo hace a mano. | ☐ |
+| 14.15 | API | Encargado | Sincronizar `AJUSTE_INVENTARIO` (diferencia +4, motivo CONTEO), `RECEPCION` y `DEVOLUCION` con `POST /api/offline/sincronizar`. | Cada una queda CONFIRMADA y el inventario cambia; un ajuste que deja el stock negativo queda EN_CONFLICTO; reenviar no duplica. (Falta la pantalla de captura.) | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

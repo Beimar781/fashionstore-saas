@@ -185,3 +185,8 @@ El asistente (CU-07), los reportes generativos (CU-23) y el resto de funciones d
 - Recursos de MediaPipe versionados: modelo Lite **5.78 MB**; los tres cargadores JS y sus WASM (SIMD, modular y fallback sin SIMD) **33.75 MB**; total **39.53 MB**. El bloque inicial de JavaScript de la web permanece en **310.89 kB**; el bundle de MediaPipe es lazy (~134.92 kB sin comprimir, descarga comprimida ~34.42 kB), aparte de los archivos del modelo y WASM.
 - El grupo de recursos de la PWA los guarda bajo demanda la primera vez que el vestidor los solicita. El PNG de cada color vestible se guarda en Cache Storage durante «Descargar catálogo» para permitir el uso sin conexión. Los PNG continúan almacenados bajo `/media` en el backend.
 - El modelo Pose Landmarker Lite se obtiene de [Google AI Edge](https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task) y se distribuye bajo **Apache License 2.0**, como el paquete MediaPipe Tasks Vision. El navegador procesa el video localmente; no se envían cuadros al backend.
+
+## Comandos de operación (Prompt R)
+
+- **Historial de demostración** (3 meses por sucursal para los reportes): en el servicio backend de Railway, `python -m app.demo_historial`. Es idempotente y solo agrega pedidos `DEMO-…`; el arranque nunca lo corre.
+- **Migraciones nuevas** (0018 a 0020): las aplica el arranque (`alembic upgrade head`). Librería nueva del backend: `openpyxl` (`requirements.txt`); del móvil: `pdf`; de la web (solo pruebas): `fake-indexeddb`.
