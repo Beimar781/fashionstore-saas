@@ -6,6 +6,9 @@ import { ReservasApi } from '../../core/api/reservas.api';
 import { SucursalCatalogo } from '../../core/catalogo.models';
 import { ReservaBorradorService } from '../../core/reservas/reserva-borrador.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 
 /** CU-09 · Reservar varias prendas en una sucursal con un horario aproximado de visita. */
 @Component({
@@ -59,6 +62,9 @@ export class ReservarPage implements OnInit {
   private catalogo = inject(CatalogoApi);
   private api = inject(ReservasApi);
   private toast = inject(ToastService);
+  private red = inject(ConnectivityService);
+  private cola = inject(ColaOperacionesService);
+  private catalogoLocal = inject(CatalogoLocalService);
   private router = inject(Router);
   readonly borrador = inject(ReservaBorradorService);
 
@@ -72,7 +78,8 @@ export class ReservarPage implements OnInit {
   readonly minimo = this.formato(new Date());
 
   ngOnInit() {
-    this.catalogo.sucursales().subscribe((r) => { this.sucursales.set(r); this.sucursalId = r[0]?.id ?? null; });
+    if (!this.red.online()) this.usarSucursalesLocales();
+    else this.catalogo.sucursales().subscribe({ next: (r) => this.fijarSucursales(r), error: () => this.usarSucursalesLocales() });
     const manana = new Date(); manana.setDate(manana.getDate() + 1); manana.setHours(11, 0, 0, 0);
     this.cuando = this.formato(manana);
   }
@@ -83,11 +90,20 @@ export class ReservarPage implements OnInit {
       sucursal_id: this.sucursalId, programada_para: this.cuando, notas: this.notas,
       items: this.borrador.prendas().map((p) => ({ variante_id: p.variante_id, cantidad: p.cantidad })),
     };
+    if (!this.red.online()) {
+      void this.cola.registrar('RESERVA', cuerpo, this.sucursalId, `Reserva: ${this.borrador.prendas().map((p) => `${p.producto} (${p.talla}, ${p.color})`).join(', ')}`).then(() => {
+        this.borrador.vaciar(); this.enviando.set(false); this.toast.ok('Reserva guardada en este dispositivo. Se sincronizará al recuperar la conexión.'); void this.router.navigate(['/tienda/reservas']);
+      }).catch((e) => { this.enviando.set(false); this.error.set(mensajeError(e)); });
+      return;
+    }
     this.api.reservar(cuerpo).subscribe({
       next: (r) => { this.enviando.set(false); this.borrador.vaciar(); this.toast.ok(`Reserva ${r.codigo} confirmada. Presente ese código en la tienda.`); void this.router.navigate(['/tienda/reservas']); },
       error: (e) => { this.enviando.set(false); this.error.set(mensajeError(e)); },
     });
   }
+
+  private fijarSucursales(r: SucursalCatalogo[]) { this.sucursales.set(r); this.sucursalId = r[0]?.id ?? null; }
+  private usarSucursalesLocales() { const meta = this.catalogoLocal.meta(); if (meta) this.fijarSucursales(meta.sucursales); else this.error.set('Sin conexión: descargue el catálogo para reservar sin Internet.'); }
 
   /** Valor para <input type="datetime-local"> en hora local (YYYY-MM-DDTHH:mm). */
   private formato(d: Date) {

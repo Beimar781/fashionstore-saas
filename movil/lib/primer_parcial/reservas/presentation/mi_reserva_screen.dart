@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
-import '../../../features/offline/presentation/modo_offline_screen.dart' show fechaCorta;
+import '../../../features/offline/presentation/offline_controller.dart';
+import '../../../features/offline/presentation/modo_offline_screen.dart'
+    show fechaCorta;
 import '../../catalogo/data/catalogo_repository.dart';
 import '../data/reserva_borrador.dart';
 import '../data/reservas_repository.dart';
@@ -17,8 +19,10 @@ class MiReservaScreen extends StatefulWidget {
 }
 
 class _MiReservaScreenState extends State<MiReservaScreen> {
-  late final ReservasRepository _repo = ReservasRepository(context.read<AuthRepository>().api);
-  late final CatalogoRepository _catalogo = CatalogoRepository(context.read<AuthRepository>().api);
+  late final ReservasRepository _repo =
+      ReservasRepository(context.read<AuthRepository>().api);
+  late final CatalogoRepository _catalogo =
+      CatalogoRepository(context.read<AuthRepository>().api);
   final _notas = TextEditingController();
   List<Map<String, dynamic>> _sucursales = [];
   int? _sucursalId;
@@ -46,32 +50,111 @@ class _MiReservaScreenState extends State<MiReservaScreen> {
   Future<void> _cargarSucursales() async {
     try {
       final s = await _catalogo.sucursales();
-      if (mounted) setState(() { _sucursales = s; _sucursalId = s.isEmpty ? null : s.first['id'] as int; });
+      if (mounted) {
+        setState(() {
+          _sucursales = s;
+          _sucursalId = s.isEmpty ? null : s.first['id'] as int;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: la reserva necesita Internet.' : e.mensaje);
+      if (e.sinConexion) {
+        final locales =
+            await context.read<OfflineController>().repo.sucursales();
+        if (mounted) {
+          setState(() {
+            _sucursales = [
+              for (final s in locales)
+                {'id': s.id, 'nombre': s.nombre, 'ciudad': s.ciudad}
+            ];
+            _sucursalId = _sucursales.firstOrNull?['id'] as int?;
+            _error = locales.isEmpty
+                ? 'Sin conexión: descargue el catálogo para reservar sin Internet.'
+                : null;
+          });
+        }
+      } else if (mounted) {
+        setState(() => _error = e.mensaje);
+      }
     }
   }
 
   Future<void> _elegirFecha() async {
     final ahora = DateTime.now();
-    final dia = await showDatePicker(context: context, initialDate: _cuando, firstDate: ahora, lastDate: ahora.add(const Duration(days: 60)));
+    final dia = await showDatePicker(
+        context: context,
+        initialDate: _cuando,
+        firstDate: ahora,
+        lastDate: ahora.add(const Duration(days: 60)));
     if (dia == null || !mounted) return;
-    final hora = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_cuando));
+    final hora = await showTimePicker(
+        context: context, initialTime: TimeOfDay.fromDateTime(_cuando));
     if (hora == null) return;
-    setState(() => _cuando = DateTime(dia.year, dia.month, dia.day, hora.hour, hora.minute));
+    setState(() => _cuando =
+        DateTime(dia.year, dia.month, dia.day, hora.hour, hora.minute));
   }
 
   Future<void> _confirmar(ReservaBorrador borrador) async {
     if (_sucursalId == null) return;
-    setState(() { _enviando = true; _error = null; });
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+    final offline = context.read<OfflineController>();
+    final cuerpo = borrador.aCuerpo(
+        sucursalId: _sucursalId!, cuando: _cuando, notas: _notas.text);
+    if (!offline.enLinea) {
+      try {
+        await offline.registrar(
+            tipo: 'RESERVA',
+            payload: cuerpo,
+            sucursalId: _sucursalId!,
+            resumen:
+                'Reserva: ${borrador.prendas.map((p) => '${p.producto} (${p.talla}, ${p.color})').join(', ')}');
+        borrador.vaciar();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Reserva guardada en este dispositivo. Se sincronizará al recuperar la conexión.')));
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) setState(() => _error = e.toString());
+      }
+      if (mounted) setState(() => _enviando = false);
+      return;
+    }
     try {
-      final r = await _repo.reservar(borrador.aCuerpo(sucursalId: _sucursalId!, cuando: _cuando, notas: _notas.text));
+      final r = await _repo.reservar(cuerpo);
       borrador.vaciar();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reserva ${r['codigo']} confirmada. Presente ese código en la tienda.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Reserva ${r['codigo']} confirmada. Presente ese código en la tienda.')));
       Navigator.pop(context, true);
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: la reserva necesita Internet.' : e.mensaje);
+      if (e.sinConexion) {
+        try {
+          await offline.registrar(
+              tipo: 'RESERVA',
+              payload: cuerpo,
+              sucursalId: _sucursalId!,
+              resumen:
+                  'Reserva: ${borrador.prendas.map((p) => '${p.producto} (${p.talla}, ${p.color})').join(', ')}');
+          borrador.vaciar();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Reserva guardada en este dispositivo. Se sincronizará al recuperar la conexión.')));
+            Navigator.pop(context, true);
+          }
+        } catch (error) {
+          if (mounted) {
+            setState(() => _error = error.toString());
+          }
+        }
+      } else if (mounted) {
+        setState(() => _error = e.mensaje);
+      }
     }
     if (mounted) setState(() => _enviando = false);
   }
@@ -82,9 +165,15 @@ class _MiReservaScreenState extends State<MiReservaScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Mi reserva')),
       body: borrador.prendas.isEmpty
-          ? const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Todavía no eligió prendas. En el catálogo use «Agregar a mi reserva».', textAlign: TextAlign.center)))
+          ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                  child: Text(
+                      'Todavía no eligió prendas. En el catálogo use «Agregar a mi reserva».',
+                      textAlign: TextAlign.center)))
           : ListView(padding: const EdgeInsets.all(16), children: [
-              const Text('Elija la sucursal y el horario aproximado; allí podrá probarse las prendas y decidir cuáles comprar.'),
+              const Text(
+                  'Elija la sucursal y el horario aproximado; allí podrá probarse las prendas y decidir cuáles comprar.'),
               const SizedBox(height: 8),
               for (final p in borrador.prendas)
                 Card(
@@ -92,10 +181,22 @@ class _MiReservaScreenState extends State<MiReservaScreen> {
                     title: Text(p.producto),
                     subtitle: Text('${p.talla} · ${p.color} · ${p.sku}'),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: p.cantidad > 1 ? () => borrador.cambiarCantidad(p.varianteId, p.cantidad - 1) : null),
+                      IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: p.cantidad > 1
+                              ? () => borrador.cambiarCantidad(
+                                  p.varianteId, p.cantidad - 1)
+                              : null),
                       Text('${p.cantidad}'),
-                      IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: p.cantidad < 10 && p.cantidad < p.max ? () => borrador.cambiarCantidad(p.varianteId, p.cantidad + 1) : null),
-                      IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => borrador.quitar(p.varianteId)),
+                      IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: p.cantidad < 10 && p.cantidad < p.max
+                              ? () => borrador.cambiarCantidad(
+                                  p.varianteId, p.cantidad + 1)
+                              : null),
+                      IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => borrador.quitar(p.varianteId)),
                     ]),
                   ),
                 ),
@@ -103,7 +204,12 @@ class _MiReservaScreenState extends State<MiReservaScreen> {
               DropdownButtonFormField<int>(
                 initialValue: _sucursalId,
                 decoration: const InputDecoration(labelText: 'Sucursal'),
-                items: [for (final s in _sucursales) DropdownMenuItem<int>(value: s['id'] as int, child: Text('${s['nombre']} · ${s['ciudad']}'))],
+                items: [
+                  for (final s in _sucursales)
+                    DropdownMenuItem<int>(
+                        value: s['id'] as int,
+                        child: Text('${s['nombre']} · ${s['ciudad']}'))
+                ],
                 onChanged: (v) => setState(() => _sucursalId = v),
               ),
               const SizedBox(height: 8),
@@ -114,14 +220,33 @@ class _MiReservaScreenState extends State<MiReservaScreen> {
                 trailing: const Icon(Icons.edit_calendar_outlined),
                 onTap: _elegirFecha,
               ),
-              TextField(controller: _notas, maxLength: 300, decoration: const InputDecoration(labelText: 'Notas para la tienda (opcional)')),
-              if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-              Text('${borrador.total} prenda(s) · el stock se aparta de inmediato y la reserva vence 24 horas después del horario elegido.', style: Theme.of(context).textTheme.bodySmall),
+              TextField(
+                  controller: _notas,
+                  maxLength: 300,
+                  decoration: const InputDecoration(
+                      labelText: 'Notas para la tienda (opcional)')),
+              if (_error != null)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(_error!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error))),
+              Text(
+                  '${borrador.total} prenda(s) · el stock se aparta de inmediato y la reserva vence 24 horas después del horario elegido.',
+                  style: Theme.of(context).textTheme.bodySmall),
               const SizedBox(height: 12),
               Row(children: [
-                OutlinedButton(onPressed: _enviando ? null : borrador.vaciar, child: const Text('Vaciar')),
+                OutlinedButton(
+                    onPressed: _enviando ? null : borrador.vaciar,
+                    child: const Text('Vaciar')),
                 const SizedBox(width: 12),
-                Expanded(child: FilledButton(onPressed: _enviando || _sucursalId == null ? null : () => _confirmar(borrador), child: Text(_enviando ? 'Reservando…' : 'Confirmar reserva'))),
+                Expanded(
+                    child: FilledButton(
+                        onPressed: _enviando || _sucursalId == null
+                            ? null
+                            : () => _confirmar(borrador),
+                        child: Text(
+                            _enviando ? 'Reservando…' : 'Confirmar reserva'))),
               ]),
             ]),
     );
