@@ -1,6 +1,6 @@
 /** Fase H · operación offline: lo que se guarda en el dispositivo (IndexedDB) y lo que viaja a la API. */
 export type EstadoLocal = 'REGISTRADA_LOCAL' | 'ENVIADA' | 'CONFIRMADA' | 'RECHAZADA' | 'EN_CONFLICTO';  // RN11
-export type TipoOperacion = 'VENTA_CONTADO' | 'RESERVA' | 'COMPRA' | 'CANCELAR_RESERVA';
+export type TipoOperacion = 'VENTA_CONTADO' | 'RESERVA' | 'COMPRA' | 'CANCELAR_RESERVA' | 'DEVOLUCION' | 'RECEPCION' | 'AJUSTE_INVENTARIO' | 'PREPARAR_RESERVA' | 'PRENDA_NO_ENCONTRADA' | 'ATENDER_RESERVA' | 'PROPUESTA_PROVEEDOR';
 
 export interface VarianteLocal {
   id: number; sku: string; codigo_barras: string | null; talla: string; color: string; talla_id?: number; color_id?: number; color_hex?: string; precio: string; precio_final: string; promocion: string | null; stock: Record<string, number>;
@@ -8,8 +8,15 @@ export interface VarianteLocal {
 export interface ProductoLocal { id: number; empresa_id: number; nombre: string; categoria: string; genero: string; imagen: string | null; publico_id?: string; slug?: string; descripcion?: string; marca?: string | null; coleccion?: string; temporada?: string; material?: string; cuidado?: string; imagenes?: { id: number; color_id: number | null; url: string; texto_alt: string; principal: boolean }[]; variantes: VarianteLocal[]; }
 export interface SucursalLocal { id: number; nombre: string; ciudad: string; direccion: string | null; horario: string | null; }
 export interface ClienteLocal { id: number; nombre: string; email: string; }
-export interface CatalogoDescargado { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }
-export interface MetaCatalogo { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }
+/** B3: venta reciente de la sucursal, dentro del plazo de devolución, descargada con el catálogo. */
+export interface ItemVentaReciente { pedido_item_id: number; producto: string; talla: string; color: string; vendida: number; devolvible: number; precio_final: string; }
+export interface VentaReciente { comprobante: string; pagado_en: string; total: string; vence_el: string; items: ItemVentaReciente[]; }
+/** B4: reserva activa de la sucursal descargada para atenderla sin conexión (solo el Encargado). */
+export interface ItemReservaLocal { id: number; variante_id: number; producto: string; talla: string; color: string; cantidad: number; estado: string; }
+export interface ReservaSucursalLocal { id: number; codigo: string; estado: string; programada_para: string; items: ItemReservaLocal[]; }
+export interface ExtrasSucursal { plazo_devolucion_dias?: number | null; ventas_recientes?: VentaReciente[]; reservas_sucursal?: ReservaSucursalLocal[]; }
+export interface CatalogoDescargado extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }
+export interface MetaCatalogo extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }
 
 export interface Faltante { variante_id: number; producto: string; talla: string; color: string; solicitadas: number; disponibles: number; }
 export interface OperacionLocal {

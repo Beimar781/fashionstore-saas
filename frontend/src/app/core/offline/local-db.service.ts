@@ -105,6 +105,7 @@ export class LocalDbService {
   async metaCatalogo(): Promise<MetaCatalogo | undefined> {
     try { return (await (await this.db()).get('cache_meta', 'catalogo')) as MetaCatalogo | undefined; } catch { return undefined; }
   }
+  async guardarMeta(meta: MetaCatalogo): Promise<void> { try { await (await this.db()).put('cache_meta', meta, 'catalogo'); } catch { /* noop */ } }
   async actualizarProducto(p: ProductoLocal): Promise<void> {
     try { await (await this.db()).put('catalogo', p); } catch { /* noop */ }
   }

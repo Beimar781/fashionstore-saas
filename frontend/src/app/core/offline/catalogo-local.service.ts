@@ -52,7 +52,7 @@ export class CatalogoLocalService {
       this.api.catalogo().subscribe({
         next: async (c) => {
           const productos: ProductoLocal[] = c.productos.map((p) => ({ ...p, empresa_id: c.empresa_id }));
-          const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes };
+          const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes, plazo_devolucion_dias: c.plazo_devolucion_dias ?? null, ventas_recientes: c.ventas_recientes ?? [], reservas_sucursal: c.reservas_sucursal ?? [] };
           await this.db.guardarCatalogo(productos, meta);
           await this.guardarImagenesCatalogo(productos);
           if (this.auth.rol() === 'Cliente') await this.guardarImagenesVestidor(productos.map((p) => p.id));
@@ -113,6 +113,27 @@ export class CatalogoLocalService {
   }
 
   /** Al registrar una operación sin conexión se descuenta del stock local para no ofrecer lo que ya se comprometió; el servidor vuelve a validar al sincronizar. */
+  /** B3 y B4: cambia lo descargado de la sucursal (ventas recientes o reservas) para reflejar lo hecho sin conexión, y lo guarda en el dispositivo. */
+  async actualizarExtras(cambio: (m: MetaCatalogo) => void) {
+    const m = this.meta();
+    if (!m) return;
+    const copia: MetaCatalogo = structuredClone(m);
+    cambio(copia);
+    await this.db.guardarMeta(copia);
+    this.meta.set(copia);
+  }
+
+  /** B5 y B6: el inventario local se mueve de forma provisional con lo recibido o ajustado; el servidor aplica la operación al sincronizar. */
+  async moverStock(varianteId: number, sucursalId: number, diferencia: number) {
+    for (const p of this.productos()) {
+      const v = p.variantes.find((x) => x.id === varianteId);
+      if (!v) continue;
+      v.stock[String(sucursalId)] = Math.max((v.stock[String(sucursalId)] ?? 0) + diferencia, 0);
+      await this.db.actualizarProducto(p);
+    }
+    this.productos.update((l) => [...l]);
+  }
+
   async comprometer(items: { variante_id: number; cantidad: number }[], sucursalId: number) {
     const cambiados = new Map<number, ProductoLocal>();
     for (const it of items) {

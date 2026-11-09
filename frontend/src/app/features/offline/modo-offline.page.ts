@@ -7,13 +7,14 @@ import { OperacionesLocalesComponent } from './operaciones.component';
 import { RegistrarOfflineComponent } from './registrar-offline.component';
 import { RegistroSyncComponent } from './registro-sync.component';
 import { ResumenTurnoComponent } from './resumen-turno.component';
+import { TareasSucursalComponent } from './tareas-sucursal.component';
 
-type Pestana = 'catalogo' | 'registrar' | 'operaciones' | 'registro' | 'turno';
+type Pestana = 'catalogo' | 'registrar' | 'operaciones' | 'registro' | 'turno' | 'tareas';
 
 /** Operación sin conexión (RF18 a RF21): catálogo descargado, registro de ventas de contado o reservas y cola de operaciones con su sincronización. */
 @Component({
   selector: 'app-modo-offline',
-  imports: [CatalogoLocalComponent, RegistrarOfflineComponent, OperacionesLocalesComponent, RegistroSyncComponent, ResumenTurnoComponent],
+  imports: [CatalogoLocalComponent, RegistrarOfflineComponent, OperacionesLocalesComponent, RegistroSyncComponent, ResumenTurnoComponent, TareasSucursalComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Modo sin conexión</h1><p>Descargue el catálogo, registre ventas de contado o reservas aunque no haya Internet y sincronícelas cuando vuelva.</p></div>
@@ -22,7 +23,7 @@ type Pestana = 'catalogo' | 'registrar' | 'operaciones' | 'registro' | 'turno';
         <button role="tab" [class.activa]="pestana() === 'catalogo'" (click)="pestana.set('catalogo')">Catálogo</button>
         <button role="tab" [class.activa]="pestana() === 'registrar'" (click)="pestana.set('registrar')">Registrar</button>
         <button role="tab" [class.activa]="pestana() === 'operaciones'" (click)="pestana.set('operaciones')">Operaciones @if (cola.pendientes().length) { <span class="badge warn">{{ cola.pendientes().length }}</span> }</button>
-        @if (!esCliente) { <button role="tab" [class.activa]="pestana() === 'turno'" (click)="pestana.set('turno')">Mi turno</button> }
+        @if (!esCliente) { <button role="tab" [class.activa]="pestana() === 'tareas'" (click)="pestana.set('tareas')">Tareas de la sucursal</button><button role="tab" [class.activa]="pestana() === 'turno'" (click)="pestana.set('turno')">Mi turno</button> }
         <button role="tab" [class.activa]="pestana() === 'registro'" (click)="pestana.set('registro')">Registro</button>
       </div>
       @switch (pestana()) {
@@ -31,6 +32,7 @@ type Pestana = 'catalogo' | 'registrar' | 'operaciones' | 'registro' | 'turno';
         @case ('operaciones') { <app-operaciones-locales /> }
         @case ('registro') { <app-registro-sync /> }
         @case ('turno') { <app-resumen-turno /> }
+        @case ('tareas') { <app-tareas-sucursal /> }
       }
     </div>`,
 })

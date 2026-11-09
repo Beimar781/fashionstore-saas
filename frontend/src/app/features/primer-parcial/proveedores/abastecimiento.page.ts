@@ -6,6 +6,8 @@ import { ProveedoresApi } from '../../../core/api/proveedores.api';
 import { Coleccion, GENEROS } from '../../../core/catalogo.models';
 import { Lote, Propuesta, Proveedor, ResumenAbastecimiento, SucursalDestino, VarianteHabilitada } from '../../../core/inventario.models';
 import { ROL } from '../../../core/models';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 
 type Pestana = 'avisos' | 'propuestas';
@@ -184,6 +186,8 @@ export class AbastecimientoPage implements OnInit {
   readonly modalAviso = signal(false);
   readonly modalPropuesta = signal(false);
   readonly guardando = signal(false);
+  private readonly red = inject(ConnectivityService);
+  private readonly cola = inject(ColaOperacionesService);
   readonly error = signal('');
   readonly textoEstado = (e: string) => ({ EN_TRANSITO: 'En tránsito', RECIBIDO: 'Recibido', CANCELADO: 'Cancelado' } as Record<string, string>)[e] ?? e;
   aviso: any = {}; lineas: Linea[] = []; busqueda = '';
@@ -234,12 +238,21 @@ export class AbastecimientoPage implements OnInit {
 
   // ---- propuestas ----
   abrirPropuesta() { this.propuesta = { nombre: '', descripcion: '', coleccion_id: this.colecciones()[0]?.id ?? null, genero: 'UNISEX', precio_base: null, material: '' }; this.error.set(''); this.modalPropuesta.set(true); }
-  enviarPropuesta() {
-    this.guardando.set(true); this.error.set('');
+  /** Con Internet va directo; sin conexión (B9) queda en la cola del dispositivo con las mismas validaciones y se envía sola al recuperar la red. */
+  async enviarPropuesta() {
+    this.error.set('');
+    if (!this.red.online()) { await this.guardarSinConexion(); return; }
+    this.guardando.set(true);
     this.api.crearPropuesta(this.propuesta).subscribe({
       next: () => { this.guardando.set(false); this.modalPropuesta.set(false); this.toast.ok('Propuesta enviada a la administración.'); this.cargar(); },
-      error: (e) => { this.guardando.set(false); this.error.set(mensajeError(e)); },
+      error: (e) => { this.guardando.set(false); if (e?.status === 0) void this.guardarSinConexion(); else this.error.set(mensajeError(e)); },
     });
+  }
+
+  private async guardarSinConexion() {
+    await this.cola.registrar('PROPUESTA_PROVEEDOR', { ...this.propuesta, precio_base: String(this.propuesta.precio_base ?? 0) }, null, `Propuesta de producto: ${this.propuesta.nombre}`);
+    this.guardando.set(false); this.modalPropuesta.set(false);
+    this.toast.ok('Propuesta guardada en este dispositivo. Se enviará sola al recuperar la conexión.');
   }
   resolver(p: Propuesta, aprobar: boolean) {
     this.error.set('');
