@@ -5,6 +5,8 @@ import { AuthService } from '../auth/auth.service';
 import { ROL } from '../models';
 import { PushService } from '../push/push.service';
 import { Notificacion } from '../reservas.models';
+import { LocalDbService } from '../offline/local-db.service';
+import { ConnectivityService } from '../offline/connectivity.service';
 
 /** RF11 · Campana de avisos de la barra superior: reservas nuevas para la sucursal, estado de las reservas para el cliente. */
 @Component({
@@ -46,19 +48,23 @@ import { Notificacion } from '../reservas.models';
 export class NotificacionesComponent implements OnInit, OnDestroy {
   private api = inject(ReservasApi);
   private auth = inject(AuthService);
+  private db = inject(LocalDbService);
+  private red = inject(ConnectivityService);
   readonly push = inject(PushService);
   readonly mensajePush = signal('');
   readonly sinLeer = signal(0);
   readonly avisos = signal<Notificacion[]>([]);
   readonly abierto = signal(false);
   private reloj?: ReturnType<typeof setInterval>;
+  private alVolverRed = () => { void this.sincronizarLecturas(); this.contar(); if (this.abierto()) this.cargar(); };
 
   ngOnInit() {
     void this.push.reanudar(this.auth.rol() === ROL.CLIENTE);  // si ya los había activado se registran para esta cuenta; al Cliente se le pide el permiso la primera vez
     this.contar();
+    window.addEventListener('online', this.alVolverRed);
     this.reloj = setInterval(() => { this.contar(); if (this.abierto()) this.cargar(); }, 30000);  // sin websockets: se consulta cada 30 s
   }
-  ngOnDestroy() { clearInterval(this.reloj); }
+  ngOnDestroy() { clearInterval(this.reloj); window.removeEventListener('online', this.alVolverRed); }
 
   alternar() { this.abierto.update((a) => !a); if (this.abierto()) this.cargar(); }
 
@@ -68,12 +74,37 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   }
   async apagarPush() { await this.push.desactivar(); this.mensajePush.set(''); }
 
-  private contar() { this.api.sinLeer().subscribe({ next: (r) => this.sinLeer.set(r.no_leidas), error: () => {} }); }
-  private cargar() { this.api.notificaciones().subscribe({ next: (r) => this.avisos.set(r), error: () => {} }); }
+  private clave() { const s = this.auth.sesion(); return `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`; }
+  private contar() { if (!this.red.online()) { this.sinLeer.set(this.avisos().filter((n) => !n.leida).length); return; } this.api.sinLeer().subscribe({ next: (r) => this.sinLeer.set(r.no_leidas), error: () => {} }); }
+  private async cargar() {
+    const cache = await this.db.leerAvisosLocal<Notificacion[]>(this.clave());
+    if (!this.red.online()) { if (cache) this.avisos.set(cache); this.contar(); return; }
+    this.api.notificaciones().subscribe({ next: (r) => { this.avisos.set(r); void this.db.guardarAvisosLocal(this.clave(), r); }, error: () => { if (cache) this.avisos.set(cache); } });
+  }
+
+  private async sincronizarLecturas() {
+    if (!this.red.online()) return;
+    const clave = this.clave();
+    const pendientes = await this.db.leerLecturasPendientes(clave);
+    const fallidas: number[] = [];
+    for (const id of pendientes) await new Promise<void>((resolver) => this.api.leer(id).subscribe({ next: () => resolver(), error: () => { fallidas.push(id); resolver(); } }));
+    await this.db.guardarLecturasPendientes(clave, fallidas);
+  }
 
   leer(n: Notificacion) {
     if (n.leida) return;
-    this.api.leer(n.id).subscribe(() => { this.avisos.update((l) => l.map((x) => (x.id === n.id ? { ...x, leida: true } : x))); this.contar(); });
+    const clave = this.clave();
+    this.avisos.update((l) => l.map((x) => (x.id === n.id ? { ...x, leida: true } : x)));
+    void this.db.guardarAvisosLocal(clave, this.avisos());
+    if (!this.red.online()) { void this.db.leerLecturasPendientes(clave).then((ids) => this.db.guardarLecturasPendientes(clave, [...ids, n.id])); this.contar(); return; }
+    this.api.leer(n.id).subscribe({ next: () => this.contar(), error: () => { void this.db.leerLecturasPendientes(clave).then((ids) => this.db.guardarLecturasPendientes(clave, [...ids, n.id])); } });
   }
-  leerTodas() { this.api.leerTodas().subscribe((r) => { this.sinLeer.set(r.no_leidas); this.avisos.update((l) => l.map((x) => ({ ...x, leida: true }))); }); }
+  leerTodas() {
+    const ids = this.avisos().filter((x) => !x.leida).map((x) => x.id);
+    this.avisos.update((l) => l.map((x) => ({ ...x, leida: true })));
+    this.sinLeer.set(0);
+    void this.db.guardarAvisosLocal(this.clave(), this.avisos());
+    if (!this.red.online()) { void this.db.leerLecturasPendientes(this.clave()).then((previas) => this.db.guardarLecturasPendientes(this.clave(), [...previas, ...ids])); return; }
+    this.api.leerTodas().subscribe({ next: (r) => this.sinLeer.set(r.no_leidas), error: () => void this.db.guardarLecturasPendientes(this.clave(), ids) });
+  }
 }

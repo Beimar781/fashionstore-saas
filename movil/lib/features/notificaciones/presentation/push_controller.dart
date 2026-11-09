@@ -45,14 +45,20 @@ class PushController extends ChangeNotifier {
 
   Future<void> refrescar() async {
     try {
-      avisos = await _repo.pendientes();
+      if (_usuarioId == null) return;
+      avisos = await _repo.pendientes(_usuarioId!);
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      if (_usuarioId == null) return;
+      avisos = await _repo.avisosGuardados(_usuarioId!);
+      notifyListeners();
+    }
   }
 
   Future<void> leer(AvisoPush aviso) async {
     try {
-      await _repo.marcarLeido(aviso.id);
+      if (_usuarioId == null) return;
+      await _repo.marcarLeido(aviso.id, _usuarioId!);
     } catch (_) {
       return;
     }

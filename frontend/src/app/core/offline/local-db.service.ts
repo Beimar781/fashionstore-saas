@@ -85,6 +85,10 @@ export class LocalDbService {
   async leerComprobanteLocal(id: number): Promise<Blob | undefined> { try { return (await (await this.db()).get('cache_meta', `comprobante_${id}`)) as Blob | undefined; } catch { return undefined; } }
   async guardarReservasClienteLocal(clave: string, valor: unknown): Promise<void> { await (await this.db()).put('cache_meta', valor, `reservas_cliente_${clave}`); }
   async leerReservasClienteLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('cache_meta', `reservas_cliente_${clave}`)) as T | undefined; } catch { return undefined; } }
+  async guardarAvisosLocal(clave: string, avisos: unknown): Promise<void> { await (await this.db()).put('cache_meta', avisos, `avisos_${clave}`); }
+  async leerAvisosLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('cache_meta', `avisos_${clave}`)) as T | undefined; } catch { return undefined; } }
+  async guardarLecturasPendientes(clave: string, ids: number[]): Promise<void> { await (await this.db()).put('cache_meta', [...new Set(ids)], `avisos_leer_${clave}`); }
+  async leerLecturasPendientes(clave: string): Promise<number[]> { try { return ((await (await this.db()).get('cache_meta', `avisos_leer_${clave}`)) as number[] | undefined) ?? []; } catch { return []; } }
 
   // ---- CU-38 y CU-39: cola de operaciones ----
   async guardarOperacion(o: OperacionLocal): Promise<void> { await (await this.db()).put('operaciones', o); }
