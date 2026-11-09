@@ -39,13 +39,14 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
               <div class="row between"><h2>Reporte generado</h2><span class="badge" [class.ok]="r.origen === 'IA'" [class.warn]="r.origen === 'REGLAS'">{{ r.origen === 'IA' ? 'Interpretado por IA' : 'Reglas de respaldo' }}</span></div>
               <pre class="reporte">{{ r.texto }}</pre>
               <details><summary class="small">Cómo se interpretó la petición</summary><pre class="small">{{ r.especificacion | json }}</pre></details>
-              <div class="row"><button class="btn" (click)="copiar(r)">Copiar texto</button><button class="btn" (click)="imprimir()">Imprimir</button></div>
+              <div class="row"><button class="btn" (click)="copiar(r)">Copiar texto</button><button class="btn" (click)="imprimir()">Imprimir</button><button class="btn" (click)="descargar(r, 'xlsx')">⬇ Descargar Excel</button><button class="btn" (click)="descargar(r, 'pdf')">⬇ Descargar PDF</button></div>
             </div>
           } @else { <div class="card empty">El reporte aparecerá aquí.</div> }
         </section>
         <aside class="card pad stack"><h3>Reportes anteriores</h3>
           @for (h of historial(); track h.id) {
             <button type="button" class="hist" (click)="actual.set(h)"><strong class="small">{{ h.prompt }}</strong><span class="small muted">{{ h.creado_en | date: 'dd/MM HH:mm' }} · {{ h.origen === 'IA' ? 'IA' : 'Reglas' }}</span></button>
+            <span class="row small"><button type="button" class="btn sm ghost" (click)="descargar(h, 'xlsx')">Excel</button><button type="button" class="btn sm ghost" (click)="descargar(h, 'pdf')">PDF</button></span>
           } @empty { <p class="muted small">Todavía no generó reportes.</p> }
         </aside>
       </div>
@@ -98,4 +99,12 @@ export class ReporteGenerativoPage implements OnInit, OnDestroy {
 
   copiar(r: ReporteGenerativo) { navigator.clipboard?.writeText(r.texto).then(() => this.toast.ok('Reporte copiado.')); }
   imprimir() { window.print(); }
+
+  /** Excel o PDF con formato de reporte convencional, armado por el servidor según el reporte interpretado. */
+  descargar(r: ReporteGenerativo, formato: 'xlsx' | 'pdf') {
+    this.api.exportarReporteIa(r.id, formato).subscribe({
+      next: (blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `reporte-${r.id}.${formato}`; a.click(); URL.revokeObjectURL(a.href); },
+      error: (e) => this.error.set(mensajeError(e)),
+    });
+  }
 }

@@ -88,7 +88,7 @@ def test_07_exportar_csv(inv, mundo, client):
     assert len(client.get("/api/reportes/exportar/reservas", headers=inv.h_admin).text.strip().splitlines()) == 3
     assert client.get("/api/reportes/exportar/pagos", headers=inv.h_admin).status_code == 200
     r = client.get("/api/reportes/exportar/clientes", headers=inv.h_admin)
-    assert r.status_code == 422 and r.json()["detail"] == "Tipo de exportación no soportado. Use ventas, reservas o pagos."
+    assert r.status_code == 422 and r.json()["detail"] == "Tipo de exportación no soportado. Use ventas, reservas, pagos o inventario."
 
 
 def test_08_solo_el_administrador_y_con_el_plan_adecuado(inv, mundo, db, client):

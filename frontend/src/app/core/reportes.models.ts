@@ -65,3 +65,6 @@ export interface Recomendaciones { motivo: string; personalizada: boolean; produ
 export interface Outfit { base: Prenda | null; prendas: Prenda[]; motivo: string; motivos: Record<number, string>; origen: 'IA' | 'REGLAS'; }
 export interface Privacidad { personalizar: boolean; interacciones: number; }
 export interface InteraccionCliente { tipo: 'BUSQUEDA' | 'VISTA'; texto?: string | null; producto_id?: number | null; categoria_id?: number | null; color_id?: number | null; talla?: string | null; precio_max?: number | null; }
+
+export interface FilaInventario { sucursal: string; categoria: string; producto: string; sku: string; talla: string; color: string; disponible: number; reservada: number; vendida: number; minimo: number; situacion: string; }
+export interface InventarioReporte { resumen: { disponibles: number; reservadas: number; vendidas: number; stock_bajo: number; agotadas: number }; total: number; pagina: number; tamano: number; items: FilaInventario[]; }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.core.constantes import ADMIN
@@ -21,6 +21,13 @@ def generar_reporte_por_prompt(datos: schemas.PromptIn, ctx: Contexto = Depends(
 @router.get("", response_model=list[schemas.ReporteGenerativoOut])
 def historial_de_reportes(ctx: Contexto = Depends(admin), db: Session = Depends(get_db)):
     return ReporteGenerativoService(db, ctx).listar()
+
+
+@router.get("/{reporte_id}/exportar")
+def exportar_reporte(reporte_id: int, formato: str = "xlsx", ctx: Contexto = Depends(admin), db: Session = Depends(get_db)):
+    """Descarga el reporte en Excel (xlsx) o PDF con formato de reporte convencional."""
+    contenido, tipo, nombre = ReporteGenerativoService(db, ctx).exportar(reporte_id, formato)
+    return Response(contenido, media_type=tipo, headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
 
 
 @router.get("/{reporte_id}", response_model=schemas.ReporteGenerativoOut)

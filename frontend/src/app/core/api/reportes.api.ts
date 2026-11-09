@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { API_URL } from '../api.config';
-import { Analitica, FiltroReporte, Indicadores, InteraccionCliente, MensajeChat, MiPlan, Outfit, PagosReporte, Privacidad, Recomendaciones, ReporteGenerativo, ReservasReporte, RespuestaChat, VentasReporte } from '../reportes.models';
+import { Analitica, InventarioReporte, FiltroReporte, Indicadores, InteraccionCliente, MensajeChat, MiPlan, Outfit, PagosReporte, Privacidad, Recomendaciones, ReporteGenerativo, ReservasReporte, RespuestaChat, VentasReporte } from '../reportes.models';
 
 function parametros(f: object) {
   let params = new HttpParams();
@@ -17,9 +17,11 @@ export class ReportesApi {
   ventas(f: FiltroReporte) { return this.http.get<VentasReporte>(`${API_URL}/reportes/ventas`, { params: parametros(f) }); }
   reservas(f: FiltroReporte) { return this.http.get<ReservasReporte>(`${API_URL}/reportes/reservas`, { params: parametros({ ...f, canal: undefined }) }); }
   pagos(f: FiltroReporte) { return this.http.get<PagosReporte>(`${API_URL}/reportes/pagos`, { params: parametros({ ...f, canal: undefined }) }); }
-  exportar(tipo: 'ventas' | 'reservas' | 'pagos', f: FiltroReporte) {
-    return this.http.get(`${API_URL}/reportes/exportar/${tipo}`, { params: parametros({ ...f, canal: undefined }), responseType: 'blob' });
+  exportar(tipo: 'ventas' | 'reservas' | 'pagos' | 'inventario', f: FiltroReporte, formato: 'csv' | 'xlsx' | 'pdf' = 'csv') {
+    return this.http.get(`${API_URL}/reportes/exportar/${tipo}`, { params: parametros({ ...f, canal: undefined, formato }), responseType: 'blob' });
   }
+  inventario(sucursal: number | null, pagina: number) { return this.http.get<InventarioReporte>(`${API_URL}/reportes/inventario`, { params: parametros({ sucursal, pagina, tamano: 50 }) }); }
+  exportarReporteIa(id: number, formato: 'xlsx' | 'pdf') { return this.http.get(`${API_URL}/ia/reportes/${id}/exportar`, { params: parametros({ formato }), responseType: 'blob' }); }
   indicadores(dias: number, sucursal: number | null) { return this.http.get<Indicadores>(`${API_URL}/reportes/indicadores`, { params: parametros({ dias, sucursal }) }); }
 
   generarReporte(prompt: string) { return this.http.post<ReporteGenerativo>(`${API_URL}/ia/reportes`, { prompt }); }

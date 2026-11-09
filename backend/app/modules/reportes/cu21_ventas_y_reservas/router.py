@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.constantes import ADMIN
@@ -35,9 +35,20 @@ def vista_de_pagos(desde: date | None = None, hasta: date | None = None, sucursa
     return VentasYReservasService(db, ctx).pagos(desde, hasta, sucursal)
 
 
+@router.get("/inventario")
+def inventario_por_sucursal(
+    sucursal: int | None = None, categoria: int | None = None, pagina: int = Query(1, ge=1), tamano: int = Query(50, ge=1, le=200),
+    ctx: Contexto = Depends(admin), db: Session = Depends(get_db),
+):
+    """Existencias por prenda, talla y color (bajo stock y agotados), por sucursal y categoría, paginado."""
+    return VentasYReservasService(db, ctx).inventario(sucursal, categoria, pagina, tamano)
+
+
 @router.get("/exportar/{tipo}")
 def exportar_reporte(
-    tipo: str, desde: date | None = None, hasta: date | None = None, sucursal: int | None = None, ctx: Contexto = Depends(admin), db: Session = Depends(get_db)
+    tipo: str, desde: date | None = None, hasta: date | None = None, sucursal: int | None = None, formato: str = "csv", categoria: int | None = None,
+    ctx: Contexto = Depends(admin), db: Session = Depends(get_db),
 ):
-    texto, nombre = VentasYReservasService(db, ctx).exportar(tipo, desde, hasta, sucursal)
-    return Response(texto, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
+    """Descarga el reporte en CSV, Excel (xlsx) o PDF."""
+    contenido, tipo_mime, nombre = VentasYReservasService(db, ctx).exportar(tipo, desde, hasta, sucursal, formato, categoria)
+    return Response(contenido, media_type=tipo_mime, headers={"Content-Disposition": f'attachment; filename="{nombre}"'})

@@ -4,10 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
 import { ReportesApi } from '../../core/api/reportes.api';
 import { Sucursal } from '../../core/models';
-import { PagosReporte, ReservasReporte, VentasReporte } from '../../core/reportes.models';
+import { InventarioReporte, PagosReporte, ReservasReporte, VentasReporte } from '../../core/reportes.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
-type Pestana = 'ventas' | 'reservas' | 'pagos';
+type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 
 /** CU-21 · Reportes de ventas y reservas del Administrador: ventas netas de devoluciones, reservas con su conversión y vista de pagos (aprobados, rechazados y pendientes). */
 @Component({
@@ -16,7 +16,7 @@ type Pestana = 'ventas' | 'reservas' | 'pagos';
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes</h1><p>Ventas digitales y presenciales netas de devoluciones, reservas y pagos de su empresa.</p></div>
-        <button class="btn" (click)="exportar()">⬇ Exportar CSV</button></div>
+        <div class="row"><button class="btn" (click)="exportar('xlsx')">⬇ Excel</button><button class="btn" (click)="exportar('pdf')">⬇ PDF</button><button class="btn" (click)="exportar('csv')">⬇ CSV</button></div></div>
 
       <form class="card pad row" style="margin-bottom:1rem" (ngSubmit)="cargar()">
         <label style="max-width:160px">Desde<input name="d" type="date" [(ngModel)]="desde" /></label>
@@ -32,7 +32,22 @@ type Pestana = 'ventas' | 'reservas' | 'pagos';
         <button role="tab" [class.activa]="pestana() === 'ventas'" (click)="ir('ventas')">Ventas</button>
         <button role="tab" [class.activa]="pestana() === 'reservas'" (click)="ir('reservas')">Reservas</button>
         <button role="tab" [class.activa]="pestana() === 'pagos'" (click)="ir('pagos')">Pagos</button>
+        <button role="tab" [class.activa]="pestana() === 'inventario'" (click)="ir('inventario')">Inventario</button>
       </div>
+
+      @if (pestana() === 'inventario' && inventario(); as inv) {
+        <div class="grid cols-3" style="margin-bottom:1rem">
+          <div class="card pad"><div class="small muted">Disponibles</div><div class="cifra">{{ inv.resumen.disponibles }}</div><div class="small muted">{{ inv.resumen.reservadas }} reservadas · {{ inv.resumen.vendidas }} vendidas</div></div>
+          <div class="card pad"><div class="small muted">Bajo stock</div><div class="cifra aviso">{{ inv.resumen.stock_bajo }}</div></div>
+          <div class="card pad"><div class="small muted">Agotados</div><div class="cifra mal">{{ inv.resumen.agotadas }}</div></div>
+        </div>
+        <section class="card table-wrap">
+          <table><thead><tr><th>Sucursal</th><th>Categoría</th><th>Prenda</th><th>SKU</th><th>Talla</th><th>Color</th><th class="right">Disp.</th><th class="right">Reserv.</th><th>Situación</th></tr></thead>
+            <tbody>@for (f of inv.items; track f.sucursal + f.sku) { <tr><td>{{ f.sucursal }}</td><td>{{ f.categoria }}</td><td>{{ f.producto }}</td><td>{{ f.sku }}</td><td>{{ f.talla }}</td><td>{{ f.color }}</td><td class="right">{{ f.disponible }}</td><td class="right">{{ f.reservada }}</td><td>{{ f.situacion }}</td></tr> } @empty { <tr><td colspan="9" class="muted">Sin existencias.</td></tr> }</tbody></table>
+        </section>
+        <div class="row between" style="margin-top:.8rem"><span class="small muted">Página {{ inv.pagina }} · {{ inv.total }} fila(s)</span>
+          <span class="row"><button class="btn sm" [disabled]="inv.pagina <= 1" (click)="paginaInv(-1)">‹ Anterior</button><button class="btn sm" [disabled]="inv.pagina * inv.tamano >= inv.total" (click)="paginaInv(1)">Siguiente ›</button></span></div>
+      }
 
       @if (pestana() === 'ventas' && ventas(); as v) {
         <div class="grid cols-3" style="margin-bottom:1rem">
@@ -105,6 +120,8 @@ export class ReportesPage implements OnInit {
   readonly ventas = signal<VentasReporte | null>(null);
   readonly reservas = signal<ReservasReporte | null>(null);
   readonly pagos = signal<PagosReporte | null>(null);
+  readonly inventario = signal<InventarioReporte | null>(null);
+  private paginaInventario = 1;
   readonly sucursales = signal<Sucursal[]>([]);
   readonly error = signal('');
   desde = ''; hasta = ''; canal = ''; sucursal: number | null = null;
@@ -123,16 +140,20 @@ export class ReportesPage implements OnInit {
     const f = { desde: this.desde, hasta: this.hasta, sucursal: this.sucursal, canal: this.canal };
     const alFallar = (e: unknown) => this.error.set(mensajeError(e));
     if (this.pestana() === 'ventas') this.api.ventas(f).subscribe({ next: (r) => this.ventas.set(r), error: alFallar });
+    else if (this.pestana() === 'inventario') { this.paginaInventario = 1; this.cargarInventario(); }
     else if (this.pestana() === 'reservas') this.api.reservas(f).subscribe({ next: (r) => this.reservas.set(r), error: alFallar });
     else this.api.pagos(f).subscribe({ next: (r) => this.pagos.set(r), error: alFallar });
   }
 
-  exportar() {
+  private cargarInventario() { this.api.inventario(this.sucursal, this.paginaInventario).subscribe({ next: (r) => this.inventario.set(r), error: (e) => this.error.set(mensajeError(e)) }); }
+  paginaInv(salto: number) { this.paginaInventario += salto; this.cargarInventario(); }
+
+  exportar(formato: 'csv' | 'xlsx' | 'pdf' = 'csv') {
     const tipo = this.pestana();
-    this.api.exportar(tipo, { desde: this.desde, hasta: this.hasta, sucursal: this.sucursal }).subscribe({
+    this.api.exportar(tipo, { desde: this.desde, hasta: this.hasta, sucursal: this.sucursal }, formato).subscribe({
       next: (blob) => {
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob); a.download = `${tipo}.csv`; a.click(); URL.revokeObjectURL(a.href);
+        a.href = URL.createObjectURL(blob); a.download = `${tipo}.${formato}`; a.click(); URL.revokeObjectURL(a.href);
       },
       error: (e) => this.toast.error(mensajeError(e)),
     });

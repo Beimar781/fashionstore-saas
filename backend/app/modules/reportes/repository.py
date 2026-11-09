@@ -9,7 +9,7 @@ from app.core.tenant import TenantRepository
 from app.modules.inventario.publico import Existencia
 from app.modules.reservas.publico import Reserva
 from app.modules.ventas.publico import Devolucion, DevolucionItem
-from app.primer_parcial.catalogo.publico import Producto, Variante
+from app.primer_parcial.catalogo.publico import Categoria, Color, Producto, Talla, Variante
 from app.primer_parcial.ventas.publico import Pago, Pedido, PedidoItem
 
 CERO = Decimal("0.00")
@@ -162,6 +162,22 @@ class ReportesRepository(TenantRepository[Pedido]):
             .where(*condiciones).order_by(Existencia.disponible, Producto.nombre).limit(limite)
         )
         return [(s, p, k, int(d), int(u)) for s, p, k, d, u in self.db.execute(stmt)]
+
+    def inventario_detalle(self, sucursal_id: int | None, categoria_id: int | None, limite: int, desplazamiento: int = 0) -> tuple[int, list[tuple]]:
+        """Existencias por prenda, talla y color: (total de filas, [(sucursal, categoría, producto, sku, talla, color, disponible, reservada, vendida, umbral)])."""
+        condiciones = [Existencia.empresa_id == self.empresa_id]
+        if sucursal_id is not None:
+            condiciones.append(Existencia.sucursal_id == sucursal_id)
+        if categoria_id is not None:
+            condiciones.append(Producto.categoria_id == categoria_id)
+        base = (
+            select(Existencia.sucursal_id, Categoria.nombre, Producto.nombre, Variante.sku, Talla.codigo, Color.nombre, Existencia.disponible, Existencia.reservada, Existencia.vendida, Existencia.umbral_minimo)
+            .join(Variante, Variante.id == Existencia.variante_id).join(Producto, Producto.id == Variante.producto_id).join(Categoria, Categoria.id == Producto.categoria_id)
+            .join(Talla, Talla.id == Variante.talla_id).join(Color, Color.id == Variante.color_id).where(*condiciones)
+        )
+        total = self.db.scalar(select(func.count()).select_from(base.subquery())) or 0
+        filas = self.db.execute(base.order_by(Existencia.sucursal_id, Producto.nombre, Variante.sku).limit(limite).offset(desplazamiento)).all()
+        return total, [tuple(f) for f in filas]
 
     def productos_activos(self) -> int:
         return self.db.scalar(select(func.count(Producto.id)).where(Producto.empresa_id == self.empresa_id, Producto.activo.is_(True))) or 0

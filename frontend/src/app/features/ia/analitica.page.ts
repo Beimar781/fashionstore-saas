@@ -13,7 +13,7 @@ import { mensajeError } from '../../core/ui/toast.service';
   imports: [FormsModule, DatePipe],
   template: `
     <div class="page">
-      <div class="page-head"><div><h1>Analítica con ML</h1><p>Qué productos rotan más y cuánto se espera vender en las próximas semanas, con modelos de aprendizaje automático (scikit-learn).</p></div></div>
+      <div class="page-head"><div><h1>Analítica con ML</h1><p>Qué productos rotan más y cuánto se espera vender en las próximas semanas, con modelos de aprendizaje automático (scikit-learn).</p></div><button class="btn" (click)="exportarPdf()">⬇ Exportar PDF</button></div>
       <form class="card pad row" style="margin-bottom:1rem">
         <label style="max-width:240px">Sucursal<select name="s" [(ngModel)]="sucursal" (ngModelChange)="cargar()"><option [ngValue]="null">Todas</option>@for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }</select></label>
       </form>
@@ -66,6 +66,9 @@ import { mensajeError } from '../../core/ui/toast.service';
     .cuadro { display: inline-block; width: .8rem; height: .8rem; background: var(--accent); border-radius: 2px; margin-right: .3rem; vertical-align: middle; } .cuadro.proy { opacity: .5; }`,
 })
 export class AnaliticaPage implements OnInit {
+  /** PDF con las métricas y los gráficos de la pantalla (el navegador ofrece «Guardar como PDF»). */
+  exportarPdf() { window.print(); }
+
   private api = inject(ReportesApi);
   private admin = inject(AdministracionApi);
 
