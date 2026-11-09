@@ -22,3 +22,4 @@ backend/media/
 # Firebase: el google-services.json de cada integrante no se sube (en GitHub Actions va en el secreto GOOGLE_SERVICES_JSON)
 movil/android/app/google-services.json
 movil/android/.kotlin/
+.pytest-tmp/

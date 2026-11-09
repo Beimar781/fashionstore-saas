@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../data/medio_de_pago.dart';
 import '../data/reservas_repository.dart';
@@ -32,7 +33,7 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
         });
       }
     } on Exception catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = _mensaje(e));
     }
   }
 
@@ -43,9 +44,12 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
         setState(() => _tarjetas.removeWhere((t) => t.id == tarjeta.id));
       }
     } on Exception catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = _mensaje(e));
     }
   }
+
+  /// Guardar, ver y quitar tarjetas depende de Internet (CU-32): sin red se explica con un mensaje claro.
+  String _mensaje(Object e) => e is ApiException && e.sinConexion ? 'Sin conexión: las tarjetas guardadas necesitan Internet.' : '$e';
 
   @override
   Widget build(BuildContext context) => Scaffold(

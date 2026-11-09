@@ -12,6 +12,9 @@ import '../domain/metricas.dart';
 
 /// Estado del vestidor: la prenda elegida (color y talla), la pose suavizada, el bloqueo y las métricas. No sabe nada de la cámara:
 /// la pantalla le entrega cada pose detectada, y así toda esta lógica se prueba sin teléfono.
+/// Sin red y sin la prenda descargada no hay con qué abrir el vestidor.
+const msgVestidorSinDescarga = 'Descargue el catálogo con conexión para usar el vestidor sin Internet.';
+
 class VestidorController extends ChangeNotifier {
   VestidorController(this._repo, this.productoId,
       {MedidorRendimiento? metricas, BloqueoPose? bloqueo})
@@ -56,7 +59,7 @@ class VestidorController extends ChangeNotifier {
         await elegirColor(listos.first);
       }
     } on ApiException catch (e) {
-      error = e.mensaje;
+      error = e.sinConexion ? msgVestidorSinDescarga : e.mensaje;
     }
     cargando = false;
     notifyListeners();

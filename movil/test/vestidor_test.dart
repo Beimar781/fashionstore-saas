@@ -325,5 +325,12 @@ void main() {
       await otra.cargar();
       expect(otra.error, 'No tiene permisos para esta operación.');
     });
+
+    test('sin conexión y sin la prenda descargada se pide descargar el catálogo', () async {
+      final sinRed = VestidorController(VestidorRepository(api), 9);
+      api.fallo = ApiException('Sin conexión con el servidor.', sinConexion: true);
+      await sinRed.cargar();
+      expect(sinRed.error, 'Descargue el catálogo con conexión para usar el vestidor sin Internet.');
+    });
   });
 }
