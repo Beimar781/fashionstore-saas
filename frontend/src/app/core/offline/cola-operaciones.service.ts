@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { OfflineApi } from '../api/offline.api';
 import { AuthService } from '../auth/auth.service';
 import { OperacionLocal, OperacionServidor, TipoOperacion } from '../offline.models';
@@ -7,6 +7,9 @@ import { ConnectivityService } from './connectivity.service';
 import { LocalDbService } from './local-db.service';
 
 const REINTENTO_MS = 30_000;
+
+/** Resultado de una pasada de sincronización (lo anuncia AvisosConexionService). */
+export interface ResumenSync { confirmadas: number; conflictos: number; rechazadas: number; }
 
 /**
  * Cola de operaciones sin conexión (CU-38 y CU-39).
@@ -30,6 +33,9 @@ export class ColaOperacionesService {
   readonly sincronizando = signal(false);
   readonly errorSync = signal('');
   readonly ultimaSync = signal<string | null>(null);
+  readonly ultimoResumen = signal<ResumenSync | null>(null);
+  /** Cambia tras cada sincronización y al volver la red: las pantallas abiertas vuelven a pedir sus datos sin recargar la página. */
+  readonly refresco = signal(0);
   readonly pendientes = computed(() => this.operaciones().filter((o) => o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA'));
   readonly enConflicto = computed(() => this.operaciones().filter((o) => o.estado === 'EN_CONFLICTO'));
 
@@ -37,8 +43,20 @@ export class ColaOperacionesService {
     navigator.serviceWorker?.addEventListener('message', (m) => { if (m.data?.tipo === 'SINCRONIZAR_COLA' && this.auth.autenticado()) void this.sincronizar(); });
     void this.cargar();
     // al volver la conexión se sincroniza solo, y mientras haya pendientes se reintenta cada 30 segundos
-    effect(() => { if (this.red.online() && this.auth.autenticado()) void this.sincronizar(); });
+    let sinRed = !this.red.online();
+    effect(() => {
+      const enLinea = this.red.online();
+      const volvio = enLinea && sinRed;
+      sinRed = !enLinea;
+      if (enLinea && this.auth.autenticado()) void this.sincronizar().then(() => { if (volvio) this.refresco.update((n) => n + 1); });
+    });
     setInterval(() => { if (this.red.online() && this.auth.autenticado() && this.pendientes().length && Date.now() >= this.proximoIntento) void this.sincronizar(); }, REINTENTO_MS);
+  }
+
+  /** Para las pantallas: vuelve a ejecutar `recargar` cuando hubo una sincronización o volvió la red (se llama desde el constructor de la página). */
+  alRefrescar(recargar: () => void) {
+    let visto = this.refresco();
+    effect(() => { const n = this.refresco(); if (n !== visto) { visto = n; untracked(recargar); } });
   }
 
   async cargar() {
@@ -75,14 +93,6 @@ export class ColaOperacionesService {
     this.proximoIntento = Date.now() + Math.min(REINTENTO_MS * 2 ** this.fallosSeguidos, 15 * 60 * 1000);
   }
 
-  /** Aviso local (§B10): «Se sincronizaron N operaciones; M en conflicto.» como notificación del navegador si hay permiso y, si no, solo dentro de la app. */
-  private avisarResumen(confirmadas: number, conflictos: number) {
-    if (!confirmadas && !conflictos) return;
-    const texto = `Se sincronizaron ${confirmadas} operaciones; ${conflictos} en conflicto.`;
-    if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('FashionStore', { body: texto, icon: 'icons/icon-192.png' }); return; } catch { /* sin notificaciones: se avisa dentro de la app */ } }
-    this.toast.ok(texto);
-  }
-
   async sincronizar(): Promise<void> {
     if (this.sincronizando() || !this.red.online()) return;
     const lote = this.operaciones().filter((o) => o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA').sort((a, b) => a.creada_en.localeCompare(b.creada_en));
@@ -94,7 +104,7 @@ export class ColaOperacionesService {
     try {
       const r = await new Promise<import('../offline.models').RespuestaSync>((ok, mal) =>
         void Promise.all(lote.map(async (o) => ({ id: o.id, tipo: o.tipo, creada_en: o.creada_en, sucursal_id: o.sucursal_id, payload: await this.db.payloadDesdeDetalle(o) }))).then((ops) => this.api.sincronizar(ops).subscribe({ next: ok, error: mal })));
-      let confirmadas = 0, conflictos = 0, conError = false;
+      let confirmadas = 0, conflictos = 0, rechazadas = 0, conError = false;
       for (const res of r.resultados) {
         const o = lote.find((x) => x.id === res.id);
         if (!o) continue;
@@ -106,9 +116,11 @@ export class ColaOperacionesService {
         this.avisarAlCliente(o);
         if (o.estado === 'CONFIRMADA') confirmadas++;
         if (o.estado === 'EN_CONFLICTO') conflictos++;
+        if (o.estado === 'RECHAZADA') rechazadas++;
       }
       if (conError) this.fallo(); else { this.fallosSeguidos = 0; this.proximoIntento = 0; }
-      this.avisarResumen(confirmadas, conflictos);
+      this.ultimoResumen.set({ confirmadas, conflictos, rechazadas });  // lo anuncia AvisosConexionService (aviso global y notificación del sistema)
+      this.refresco.update((n) => n + 1);
       await this.db.marcarSincronizacion();
       this.ultimaSync.set(r.sincronizado_en);
       if (r.aviso_reloj) this.errorSync.set(r.aviso_reloj);  // §7.2: la hora del dispositivo parece incorrecta
@@ -130,7 +142,7 @@ export class ColaOperacionesService {
     if (o.tipo === 'VENTA_CONTADO') return;
     if (o.tipo === 'CANCELAR_RESERVA' && o.estado === 'CONFIRMADA') { this.toast.ok(`Reserva ${o.referencia ?? ''} cancelada.`); return; }
     const nombre = o.tipo === 'COMPRA' ? 'compra' : 'reserva';
-    if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar porque la prenda se agotó. No se le cobró nada.`);
+    if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar: la prenda se agotó mientras estaba sin conexión. No se le cobró nada.`);
     else if (o.estado === 'RECHAZADA') this.toast.error(`Su ${nombre} no se pudo realizar: ${o.mensaje}`);
     else if (o.estado === 'CONFIRMADA' && o.tipo === 'COMPRA') this.toast.ok(`Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».`);
   }
@@ -145,6 +157,7 @@ export class ColaOperacionesService {
         if (o && o.estado === 'EN_CONFLICTO' && s.estado !== 'EN_CONFLICTO') {
           o.estado = s.estado; o.mensaje = s.mensaje; o.referencia = s.referencia; o.comprobante = s.comprobante; o.detalle = s.detalle;
           await this.db.guardarOperacion(o);
+          this.refresco.update((n) => n + 1);
         }
       }
       this.operaciones.update((l) => [...l]);

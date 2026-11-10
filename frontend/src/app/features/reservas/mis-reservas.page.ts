@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ReservasApi } from '../../core/api/reservas.api';
 import { CLASE_ESTADO_RESERVA, EstadoReserva, Reserva, TEXTO_ESTADO_ITEM, TEXTO_ESTADO_RESERVA } from '../../core/reservas.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { OperacionesConProblemaComponent } from '../offline/operaciones-con-problema.component';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { LocalDbService } from '../../core/offline/local-db.service';
@@ -16,10 +17,12 @@ type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local
 /** CU-10 · Consultar el estado de las reservas y cancelarlas (RF12). */
 @Component({
   selector: 'app-mis-reservas',
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule, RouterLink, DatePipe, OperacionesConProblemaComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mis reservas</h1><p>Presente el código en el mostrador de la sucursal.</p></div><a class="btn primary" routerLink="/tienda/catalogo">+ Nueva reserva</a></div>
+
+      <app-operaciones-con-problema [tipos]="['RESERVA', 'CANCELAR_RESERVA']" titulo="Reservas que no se pudieron realizar" [paraCliente]="true" />
 
       <div class="tabs" role="tablist">
         @for (f of filtros; track f.valor) { <button role="tab" [class.activa]="estado() === f.valor" (click)="filtrar(f.valor)">{{ f.texto }}</button> }
@@ -90,6 +93,8 @@ export class MisReservasPage implements OnInit {
   readonly clase = (e: EstadoReserva) => CLASE_ESTADO_RESERVA[e];
   readonly itemTexto = (e: string) => TEXTO_ESTADO_ITEM[e] ?? e;
 
+  constructor() { this.cola.alRefrescar(() => void this.cargar()); }  // tras sincronizar o al volver la red, la lista se actualiza sola
+
   async ngOnInit() { await this.cola.cargar(); await this.cargar(); }
 
   filtrar(valor: string) { this.estado.set(valor); this.cargar(); }
@@ -108,7 +113,7 @@ export class MisReservasPage implements OnInit {
 
   private conPendientes(vistas: Reserva[]): ReservaLista[] {
     const meta = this.catalogoLocal.meta();
-    const locales = this.cola.operaciones().filter((o) => o.tipo === 'RESERVA' && ['REGISTRADA_LOCAL', 'ENVIADA', 'EN_CONFLICTO'].includes(o.estado)).map((o) => {
+    const locales = this.cola.operaciones().filter((o) => o.tipo === 'RESERVA' && ['REGISTRADA_LOCAL', 'ENVIADA'].includes(o.estado)).map((o) => {
       const items = (o.payload['items'] as { variante_id: number; cantidad: number }[] | undefined) ?? [];
       return { id: o.id as unknown as number, codigo: o.referencia ?? `RES-${o.id.slice(0, 8).toUpperCase()}`, estado: 'PENDIENTE', estadoLocal: o.estado, pendiente_local: true, sucursal_id: o.sucursal_id ?? 0, sucursal: meta?.sucursales.find((x) => x.id === o.sucursal_id)?.nombre ?? 'Sucursal', cliente_id: 0, cliente: '', programada_para: String(o.payload['programada_para'] ?? o.creada_en), vence_en: '', notas: String(o.payload['notas'] ?? o.resumen), creada_en: o.creada_en, total_unidades: items.reduce((s, i) => s + i.cantidad, 0), puede_cancelar: true, items: items.map((i, n) => { const v = this.catalogoLocal.productos().flatMap((p) => p.variantes).find((x) => x.id === i.variante_id); return { id: n, variante_id: i.variante_id, sku: v?.sku ?? '', producto: this.catalogoLocal.productos().find((p) => p.variantes.some((x) => x.id === i.variante_id))?.nombre ?? 'Prenda', talla: v?.talla ?? '', color: v?.color ?? '', cantidad: i.cantidad, estado: 'RESERVADO' }; }) } as unknown as Reserva;
     }) as ReservaLista[];

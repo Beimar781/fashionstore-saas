@@ -10,16 +10,19 @@ import { LocalDbService } from '../../../core/offline/local-db.service';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { CatalogoLocalService } from '../../../core/offline/catalogo-local.service';
 import { BsPipe } from '../../../core/formato-bs';
+import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-problema.component';
 
 interface CompraEnLista { id: string | number; codigo: string; fecha: string; sucursal: string; total: string; total_unidades: number; comprobante_numero: string | null; estado: string; pendiente: boolean; }
 
 /** CU-12 · Historial de compras del cliente, ordenado por fecha, con monto, sucursal y estado. */
 @Component({
   selector: 'app-mis-compras',
-  imports: [BsPipe, RouterLink, DatePipe],
+  imports: [BsPipe, RouterLink, DatePipe, OperacionesConProblemaComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mis compras</h1><p>Sus compras digitales, con su comprobante.</p></div><a class="btn primary" routerLink="/tienda/catalogo">Seguir comprando</a></div>
+
+      <app-operaciones-con-problema [tipos]="['COMPRA']" titulo="Compras que no se pudieron realizar" [paraCliente]="true" />
 
       @if (cargando()) { <div class="empty">Cargando…</div> }
       @else if (mensaje()) { <div class="card empty">{{ mensaje() }} <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }
@@ -66,8 +69,11 @@ export class MisComprasPage implements OnInit {
   readonly texto = (e: string) => TEXTO_ESTADO_PEDIDO[e as EstadoPedido] ?? e;
   readonly clase = (e: string) => CLASE_ESTADO_PEDIDO[e as EstadoPedido] ?? '';
 
-  async ngOnInit() {
-    await this.cola.cargar();
+  constructor() { this.cola.alRefrescar(() => void this.cargar()); }  // tras sincronizar o al volver la red, la lista se actualiza sola
+
+  async ngOnInit() { await this.cola.cargar(); await this.cargar(); }
+
+  private async cargar() {
     const s = this.auth.sesion();
     const cache = s ? await this.db.leerComprasClienteLocal<CompraResumen[]>(`${s.empresa?.id ?? 0}:${s.usuario.id}`) : undefined;
     if (!this.red.online()) { this.servidor.set(cache ?? []); const pendientes = this.cola.operaciones().some((o) => o.tipo === 'COMPRA' && ['REGISTRADA_LOCAL', 'ENVIADA'].includes(o.estado)); this.mensaje.set(cache?.length || pendientes ? null : 'Sin conexión: todavía no se descargó su historial de compras.'); this.cargando.set(false); return; }

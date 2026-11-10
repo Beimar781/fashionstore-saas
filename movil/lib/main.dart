@@ -12,6 +12,7 @@ import 'features/home/presentation/home_screen.dart';
 import 'features/offline/data/offline_repository.dart';
 import 'features/notificaciones/data/proveedor_push.dart';
 import 'features/notificaciones/data/push_repository.dart';
+import 'core/notificacion_local.dart';
 import 'features/notificaciones/presentation/push_controller.dart';
 import 'features/offline/presentation/offline_controller.dart';
 import 'primer_parcial/reservas/data/reserva_borrador.dart';
@@ -54,6 +55,7 @@ class FashionStoreApp extends StatelessWidget {
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
           create: (_) => OfflineController(OfflineRepository(authRepo.api),
               conectividad: conectividadDelDispositivo())
+            ..alNotificar = NotificacionLocal.mostrar
             ..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(
                 SnackBar(
                     content: Text(texto),

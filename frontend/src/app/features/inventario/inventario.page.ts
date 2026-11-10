@@ -8,6 +8,7 @@ import { InventarioApi } from '../../core/api/inventario.api';
 import { Categoria, Temporada } from '../../core/catalogo.models';
 import { ESTADOS_EXISTENCIA, EstadoExistencia, FilaInventario, InventarioPagina } from '../../core/inventario.models';
 import { ROL } from '../../core/models';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
 /** CU-20 · Inventario global (Administrador) y CU-26 · Inventario de la sucursal (Encargado): la misma consulta, con ajustes solo en la sucursal. */
@@ -129,6 +130,8 @@ export class InventarioPage implements OnInit {
   fila: FilaInventario | null = null;
   ajuste = { tipo: 'AJUSTE_ENTRADA', cantidad: 1, nota: '' };
   umbral = 0;
+
+  constructor() { inject(ColaOperacionesService).alRefrescar(() => this.irA(this.datos()?.pagina ?? 1)); }  // tras sincronizar o al volver la red
 
   ngOnInit() {
     this.catalogo.categorias().subscribe((r) => this.categorias.set(r));

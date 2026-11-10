@@ -11,6 +11,12 @@ import '../data/offline_repository.dart';
 
 /// Estado del modo sin conexión para la capa de presentación (CU-37 a CU-39).
 /// Cuando hay sesión, sincroniza al abrir la app, en el instante en que vuelve la red y, como respaldo, cada 30 segundos mientras queden operaciones pendientes (RNF06).
+const msgSinRed = 'Sin conexión: sus acciones se guardarán en este dispositivo y se enviarán solas al volver la red.';
+
+String textoReconexion(int pendientes) => pendientes > 0 ? 'Conexión restablecida. Sincronizando $pendientes operaciones…' : 'Conexión restablecida.';
+
+String textoResumen(ResumenSync r) => 'Sincronización completa: ${r.confirmadas} confirmadas, ${r.enConflicto} en conflicto, ${r.rechazadas} rechazadas';
+
 class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
   OfflineController(this._repo, {Stream<bool>? conectividad})
@@ -91,6 +97,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void simularSinConexion(bool valor) {
+    if (valor != simulado) _anunciarRed(!valor);
     simulado = valor;
     ApiClient.simularSinConexion = valor;
     enLinea = !valor;
@@ -118,6 +125,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _enSegundoPlano = state != AppLifecycleState.resumed;
     if (state != AppLifecycleState.resumed || !habilitado) return;
     _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0);
     sincronizar();
@@ -127,6 +135,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
   void _alCambiarLaRed(bool hayRed) {
     if (simulado) return; // con la simulación activa, la red real no cambia el modo
+    if (hayRed != enLinea) _anunciarRed(hayRed);
     enLinea = hayRed;
     if (hayRed) _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0); // al volver la red se reintenta en el acto, sin esperar
     notifyListeners();
@@ -207,6 +216,23 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// Quién muestra el mensaje emergente al cliente (lo conecta la app con su ScaffoldMessenger).
   void Function(String)? alAvisar;
 
+  /// Quién muestra la notificación local del sistema cuando la app está en segundo plano (lo conecta la app).
+  void Function(String)? alNotificar;
+  bool _enSegundoPlano = false;
+  bool _esperaResumen = false;
+
+  /// Aviso global (SnackBar en cualquier pantalla) y, con la app en segundo plano, además notificación del sistema.
+  void _avisar(String texto) {
+    alAvisar?.call(texto);
+    if (_enSegundoPlano) alNotificar?.call(texto);
+  }
+
+  /// Al perder la red y al recuperarla (real o con «Simular sin conexión»), sin reiniciar la app ni salir de la pantalla.
+  void _anunciarRed(bool hayRed) {
+    _esperaResumen = hayRed && pendientes.isNotEmpty;
+    _avisar(hayRed ? textoReconexion(pendientes.length) : msgSinRed);
+  }
+
   Future<ResumenSync?> sincronizar() async {
     final s = _sesion;
     if (s == null || s.empresaId == null) return null;
@@ -223,10 +249,11 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     sincronizando = false;
     await recargar();
     for (final aviso in resumen.avisos) {
-      alAvisar?.call(aviso);
+      _avisar(aviso);
     }
-    if (resumen.confirmadas > 0 || resumen.enConflicto > 0) {
-      alAvisar?.call('Se sincronizaron ${resumen.confirmadas} operaciones; ${resumen.enConflicto} en conflicto.'); // B10: aviso al terminar
+    if (_esperaResumen && !resumen.sinConexion) {
+      _esperaResumen = false;
+      _avisar(textoResumen(resumen)); // tras una reconexión: cómo terminó la sincronización
     }
     if (_repetir) {
       _repetir = false;

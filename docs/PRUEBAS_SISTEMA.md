@@ -213,6 +213,17 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 14.26 | Web | Administrador EMP-B | «Reportes con IA» → escribir (o dictar) «los 10 productos más vendidos de los últimos 3 meses, agrupados por sucursal» y generar. | Periodo «Últimos 3 meses» (90 días hasta hoy); una tabla por cada sucursal de EMP-B con su top 10 (producto, unidades, ingresos en Bs); los botones Excel y PDF traen una tabla por sucursal. Sin «por sucursal» el ranking es uno solo. | ☐ |
 | 14.23 | Web | Cajero | Chrome: registrar una venta sin conexión, cambiar a otra pestaña y volver la red. | La cola se envía sola (Background Sync). | ☐ |
 
+## 15. Modo sin conexión integrado (defensa · D1)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 15.1 | Web | Cualquiera | En cualquier pantalla, activar «Simular sin conexión» (o cortar el WiFi). | Aviso emergente «Sin conexión: sus acciones se guardarán en este dispositivo y se enviarán solas al volver la red.»; la pantalla no se recarga ni cambia de ruta. | ☐ |
+| 15.2 | Web | Cliente | Sin conexión, dejar dos reservas o compras. Apagar «Simular sin conexión» sin recargar. | «Conexión restablecida. Sincronizando 2 operaciones…» y luego «Sincronización completa: X confirmadas, Y en conflicto, Z rechazadas» con el botón «Ver detalle», que abre la cola. «Mis compras» y «Mis reservas» se actualizan solas si estaban abiertas. | ☐ |
+| 15.3 | Web | Cliente | Permitir las notificaciones del sitio, dejar una operación sin conexión, cambiar a otra pestaña y volver la red. | Además del aviso, sale una notificación del sistema con el mismo texto. | ☐ |
+| 15.4 | Web y móvil | Cliente | Sin conexión, comprar la última unidad de una prenda; antes de sincronizar, venderla desde caja. Volver la red. | En «Mis compras» aparece «Compras que no se pudieron realizar» con la etiqueta «En conflicto», el motivo «La prenda se agotó mientras estaba sin conexión. No se le cobró nada.» y el botón «Elegir otra talla o sucursal» (abre la prenda en la web, el catálogo en el móvil). La campana trae el mismo aviso. | ☐ |
+| 15.5 | Web y móvil | Cajero | Sin conexión, vender una prenda que otro dispositivo ya agotó. Volver la red. | En Caja (web) y en el inicio (móvil) aparece «Ventas con problema» con el motivo y «Devolución del efectivo: Pendiente…»; cuando el Encargado la descarta pasa a «Efectivo devuelto al cliente.» sin recargar. | ☐ |
+| 15.6 | Móvil | Cliente o Cajero | Poner modo avión y luego quitarlo, sin salir de la pantalla. Repetir con la app en segundo plano. | SnackBar al perder y al recuperar la red, y el resumen de la sincronización; en segundo plano, además una notificación del sistema. La app no se reinicia ni vuelve al inicio. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

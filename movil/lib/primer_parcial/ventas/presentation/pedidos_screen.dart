@@ -11,6 +11,8 @@ import '../data/ventas_repository.dart';
 import '../../reservas/data/hoja_de_pago.dart';
 import '../../reservas/data/pago_movil.dart';
 import '../../reservas/data/reservas_repository.dart';
+import '../../../features/offline/presentation/operaciones_con_problema.dart';
+import '../../catalogo/presentation/catalogo_screen.dart';
 import 'boton_comprobante.dart';
 
 /// Historial de compras del cliente (CU-12): compras digitales y de mostrador, con su estado y comprobante.
@@ -253,6 +255,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
             children: [
+              OperacionesConProblema(tipos: const ['COMPRA'], titulo: 'Compras que no se pudieron realizar', alElegirOtra: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CatalogoScreen()))),
               if (_error != null)
                 Text(_error!, style: const TextStyle(color: Colors.red)),
               if (_compras == null && _error == null)

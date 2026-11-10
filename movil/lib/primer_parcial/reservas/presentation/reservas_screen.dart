@@ -6,6 +6,8 @@ import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
 import '../../../features/offline/presentation/offline_controller.dart';
+import '../../../features/offline/presentation/operaciones_con_problema.dart';
+import '../../catalogo/presentation/catalogo_screen.dart';
 import '../data/reserva_borrador.dart';
 import '../data/reservas_repository.dart';
 import 'mi_reserva_screen.dart';
@@ -204,6 +206,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
             children: [
+              OperacionesConProblema(tipos: const ['RESERVA', 'CANCELAR_RESERVA'], titulo: 'Reservas que no se pudieron realizar', alElegirOtra: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CatalogoScreen()))),
               if (_error != null)
                 Text(_error!, style: const TextStyle(color: Colors.red)),
               if (_reservas == null && _error == null)

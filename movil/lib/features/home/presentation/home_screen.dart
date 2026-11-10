@@ -16,6 +16,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../notificaciones/presentation/push_controller.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
+import '../../offline/presentation/operaciones_con_problema.dart';
 
 /// Pantalla inicial tras el inicio de sesión. Muestra el contexto de la sesión (empresa, rol, sucursal y plan) y los accesos del rol:
 /// el cliente ve catálogo, carrito, compras y reservas; el personal de tienda opera sin conexión (ventas de contado); todos sincronizan.
@@ -175,6 +176,7 @@ class HomeScreen extends StatelessWidget {
                   'Pida prendas en lenguaje natural (plan Profesional)',
                   const AsistenteScreen()),
           ],
+          if (s.rol == 'Cajero' || s.rol == 'Encargado') const OperacionesConProblema(tipos: ['VENTA_CONTADO'], titulo: 'Ventas con problema'),
           const InterruptorSimulacion(),
           if (offline.habilitado && !s.restringido)
             _acceso(

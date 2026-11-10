@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { ROL } from '../core/models';
 import { ColaOperacionesService } from '../core/offline/cola-operaciones.service';
+import { AvisosConexionService } from '../core/offline/avisos-conexion.service';
 import { ConnectivityService } from '../core/offline/connectivity.service';
 import { CarritoEstadoService } from '../core/carrito/carrito-estado.service';
 import { ReservaBorradorService } from '../core/reservas/reserva-borrador.service';
@@ -152,7 +153,8 @@ export class ShellComponent {
   readonly borrador = inject(ReservaBorradorService);
   readonly carrito = inject(CarritoEstadoService);
   readonly catalogoLocal = inject(CatalogoLocalService);  // al crearse, actualiza solo el catálogo descargado si tiene más de 6 horas
-  readonly cola = inject(ColaOperacionesService);  // al crearse, sincroniza solo al volver la conexión
+  readonly cola = inject(ColaOperacionesService);
+  private readonly avisos = inject(AvisosConexionService);  // al crearse, avisa en cualquier pantalla al perder y recuperar la red  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);
   salir() { this.confirmarSalida.set(false); this.auth.cerrarSesion(); }

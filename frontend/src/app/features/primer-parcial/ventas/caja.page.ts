@@ -8,15 +8,19 @@ import { Reserva } from '../../../core/reservas.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
 import { BsPipe } from '../../../core/formato-bs';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-problema.component';
 
 /** Punto de venta: CU-28 (escanear o buscar prendas), CU-29 (armar la venta, también desde una reserva) y CU-30 (cobrar y emitir el comprobante). */
 @Component({
   selector: 'app-caja',
-  imports: [BsPipe, FormsModule, PagoTarjetaComponent],
+  imports: [BsPipe, FormsModule, PagoTarjetaComponent, OperacionesConProblemaComponent],
   template: `
     <div class="page" style="max-width:1180px">
       <div class="page-head"><div><h1>Caja</h1><p>Escanee las prendas, registre la venta y cóbrela. El stock se descuenta al cobrar.</p></div>
         @if (venta() || cobro() || resultadoTarjeta()) { <button class="btn" (click)="nueva()">+ Nueva venta</button> }</div>
+
+      <app-operaciones-con-problema [tipos]="['VENTA_CONTADO']" titulo="Ventas con problema" />
 
       @if (pendientes().length && !venta()) {
         <section class="card pad stack" style="margin-bottom:1rem">
@@ -179,6 +183,8 @@ export class CajaPage implements OnInit {
   readonly total = computed(() => this.lineas().reduce((s, l) => s + l.precio_final * l.cantidad, 0).toFixed(2));
   codigo = ''; consulta = ''; codigoReserva = ''; clienteEmail = ''; nit = '0'; razon = 'Sin nombre';
   recibido: number | null = null;
+
+  constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargarPendientes()); }  // tras sincronizar o al volver la red
 
   ngOnInit() { this.cargarPendientes(); }
 
