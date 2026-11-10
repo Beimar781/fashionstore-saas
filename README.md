@@ -148,6 +148,29 @@ El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
 
 EMP-A tiene el plan **Básico** (sin IA: los reportes con IA, la analítica con ML y el asistente salen bloqueados). EMP-B tiene el plan **Profesional** (todo habilitado).
 
+**Otras empresas del despliegue.** EMP-C (**Moda Juvenil**, plan Básico) se creó a mano desde el panel del SuperAdministrador; su administrador es `Juvenil@gmail.com` con la clave que se le asignó al crearla (no se escribe aquí). EMP-D a EMP-G las crea y puebla `scripts/poblar_via_api.py`; todas usan la contraseña `Demo2026*`:
+
+| Código | Empresa | Plan | Sucursales | Administrador | Encargados (uno por sucursal) |
+|---|---|---|---|---|---|
+| EMP-D | Boutique Altiplano S.A. | Profesional | 3 | admin@boutiquealtiplano.com.bo | encargado1@, encargado2@ y encargado3@boutiquealtiplano.com.bo |
+| EMP-E | Ropa Valle Dorado Ltda. | Básico | 2 | admin@valledorado.com.bo | encargado1@ y encargado2@valledorado.com.bo |
+| EMP-F | Textiles del Oriente S.R.L. | Básico | 2 | admin@textilesdeloriente.com.bo | encargado1@ y encargado2@textilesdeloriente.com.bo |
+| EMP-G | Moda Sucre Express | Prueba gratuita | 1 | admin@modasucreexpress.com.bo | encargado1@modasucreexpress.com.bo |
+
+**Nota.** El inicio de sesión del Administrador, el Encargado, el Cajero y el Cliente pide el **código de empresa** (EMP-A a EMP-G). El SuperAdministrador (`superadmin@fashionstore.com` / `Super2026*`) lo deja vacío. EMP-D a EMP-G tienen las mismas 10 prendas con foto que EMP-B.
+
+### Poblar el despliegue
+
+`scripts/poblar_via_api.py` crea EMP-D a EMP-G (con sus administradores, sucursales y encargados) y copia a cada una el catálogo de EMP-B con fotos, PNG del vestidor y existencias, todo por la API (necesita `requests` y `pillow`, que ya están en `backend/requirements.txt`):
+
+```bash
+python scripts/poblar_via_api.py --url https://fashionstore-saas-production.up.railway.app \
+  --super-email superadmin@fashionstore.com --super-pass '<CLAVE_SUPERADMIN>' \
+  --plantilla-pass '<CLAVE_ADMIN>' --admin-pass '<CLAVE_ADMIN>'
+```
+
+Es **idempotente** (se puede correr varias veces: lo que ya existe se omite) y **no modifica la aplicación**: solo usa los endpoints públicos. Con `--destino-existente CODIGO,correo,clave` también copia el catálogo a una empresa que ya existe (por ejemplo EMP-C). Con `--url http://localhost:8000` sirve para probarlo en local.
+
 **Tarjetas de prueba de Stripe** (cualquier fecha futura y cualquier CVC): `4242 4242 4242 4242` aprueba · `4000 0000 0000 0002` rechaza · `4000 0027 6000 3184` pide 3D Secure.
 
 ## Aplicación móvil (APK)
