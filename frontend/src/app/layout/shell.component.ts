@@ -122,7 +122,8 @@ const porRol: Record<string, Item[]> = {
     </div>`,
   styles: `
     .layout { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
-    .side { background: var(--side); color: var(--side-ink); padding: 1.25rem .9rem; display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 0; height: 100vh; }
+    .side { background: var(--side); color: var(--side-ink); padding: 1.25rem .9rem; display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 0; height: 100vh; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+    .side > * { flex-shrink: 0; }
     .brand { display: flex; gap: .7rem; align-items: center; padding: 0 .4rem; }
     .brand strong { font-family: var(--serif); font-size: 1.1rem; display: block; line-height: 1.1; } .brand small { color: #a79fb2; letter-spacing: .15em; font-size: .7rem; }
     .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font-family: var(--serif); font-size: 1.3rem; color: #fff; }
@@ -132,7 +133,7 @@ const porRol: Record<string, Item[]> = {
     .link i { font-style: normal; width: 1.3rem; text-align: center; } .link em { margin-left: auto; font-style: normal; }
     .link.disabled { opacity: .45; cursor: not-allowed; }
     .cuenta { margin-left: auto; background: var(--accent); color: #fff; border-radius: 999px; font-size: .72rem; padding: 0 .45rem; font-weight: 700; }
-    .user { margin-top: auto; display: grid; gap: .5rem; padding: .8rem; border-top: 1px solid rgba(255,255,255,.12); }
+    .user { margin-top: auto; display: grid; gap: .5rem; padding: .8rem; border-top: 1px solid rgba(255,255,255,.12); position: sticky; bottom: 0; background: var(--side); }
     .who strong { display: block; font-size: .9rem; } .who small { color: #a79fb2; }
     .out { color: var(--side-ink); justify-self: start; border: 1px solid rgba(255,255,255,.2); }
     .out:hover:not(:disabled) { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.3) !important; }
@@ -141,8 +142,8 @@ const porRol: Record<string, Item[]> = {
     .offline { background: #fbefd9; color: #6b4000; padding: .55rem 1.5rem; font-size: .88rem; border-bottom: 1px solid #efd5a5; }
     @media (max-width: 820px) {
       .layout { grid-template-columns: 1fr; }
-      .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; padding: .7rem; gap: .6rem; }
-      nav { display: flex; flex-wrap: wrap; } .user { margin: 0 0 0 auto; border: 0; padding: 0; } .who { display: none; }
+      .side { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; padding: .7rem; gap: .6rem; }
+      nav { display: flex; flex-wrap: wrap; } .user { position: static; margin: 0 0 0 auto; border: 0; padding: 0; } .who { display: none; }
     }`,
 })
 export class ShellComponent {
