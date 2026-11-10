@@ -210,6 +210,7 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 14.22 | Web | Administrador | Sin conexión, «Reportes con IA» → «Generar». | «Generar un reporte con IA necesita Internet.» La franja superior muestra «Datos al…». | ☐ |
 | 14.24 | Web (Chrome) | Administrador EMP-B | «Reportes con IA» → «🗣 Conversar», permitir el micrófono y decir «ventas de este mes». Después decir «repite» y por último «terminar». | La app saluda en voz, genera el reporte, lo lee en voz alta, vuelve a escuchar; «repite» lo lee otra vez y «terminar» cierra la conversación. Tres silencios seguidos también la cierran. | ☐ |
 | 14.25 | Web (Chrome) | Administrador | Con un reporte en pantalla, tocar «🔊 Escuchar» y luego «⏹ Detener lectura». | Lee el reporte sin símbolos de formato («bolivianos» en lugar de «Bs»); se detiene al instante. | ☐ |
+| 14.26 | Web | Administrador EMP-B | «Reportes con IA» → escribir (o dictar) «los 10 productos más vendidos de los últimos 3 meses, agrupados por sucursal» y generar. | Periodo «Últimos 3 meses» (90 días hasta hoy); una tabla por cada sucursal de EMP-B con su top 10 (producto, unidades, ingresos en Bs); los botones Excel y PDF traen una tabla por sucursal. Sin «por sucursal» el ranking es uno solo. | ☐ |
 | 14.23 | Web | Cajero | Chrome: registrar una venta sin conexión, cambiar a otra pestaña y volver la red. | La cola se envía sola (Background Sync). | ☐ |
 
 ## Diferencias conocidas entre la web y el móvil

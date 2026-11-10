@@ -17,6 +17,7 @@ class EspecReporte(BaseModel):
     ventas: bool = False
     detalle_ventas: bool = False
     ranking: bool = False
+    agrupar_por_sucursal: bool = False
     orden_ranking: Literal["mejores", "peores"] = "mejores"
     reservas: bool = False
     pagos: bool = False
@@ -44,6 +45,18 @@ def _coincide(texto: str, patrones: tuple[str, ...]) -> bool:
     return any(re.search(p, texto) for p in patrones)
 
 
+NUMEROS = {"un": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10, "once": 11, "doce": 12}
+
+
+def _meses(texto: str) -> int | None:
+    """«últimos 3 meses», «tres meses», «6 meses»: de 1 a 12, en cifras o en letras."""
+    m = re.search(r"\b(\d{1,2}|" + "|".join(NUMEROS) + r")\s+mes(?:es)?\b", texto)
+    if not m:
+        return None
+    n = int(m.group(1)) if m.group(1).isdigit() else NUMEROS[m.group(1)]
+    return n if 1 <= n <= 12 else None
+
+
 def _periodo(texto: str, hoy: date) -> tuple[date, date, str]:
     if _contiene(texto, ("hoy", "dia de hoy")):
         return hoy, hoy, "Hoy"
@@ -56,6 +69,9 @@ def _periodo(texto: str, hoy: date) -> tuple[date, date, str]:
     if _contiene(texto, ("mes pasado", "mes anterior")):
         fin = hoy.replace(day=1) - timedelta(days=1)
         return fin.replace(day=1), fin, "Mes anterior"
+    meses = _meses(texto)  # antes que «ultimo mes», que sigue valiendo 30 días
+    if meses:
+        return hoy - timedelta(days=min(30 * meses, 365)), hoy, "Último mes" if meses == 1 else f"Últimos {meses} meses"
     if _contiene(texto, ("ultimo mes", "ultimos 30 dias", "ultimos treinta dias")):
         return hoy - timedelta(days=29), hoy, "Últimos 30 días"
     iso = re.search(r"(\d{4}-\d{2}-\d{2})\s*(?:a|hasta|-)\s*(\d{4}-\d{2}-\d{2})", texto)
@@ -94,10 +110,11 @@ def interpretar_con_reglas(prompt: str, hoy: date, sucursales: list[tuple[int, s
         stock_bajo = True
     desde, hasta, etiqueta = _periodo(t, hoy)
     sucursal_id, ambito = _sucursal(t, sucursales)
+    agrupar = sucursal_id is None and (_contiene(t, ("por sucursal", "cada sucursal", "por tienda")) or ("agrupad" in t and "sucursal" in t))
     limite = 10 if _contiene(t, ("top 10", "diez productos", "10 productos")) else 3 if _contiene(t, ("top 3", "tres productos", "3 productos")) else 5
     limite_detalle = (10 if "10 ventas" in t or "ultimas 10" in t else 20 if "20 ventas" in t or "ultimas 20" in t else 50) if detalle else 0
     return EspecReporte(
-        ventas=ventas, detalle_ventas=detalle, ranking=ranking, orden_ranking="peores" if peores and not mejores else "mejores", reservas=reservas, pagos=pagos,
+        ventas=ventas, detalle_ventas=detalle, ranking=ranking, agrupar_por_sucursal=agrupar, orden_ranking="peores" if peores and not mejores else "mejores", reservas=reservas, pagos=pagos,
         inventario=inventario, stock_bajo=stock_bajo, desde=desde, hasta=hasta, sucursal_id=sucursal_id, limite_ranking=limite, limite_detalle=limite_detalle,
         etiqueta_periodo=etiqueta, etiqueta_ambito=ambito,
     )
@@ -105,7 +122,7 @@ def interpretar_con_reglas(prompt: str, hoy: date, sucursales: list[tuple[int, s
 
 SISTEMA_IA = (
     "Eres el intérprete de reportes de una tienda de ropa. Convierte la petición del administrador en una especificación JSON y responde SOLO el JSON, "
-    "sin texto adicional. Campos: ventas, detalle_ventas, ranking, reservas, pagos, inventario, stock_bajo (booleanos); orden_ranking ('mejores' o 'peores'); "
+    "sin texto adicional. Campos: ventas, detalle_ventas, ranking, agrupar_por_sucursal, reservas, pagos, inventario, stock_bajo (booleanos; agrupar_por_sucursal pide el ranking de cada sucursal por separado y solo vale si no se nombra una sucursal); orden_ranking ('mejores' o 'peores'); "
     "desde y hasta (fechas AAAA-MM-DD o null); sucursal_id (uno de los ids dados o null); limite_ranking (1 a 20); limite_detalle (0 a 100); "
     "etiqueta_periodo y etiqueta_ambito (textos cortos en español). Si la petición no menciona un tema, activa ventas, reservas e inventario."
 )
@@ -123,6 +140,8 @@ def interpretar_con_ia(ia: ClienteIA, prompt: str, hoy: date, sucursales: list[t
             return None
         if espec.desde and espec.hasta and (espec.desde > espec.hasta or (espec.hasta - espec.desde).days > 365):
             return None
+        if espec.sucursal_id is not None:
+            espec.agrupar_por_sucursal = False  # con una sucursal concreta no hay nada que agrupar
         if espec.desde is None or espec.hasta is None:
             espec.desde, espec.hasta = hoy - timedelta(days=29), hoy
         if not any((espec.ventas, espec.ranking, espec.reservas, espec.pagos, espec.inventario, espec.stock_bajo)):

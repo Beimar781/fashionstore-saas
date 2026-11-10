@@ -25,7 +25,7 @@ MSG_PROMPT = "Escriba o dicte lo que desea consultar."
 MSG_FORMATO = "Formato de exportación no válido. Use xlsx o pdf."
 
 ROTULOS = {
-    "ventas": "Resumen de ventas", "detalle_ventas": "Detalle de ventas", "ranking": "Ranking de productos", "reservas": "Reservas",
+    "ventas": "Resumen de ventas", "detalle_ventas": "Detalle de ventas", "ranking": "Ranking de productos", "ranking_por_sucursal": "Ranking por sucursal", "reservas": "Reservas",
     "por_estado": "Reservas por estado", "pagos": "Pagos", "inventario": "Inventario", "stock_bajo": "Alertas de stock bajo",
 }
 
@@ -35,6 +35,11 @@ def _tablas_de(datos: dict) -> list[dict]:
     tablas = []
     for clave, valor in datos.items():
         nombre = ROTULOS.get(clave, clave.replace("_", " ").capitalize())
+        if clave == "ranking_por_sucursal":  # una tabla por sucursal con su top
+            tablas += [{"nombre": f"Ranking de productos · {g['sucursal']}", "columnas": ["Producto", "Unidades", "Ingresos"], "filas": [[r["producto"], r["unidades"], r["ingresos"]] for r in g["ranking"]]} for g in valor]
+            continue
+        if clave == "ranking" and "ranking_por_sucursal" in datos:
+            continue  # agrupado: se muestra cada sucursal, no el total
         if isinstance(valor, list) and valor and isinstance(valor[0], dict):
             columnas = list(valor[0].keys())
             tablas.append({"nombre": nombre, "columnas": [c.replace("_", " ").capitalize() for c in columnas], "filas": [[f.get(c, "") for c in columnas] for f in valor]})
@@ -132,6 +137,11 @@ class ReporteGenerativoService(ReportesBase):
             ]
         if e.ranking:
             cifras["ranking"] = self.ranking(d, h, suc, None, e.orden_ranking == "mejores", e.limite_ranking)
+            if e.agrupar_por_sucursal and suc is None:  # el mismo ranking, una vez por cada sucursal de la empresa
+                cifras["ranking_por_sucursal"] = [
+                    {"sucursal": nombre, "ranking": self.ranking(d, h, id_sucursal, None, e.orden_ranking == "mejores", e.limite_ranking)}
+                    for id_sucursal, nombre in sorted(self.nombres().items())
+                ]
         if e.reservas:
             por_estado = self.repo.reservas_por_estado(d, h, suc)
             total = sum(por_estado.values())
@@ -162,8 +172,13 @@ class ReporteGenerativoService(ReportesBase):
                 lineas.append(f"  Incluye {v['devoluciones']} devolución(es)/cambio(s): se descontaron {_bs(v['devuelto'])} y se sumaron {_bs(v['entregado_en_cambios'])} entregados en cambios.")
         for fila in c.get("detalle_ventas", []):
             lineas.append(f"  • {fila['comprobante'] or fila['pedido']} | {fila['canal']} | {_bs(fila['total'])} | {fila['fecha']:%d/%m/%Y}")
-        if c.get("ranking"):
-            lineas += ["", "Productos con menor venta:" if e.orden_ranking == "peores" else "Productos más vendidos:"]
+        titulo = "Productos con menor venta" if e.orden_ranking == "peores" else "Productos más vendidos"
+        if c.get("ranking_por_sucursal"):
+            for grupo in c["ranking_por_sucursal"]:
+                lineas += ["", f"{titulo} · {grupo['sucursal']}:"]
+                lineas += [f"  {i}. {p['producto']} — {p['unidades']} u., {_bs(p['ingresos'])}" for i, p in enumerate(grupo["ranking"], 1)] or ["  Sin ventas de productos en el periodo."]
+        elif c.get("ranking"):
+            lineas += ["", f"{titulo}:"]
             lineas += [f"  {i}. {p['producto']} — {p['unidades']} u., {_bs(p['ingresos'])}" for i, p in enumerate(c["ranking"], 1)]
         elif e.ranking:
             lineas += ["", "No hubo ventas de productos en el periodo."]

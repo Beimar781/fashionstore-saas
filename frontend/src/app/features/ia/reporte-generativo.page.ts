@@ -3,6 +3,7 @@ import { Component, NgZone, OnDestroy, OnInit, inject, signal } from '@angular/c
 import { FormsModule } from '@angular/forms';
 import { ReportesApi } from '../../core/api/reportes.api';
 import { ReporteGenerativo } from '../../core/reportes.models';
+import { BsPipe } from '../../core/formato-bs';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 import { VozService } from '../../core/voz/voz.service';
@@ -12,7 +13,7 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
 /** CU-23 · Reportes generativos: el Administrador escribe o dicta (Web Speech API del navegador) lo que necesita y el sistema interpreta la petición y genera el reporte. */
 @Component({
   selector: 'app-reporte-generativo',
-  imports: [FormsModule, DatePipe, JsonPipe],
+  imports: [FormsModule, DatePipe, JsonPipe, BsPipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes con IA</h1><p>Escriba o dicte lo que necesita, por ejemplo «ventas del último mes» o «el producto menos vendido de la sucursal centro».</p></div></div>
@@ -42,6 +43,16 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
             <div class="card pad stack">
               <div class="row between"><h2>Reporte generado</h2><span class="badge" [class.ok]="r.origen === 'IA'" [class.warn]="r.origen === 'REGLAS'">{{ r.origen === 'IA' ? 'Interpretado por IA' : 'Reglas de respaldo' }}</span></div>
               <pre class="reporte">{{ r.texto }}</pre>
+              @for (g of porSucursal(r); track g.sucursal) {
+                <h3>{{ g.sucursal }}</h3>
+                <div class="table-wrap"><table>
+                  <thead><tr><th>#</th><th>Producto</th><th class="right">Unidades</th><th class="right">Ingresos</th></tr></thead>
+                  <tbody>
+                    @for (f of g.ranking; track f.producto; let i = $index) { <tr><td>{{ i + 1 }}</td><td>{{ f.producto }}</td><td class="right">{{ f.unidades }}</td><td class="right">{{ f.ingresos | bs }}</td></tr> }
+                    @empty { <tr><td colspan="4" class="empty">Sin ventas de productos en el periodo.</td></tr> }
+                  </tbody>
+                </table></div>
+              }
               <details><summary class="small">Cómo se interpretó la petición</summary><pre class="small">{{ r.especificacion | json }}</pre></details>
               <div class="row">@if (voz.disponible) { <button class="btn" [class.grabando]="voz.hablando()" (click)="voz.hablando() ? voz.detener() : voz.hablar(r.texto)">{{ voz.hablando() ? '⏹ Detener lectura' : '🔊 Escuchar' }}</button> }<button class="btn" (click)="copiar(r)">Copiar texto</button><button class="btn" (click)="imprimir()">Imprimir</button><button class="btn" (click)="descargar(r, 'xlsx')">⬇ Descargar Excel</button><button class="btn" (click)="descargar(r, 'pdf')">⬇ Descargar PDF</button></div>
             </div>
@@ -143,6 +154,11 @@ export class ReporteGenerativoPage implements OnInit, OnDestroy {
     this.reconocimiento.onend = () => this.zona.run(() => this.escuchando.set(false));
     this.reconocimiento.start();
     this.escuchando.set(true);
+  }
+
+  /** CU-23: cuando se pide «por sucursal», el ranking llega en cifras.ranking_por_sucursal y se muestra una tabla por sucursal. */
+  porSucursal(r: ReporteGenerativo): { sucursal: string; ranking: { producto: string; unidades: number; ingresos: string }[] }[] {
+    return (r.datos['ranking_por_sucursal'] as ReturnType<ReporteGenerativoPage['porSucursal']> | undefined) ?? [];
   }
 
   copiar(r: ReporteGenerativo) { navigator.clipboard?.writeText(r.texto).then(() => this.toast.ok('Reporte copiado.')); }
