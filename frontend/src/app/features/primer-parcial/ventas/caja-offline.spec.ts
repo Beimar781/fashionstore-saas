@@ -40,6 +40,13 @@ describe('Caja sin conexión (D2)', () => {
     caja = TestBed.createComponent(CajaPage).componentInstance;
   });
 
+  it('la pre-factura muestra el IVA incluido desde que hay prendas (13%: 90.00 → 10.35)', () => {
+    expect(caja.ivaPrefactura()).toBe('0.00');
+    caja.consulta = 'camisa'; caja.buscar();
+    caja.agregar(caja.resultados()[0]);
+    expect(caja.ivaPrefactura()).toBe('10.35');
+  });
+
   it('busca y escanea en la copia local, con el stock de la sucursal y el precio con promoción', () => {
     caja.consulta = 'camisa'; caja.buscar();
     expect(caja.resultados()).toHaveLength(1);

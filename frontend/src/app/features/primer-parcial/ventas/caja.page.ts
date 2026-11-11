@@ -107,6 +107,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
                 </div>
               } @empty { <p class="muted small">Escanee o busque una prenda para agregarla.</p> }
               <div class="row between total"><strong>Total</strong><strong>{{ total() | bs }}</strong></div>
+              @if (lineas().length) { <p class="muted small">IVA incluido: {{ ivaPrefactura() | bs }}</p> }
             }
             <label>Correo del cliente <span class="hint">(opcional: la compra aparece en su historial)</span><input name="c" [(ngModel)]="clienteEmail" type="email" [disabled]="!!reserva()" /></label>
             <div class="form-grid"><label>NIT o CI<input name="n" [(ngModel)]="nit" maxlength="20" /></label><label>Razón social<input name="rz" [(ngModel)]="razon" maxlength="120" /></label></div>
@@ -222,6 +223,7 @@ export class CajaPage implements OnInit {
   readonly registrando = signal(false);
   readonly cobrando = signal(false);
   readonly total = computed(() => this.lineas().reduce((s, l) => s + l.precio_final * l.cantidad, 0).toFixed(2));
+  readonly ivaPrefactura = computed(() => ivaIncluido(this.total(), this.local.meta()?.iva_porcentaje));
   codigo = ''; consulta = ''; codigoReserva = ''; clienteEmail = ''; nit = '0'; razon = 'Sin nombre';
   recibido: number | null = null;
 
