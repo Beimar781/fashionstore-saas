@@ -6,10 +6,10 @@ class PagoRepository(TenantRepository[Pago]):
     model = Pago
 
     def del_pedido_visible(self, pago_id: int, cliente_id: int | None, sucursal_id: int | None) -> Pago | None:
-        """El pago se busca por su pedido: un cliente solo ve los de sus compras digitales; el personal de caja, los de las ventas de su sucursal."""
+        """El pago se busca por su pedido: un cliente solo ve los de sus compras (digitales o ventas de caja a su nombre); el personal de caja, los de las ventas de su sucursal."""
         stmt = self._consulta().join(Pedido, Pedido.id == Pago.pedido_id).where(Pago.id == pago_id)
         if cliente_id is not None:
-            stmt = stmt.where(Pedido.cliente_id == cliente_id, Pedido.canal == "DIGITAL")
+            stmt = stmt.where(Pedido.cliente_id == cliente_id)
         else:
             stmt = stmt.where(Pedido.canal == "PRESENCIAL", Pedido.sucursal_id == sucursal_id)
         return self.db.scalar(stmt)

@@ -118,6 +118,8 @@ class PagoService:
             return self._resultado(pago, pedido)  # repetir la confirmación no cobra otra vez
         if pago.estado in ("RECHAZADO", "CANCELADO"):
             raise Conflicto("Este pago ya fue procesado. Inicie un nuevo pago.")
+        if pedido.estado in ("PAGADO", "CANCELADO"):  # p. ej. el cajero cobró la venta en efectivo mientras el cliente pagaba con tarjeta: no se descuenta el stock dos veces
+            raise Conflicto("El pedido ya no está pendiente de pago.")
         escenario, guardada = None, None
         if pago.metodo_pago_ref and self.pasarela.proveedor == "SIMULADO":
             guardada = self.tarjetas.por_referencia(pago.metodo_pago_ref, self.ctx.usuario.id)
@@ -214,10 +216,10 @@ class PagoService:
         return self.ctx.rol == CLIENTE
 
     def _pedido(self, pedido_id: int) -> Pedido:
-        """Un cliente paga sus pedidos digitales; el personal de caja cobra con tarjeta las ventas presenciales de su sucursal."""
+        """Un cliente paga sus pedidos; el personal de caja cobra con tarjeta las ventas presenciales de su sucursal."""
         pedido = self.compras.pedidos.obtener_completo(pedido_id)
         propio = pedido is not None and (
-            (pedido.cliente_id == self.ctx.usuario.id and pedido.canal == "DIGITAL") if self._es_cliente
+            pedido.cliente_id == self.ctx.usuario.id if self._es_cliente  # también la venta de caja que dejó por pagar a su nombre
             else (pedido.canal == "PRESENCIAL" and pedido.sucursal_id == self.ctx.sucursal_id)
         )
         if not propio:
