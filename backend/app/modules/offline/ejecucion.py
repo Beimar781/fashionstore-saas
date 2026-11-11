@@ -18,23 +18,26 @@ from app.primer_parcial.reservas.publico import AtencionService, CompletarIn, Re
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
-from app.primer_parcial.ventas.publico import CobroCajaService, CobroIn, CompraService, Linea, Pedido, SinStock
+from app.primer_parcial.ventas.publico import CobroCajaService, CobroIn, CompraService, Linea, Pedido, SinStock, TarjetaRepository
 
 
 class Resultado:
     def __init__(self, referencia: str | None, comprobante: str | None, pedido_id: int | None = None, reserva_id: int | None = None):
         self.referencia, self.comprobante, self.pedido_id, self.reserva_id = referencia, comprobante, pedido_id, reserva_id
+        self.tarjeta_a_cobrar: int | None = None  # compra con tarjeta guardada: se cobra DESPUÉS de confirmar la operación (CU-38)
         self.despues = None  # lo que debe hacerse DESPUÉS de confirmar la operación (por ejemplo, el aviso push al cliente, regla 17)
 
 
 MSG_PRECIO = "El precio de una prenda cambió desde que se registró la venta."
+MSG_PRECIO_COMPRA = "El precio cambió; confirme el nuevo total."
+MSG_TARJETA = "Tarjeta no encontrada."
 
 
 class PrecioCambio(Conflicto):
     """Regla de precio (§7.2): se respeta el precio local solo si sigue siendo el vigente; si cambió, la venta queda EN_CONFLICTO para que el Encargado decida."""
 
-    def __init__(self, cambios: list[dict]):
-        super().__init__(MSG_PRECIO)
+    def __init__(self, cambios: list[dict], mensaje: str = MSG_PRECIO):
+        super().__init__(mensaje)
         self.cambios = cambios
 
 
@@ -48,7 +51,7 @@ class Ejecutor:
 
     def ejecutar(self, tipo: str, payload: dict, validar_precio: bool = True) -> Resultado:
         if tipo == "COMPRA":
-            return self._compra(CompraOfflineIn.model_validate(payload))
+            return self._compra(CompraOfflineIn.model_validate(payload), validar_precio)
         if tipo == "VENTA_CONTADO":
             datos = VentaOfflineIn.model_validate(payload)
             if validar_precio:
@@ -143,8 +146,11 @@ class Ejecutor:
         if cambios:
             raise PrecioCambio(cambios)
 
-    def _compra(self, datos: CompraOfflineIn) -> Resultado:
-        """La compra del cliente es el pedido por pagar del checkout (CU-11), sin cobrar nada: si ya no alcanzan las existencias, no se crea y queda en conflicto (RN14)."""
+    def _compra(self, datos: CompraOfflineIn, validar_precio: bool = True) -> Resultado:
+        """La compra del cliente es el pedido por pagar del checkout (CU-11): si ya no alcanzan las existencias, no se crea y queda en conflicto (RN14).
+        Si trae una tarjeta guardada, la tarjeta debe ser de este cliente y el total debe ser el que autorizó; el cobro lo hace CU-38 después de confirmar."""
+        if datos.tarjeta_guardada_id is not None and TarjetaRepository(self.db, self.ctx.empresa_id).del_cliente(datos.tarjeta_guardada_id, self.ctx.usuario.id) is None:
+            raise DatosInvalidos(MSG_TARJETA)  # de otro cliente o de otra empresa: se rechaza sin crear nada
         pedidas: dict[int, int] = {}
         for i in datos.items:
             pedidas[i.variante_id] = pedidas.get(i.variante_id, 0) + i.cantidad
@@ -167,7 +173,11 @@ class Ejecutor:
             direccion=datos.direccion_entrega if datos.tipo_entrega == "DELIVERY" else "",
         )
         self.db.flush()
-        return Resultado(pedido.codigo, None, pedido_id=pedido.id)
+        if datos.tarjeta_guardada_id is not None and validar_precio and Decimal(pedido.total).quantize(Decimal("0.01")) != datos.total_autorizado.quantize(Decimal("0.01")):
+            raise PrecioCambio([{"total_autorizado": f"{datos.total_autorizado:.2f}", "total_actual": f"{Decimal(pedido.total):.2f}"}], MSG_PRECIO_COMPRA)  # no se cobra nada
+        resultado = Resultado(pedido.codigo, None, pedido_id=pedido.id)
+        resultado.tarjeta_a_cobrar = datos.tarjeta_guardada_id
+        return resultado
 
     def faltantes(self, payload: dict, sucursal_id: int) -> list[dict]:
         """RN14: qué prendas no alcanzan en la sucursal ahora mismo (para que el Encargado resuelva el conflicto)."""

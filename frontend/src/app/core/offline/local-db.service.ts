@@ -120,6 +120,9 @@ export class LocalDbService {
   async guardarCarritoLocal(clave: string, valor: unknown): Promise<void> { await (await this.db()).put('carrito_local', valor, clave); }
   async leerCarritoLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('carrito_local', clave)) as T | undefined; } catch { return undefined; } }
   async borrarCarritoLocal(clave: string): Promise<void> { try { await (await this.db()).delete('carrito_local', clave); } catch { /* noop */ } }
+  /** Tarjetas guardadas del cliente (marca, últimos 4 dígitos y vencimiento: nunca el número ni el CVC) para ofrecerlas sin conexión. */
+  async guardarTarjetasLocal(clave: string, valor: unknown): Promise<void> { try { await (await this.db()).put('cache_meta', valor, `tarjetas_cliente_${clave}`); } catch { /* noop */ } }
+  async leerTarjetasLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('cache_meta', `tarjetas_cliente_${clave}`)) as T | undefined; } catch { return undefined; } }
   async guardarComprasClienteLocal(clave: string, valor: unknown): Promise<void> { await (await this.db()).put('cache_meta', valor, `compras_cliente_${clave}`); }
   async leerComprasClienteLocal<T>(clave: string): Promise<T | undefined> { try { return (await (await this.db()).get('cache_meta', `compras_cliente_${clave}`)) as T | undefined; } catch { return undefined; } }
   async guardarComprobanteLocal(id: number, blob: Blob): Promise<void> { await (await this.db()).put('cache_meta', blob, `comprobante_${id}`); }

@@ -68,7 +68,7 @@ class PagoService:
         self.db.commit()
 
     # ---- pasos 1 y 2: consolidar el monto y pedirlo a la pasarela ----
-    def iniciar(self, pedido_id: int, datos: schemas.IniciarIn) -> schemas.IniciarOut:
+    def iniciar(self, pedido_id: int, datos: schemas.IniciarIn, fuera_de_sesion: bool = False, idempotencia: str | None = None) -> schemas.IniciarOut:
         pedido = self._pedido(pedido_id)
         if pedido.estado != "PENDIENTE_PAGO":
             raise Conflicto("El pedido no está pendiente de pago.")
@@ -91,6 +91,7 @@ class PagoService:
                 monto_bob=pedido.total, descripcion=f"Pedido {pedido.codigo} · {formato_bs(pedido.total)}",
                 metadata={"pedido": pedido.codigo, "detalle": f"Pedido {pedido.codigo} · {formato_bs(pedido.total)}", "empresa_id": str(self.empresa_id)},
                 cliente_ref=self._cliente_pasarela(), metodo_ref=guardada.referencia if guardada else None, guardar=guardar,
+                fuera_de_sesion=fuera_de_sesion, idempotencia=idempotencia,
             )
         except AppError:
             raise

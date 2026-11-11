@@ -1,14 +1,24 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ComprasApi } from '../../../core/api/compras.api';
 import { CarritoEstadoService } from '../../../core/carrito/carrito-estado.service';
-import { Carrito, Pedido, ResultadoPago } from '../../../core/compras.models';
+import { Carrito, Pedido, ResultadoPago, TarjetaGuardada } from '../../../core/compras.models';
+import { AuthService } from '../../../core/auth/auth.service';
 import { mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { LocalDbService } from '../../../core/offline/local-db.service';
 import { BsPipe } from '../../../core/formato-bs';
+
+export const MSG_TARJETA_NUEVA = 'Para usar una tarjeta nueva necesita Internet. Puede pagar con una tarjeta guardada o dejar la compra por pagar.';
+export const MSG_AUTORIZAR = 'Confirme la autorización del cobro para pagar con la tarjeta guardada.';
+
+/** Las tarjetas guardadas que se pueden ofrecer sin conexión: no vencidas al día de hoy. */
+export function tarjetasVigentes(tarjetas: TarjetaGuardada[], hoy = new Date()): TarjetaGuardada[] {
+  const mes = hoy.getFullYear() * 12 + hoy.getMonth() + 1;
+  return tarjetas.filter((t) => t.exp_anio * 12 + t.exp_mes >= mes);
+}
 
 const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no se descargó. Ábralo una vez con Internet para tenerlo disponible sin conexión.';
 
@@ -19,7 +29,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
   template: `
     <div class="page" style="max-width:980px">
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
-      @if (compraPendiente()) { <div class="alert warn" role="status">Compra guardada en este dispositivo. Se pagará con tarjeta al recuperar la conexión, desde Mis compras.<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
+      @if (compraPendiente()) { <div class="alert warn" role="status">@if (cobroAutorizado()) { Compra guardada en este dispositivo. Al recuperar la conexión se cobrará a su {{ cobroAutorizado() }}; si no se puede cobrar, quedará por pagar en Mis compras. } @else { Compra guardada en este dispositivo. Se pagará con tarjeta al recuperar la conexión, desde Mis compras. }<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
 
       @if (!carrito()) { <div class="empty">Cargando…</div> }
       @else if (!carrito()!.items.length && !pedido()) { <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }
@@ -41,6 +51,17 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
                 </div>
               </fieldset>
               @if (errorDatos()) { <div class="alert danger" role="alert">{{ errorDatos() }}</div> }
+                @if (!red.online() && !pedido()) {
+                  <div class="stack">
+                    <strong>Pago</strong>
+                    @if (tarjetas().length) {
+                      <label class="check"><input type="radio" name="pagoOffline" [value]="0" [(ngModel)]="tarjetaElegida" /> Dejar por pagar</label>
+                      @for (t of tarjetas(); track t.id) { <label class="check"><input type="radio" name="pagoOffline" [value]="t.id" [(ngModel)]="tarjetaElegida" /> Pagar con {{ t.marca }} terminada en {{ t.ultimos4 }} al volver la conexión</label> }
+                      @if (tarjetaElegida) { <label class="check"><input type="checkbox" name="autorizo" [(ngModel)]="autorizo" /> Autorizo el cobro de {{ carrito()!.total | bs }} a esta tarjeta cuando se confirme mi compra.</label> }
+                    }
+                    <p class="small muted">{{ msgTarjetaNueva }}</p>
+                  </div>
+                }
                 @if (!pedido()) { <div><button class="btn primary" [disabled]="creando() || !carrito()!.puede_pagar">{{ creando() ? 'Preparando…' : red.online() ? 'Continuar al pago' : 'Guardar compra para sincronizar' }}</button>
                 @if (!carrito()!.puede_pagar) { <span class="small muted" style="margin-left:.6rem">Revise su carrito: hay prendas sin stock.</span> }</div> }
             </form>
@@ -83,6 +104,7 @@ export class CheckoutPage implements OnInit {
   private estado = inject(CarritoEstadoService);
   readonly red = inject(ConnectivityService);
   private db = inject(LocalDbService);
+  private auth = inject(AuthService);
 
   readonly carrito = signal<Carrito | null>(null);
   readonly pedido = signal<Pedido | null>(null);
@@ -91,10 +113,29 @@ export class CheckoutPage implements OnInit {
   readonly agotado = signal(false);
   readonly errorDatos = signal('');
   readonly compraPendiente = signal(false);
+  readonly cobroAutorizado = signal('');
+  readonly tarjetas = signal<TarjetaGuardada[]>([]);  // sin conexión: las que se guardaron la última vez con red
+  readonly msgTarjetaNueva = MSG_TARJETA_NUEVA;
+  tarjetaElegida = 0;
+  autorizo = false;
   form: { tipo_entrega: 'RETIRO' | 'DELIVERY'; direccion_entrega: string; nit_ci: string; razon_social: string } = { tipo_entrega: 'RETIRO', direccion_entrega: '', nit_ci: '', razon_social: '' };
 
+  constructor() {
+    // sin conexión (también si se pierde con la pantalla abierta) se ofrecen las tarjetas guardadas la última vez con red
+    effect(() => { if (!this.red.online()) void this.cargarTarjetasLocales(); });
+  }
+
+  async cargarTarjetasLocales() { this.tarjetas.set(tarjetasVigentes((await this.db.leerTarjetasLocal<TarjetaGuardada[]>(this.claveTarjetas)) ?? [])); }
+
+  private get claveTarjetas() { const s = this.auth.sesion(); return `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`; }
+
   async ngOnInit() {
-    if (!this.red.online()) { await this.estado.cargarLocal(); this.carrito.set(this.estado.carritoLocal()); return; }
+    if (!this.red.online()) {
+      await this.estado.cargarLocal(); this.carrito.set(this.estado.carritoLocal());
+      return;
+    }
+    // con red se guarda la lista de tarjetas (marca, últimos 4 y vencimiento) para ofrecerlas si después se queda sin conexión
+    this.api.tarjetas().subscribe({ next: (t) => void this.db.guardarTarjetasLocal(this.claveTarjetas, t), error: () => undefined });
     await this.estado.cargarLocal();
     await this.estado.refrescar();
     if (this.estado.carritoLocal()?.items.length) this.carrito.set(this.estado.carritoLocal());
@@ -108,8 +149,10 @@ export class CheckoutPage implements OnInit {
       this.errorDatos.set('');
       if (this.form.nit_ci.trim().length < 3) { this.errorDatos.set('Ingrese su NIT o CI para la facturación.'); return; }
       if (this.form.tipo_entrega === 'DELIVERY' && !this.form.direccion_entrega.trim()) { this.errorDatos.set('Ingrese la dirección de entrega.'); return; }
+      const tarjeta = this.tarjetas().find((t) => t.id === this.tarjetaElegida);
+      if (tarjeta && !this.autorizo) { this.errorDatos.set(MSG_AUTORIZAR); return; }
       this.creando.set(true);
-      void (async () => { if (this.carrito() && !this.estado.carritoLocal()) await this.estado.guardarLocal(this.carrito()!); await this.estado.registrarCompraLocal(this.form); })().then(() => { this.creando.set(false); this.compraPendiente.set(true); this.carrito.set(null); }).catch((e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); });
+      void (async () => { if (this.carrito() && !this.estado.carritoLocal()) await this.estado.guardarLocal(this.carrito()!); await this.estado.registrarCompraLocal(this.form, tarjeta ? { tarjeta_guardada_id: tarjeta.id, marca: tarjeta.marca, ultimos4: tarjeta.ultimos4 } : undefined); this.cobroAutorizado.set(tarjeta ? `${tarjeta.marca} terminada en ${tarjeta.ultimos4}` : ''); })().then(() => { this.creando.set(false); this.compraPendiente.set(true); this.carrito.set(null); }).catch((e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); });
       return;
     }
     this.creando.set(true); this.errorDatos.set('');

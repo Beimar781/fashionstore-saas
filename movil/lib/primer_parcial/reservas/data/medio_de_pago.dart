@@ -12,6 +12,11 @@ class TarjetaGuardada {
   final int expAnio;
 
   String get descripcion => '$marca terminada en $ultimos4 · vence $expMes/$expAnio';
+
+  /// Sin conexión solo se ofrecen las tarjetas que no están vencidas hoy.
+  bool vigente(DateTime hoy) => expAnio * 12 + expMes >= hoy.year * 12 + hoy.month;
+
+  Map<String, dynamic> aJson() => {'id': id, 'marca': marca, 'ultimos4': ultimos4, 'exp_mes': expMes, 'exp_anio': expAnio};
 }
 
 /// Cómo paga el cliente: con una tarjeta guardada, o con una tarjeta nueva (que puede guardar para próximas compras).

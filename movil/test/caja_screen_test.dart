@@ -97,7 +97,10 @@ void main() {
     await LocalDatabase.instance.reiniciar(ruta: inMemoryDatabasePath);
     final api = ApiFalsa();
     final c = OfflineController(OfflineRepository(api), descargaAutomatica: true)..usarSesion(_sesion);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    for (var i = 0; i < 50 && api.descargas == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100)); // espera a que termine, aunque la máquina esté ocupada
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
     expect(api.descargas, 1);
     expect(c.hayCatalogo, isTrue);
     await c.actualizarSiVencido(); // ya hay copia y no venció: no vuelve a descargar

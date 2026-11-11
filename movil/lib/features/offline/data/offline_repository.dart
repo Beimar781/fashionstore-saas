@@ -503,6 +503,17 @@ class OfflineRepository {
     }
   }
 
+  /// Tarjetas guardadas del cliente (marca, últimos 4 dígitos y vencimiento: nunca el número ni el CVC) para ofrecerlas al comprar sin conexión.
+  Future<void> guardarTarjetas(List<Map<String, dynamic>> tarjetas) => _poner('tarjetas_cliente', jsonEncode(tarjetas));
+
+  /// Baja la lista del servidor y la guarda; sin conexión conserva la anterior.
+  Future<void> actualizarTarjetas() async => guardarTarjetas([for (final j in await _api.getLista('/pagos/tarjetas')) j as Map<String, dynamic>]);
+
+  Future<List<Map<String, dynamic>>> tarjetasLocales() async {
+    final texto = await _meta('tarjetas_cliente');
+    return texto == null ? [] : (jsonDecode(texto) as List).cast<Map<String, dynamic>>();
+  }
+
   Future<void> _poner(String clave, String valor) async =>
       (await _db).insert('meta', {'clave': clave, 'valor': valor},
           conflictAlgorithm: ConflictAlgorithm.replace);

@@ -65,10 +65,11 @@ export class CarritoEstadoService {
     await this.db.guardarCarritoLocal(this.claveLocal(), carrito);
   }
 
-  async registrarCompraLocal(datos: { tipo_entrega: 'DELIVERY' | 'RETIRO'; direccion_entrega: string; nit_ci: string; razon_social: string }) {
+  /** `pago`: si el cliente eligió pagar con una tarjeta GUARDADA, solo viajan su identificador y el total que autorizó; el cobro lo hace el servidor al sincronizar. */
+  async registrarCompraLocal(datos: { tipo_entrega: 'DELIVERY' | 'RETIRO'; direccion_entrega: string; nit_ci: string; razon_social: string }, pago?: { tarjeta_guardada_id: number; marca: string; ultimos4: string }) {
     const c = this.carritoLocal();
     if (!c?.items.length || !c.sucursal_id) throw new Error('El carrito local está vacío o no tiene sucursal.');
-    await this.cola.registrar('COMPRA', { sucursal_id: c.sucursal_id, tipo_entrega: datos.tipo_entrega, direccion_entrega: datos.direccion_entrega, nit_ci: datos.nit_ci, razon_social: datos.razon_social, items: c.items.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })) }, c.sucursal_id, `Compra offline: ${c.total_unidades} prenda(s)`);
+    await this.cola.registrar('COMPRA', { sucursal_id: c.sucursal_id, tipo_entrega: datos.tipo_entrega, direccion_entrega: datos.direccion_entrega, nit_ci: datos.nit_ci, razon_social: datos.razon_social, items: c.items.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })), ...(pago ? { tarjeta_guardada_id: pago.tarjeta_guardada_id, total_autorizado: Number(c.total).toFixed(2) } : {}) }, c.sucursal_id, `Compra offline: ${c.total_unidades} prenda(s)${pago ? ` · se cobrará a ${pago.marca} terminada en ${pago.ultimos4}` : ''}`);
     await this.db.borrarCarritoLocal(this.claveLocal()); this.carritoLocal.set(null); this.fijar(null);
   }
 

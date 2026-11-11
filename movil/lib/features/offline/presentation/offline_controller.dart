@@ -193,6 +193,13 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     error = null;
     notifyListeners();
     try {
+      if (esCliente) {
+        try {
+          await _repo.actualizarTarjetas(); // para ofrecerlas como medio de pago al comprar sin conexión
+        } on ApiException {
+          // sin la lista el cliente igual puede dejar su compra por pagar
+        }
+      }
       await _repo.descargarCatalogo();
       enLinea = true;
     } catch (e) {

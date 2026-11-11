@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 TIPOS = ("VENTA_CONTADO", "RESERVA", "COMPRA", "CANCELAR_RESERVA", "DEVOLUCION", "RECEPCION", "AJUSTE_INVENTARIO", "PREPARAR_RESERVA", "PRENDA_NO_ENCONTRADA", "ATENDER_RESERVA", "PROPUESTA_PROVEEDOR")
 
 
+DATOS_DE_TARJETA = ("numero", "numero_tarjeta", "cvc", "cvv", "exp_mes", "exp_anio", "vencimiento", "tarjeta", "titular")
+
+
 class LineaOfflineIn(BaseModel):
     variante_id: int
     cantidad: int = Field(ge=1, le=50)
@@ -36,11 +39,23 @@ class CompraOfflineIn(BaseModel):
     items: list[LineaOfflineIn] = Field(min_length=1, max_length=60)
     nit_ci: str = Field(default="0", max_length=20)
     razon_social: str = Field(default="Sin nombre", max_length=120)
+    # pago con tarjeta GUARDADA al sincronizar: solo viaja el identificador interno de la tarjeta y el total que el cliente autorizó (nunca número, fecha ni CVC)
+    tarjeta_guardada_id: int | None = None
+    total_autorizado: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
+
+    @model_validator(mode="before")
+    @classmethod
+    def sin_datos_de_tarjeta(cls, datos):
+        if isinstance(datos, dict) and any(k in datos for k in DATOS_DE_TARJETA):
+            raise ValueError("No se aceptan datos de tarjeta en una operación sin conexión.")
+        return datos
 
     @model_validator(mode="after")
     def validar_entrega(self):
         if self.tipo_entrega == "DELIVERY" and not self.direccion_entrega.strip():
             raise ValueError("Ingrese la dirección de entrega.")
+        if self.tarjeta_guardada_id is not None and self.total_autorizado is None:
+            raise ValueError("Falta el total que el cliente autorizó cobrar.")
         return self
 
 

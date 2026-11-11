@@ -9,9 +9,10 @@ from app.primer_parcial.ventas.cu30_pago_en_caja.schemas import CobroIn  # noqa:
 from app.primer_parcial.ventas.cu30_pago_en_caja.service import CobroCajaService  # noqa: F401
 from app.primer_parcial.ventas.cu11_compra_digital.service import MSG_RECHAZO  # noqa: F401
 from app.primer_parcial.ventas.cu32_pago_electronico.pasarela import Tarjeta, obtener_pasarela, pasarela_para  # noqa: F401
-from app.primer_parcial.ventas.cu32_pago_electronico.schemas import TarjetaIn  # noqa: F401
-from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoRechazado, PasarelaNoDisponible  # noqa: F401
-from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem  # noqa: F401  (entidades de solo lectura para los reportes)
+from app.primer_parcial.ventas.cu32_pago_electronico.repository import TarjetaRepository  # noqa: F401
+from app.primer_parcial.ventas.cu32_pago_electronico.schemas import ConfirmarIn, IniciarIn, TarjetaIn  # noqa: F401
+from app.primer_parcial.ventas.cu32_pago_electronico.service import PagoRechazado, PagoService, PasarelaNoDisponible  # noqa: F401
+from app.primer_parcial.ventas.models import Pago, Pedido, PedidoItem, TarjetaGuardada  # noqa: F401  (entidades de solo lectura para los reportes)
 
 
 def _ventas_del_mes(db, empresa_id: int) -> int:

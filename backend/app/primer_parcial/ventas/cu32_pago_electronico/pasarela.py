@@ -114,7 +114,7 @@ class PasarelaSimulada:
     def asegurar_cliente(self, email: str, nombre: str, previa: str | None) -> str:
         return previa or ""
 
-    def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar) -> Intento:
+    def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar, fuera_de_sesion=False, idempotencia=None) -> Intento:
         return Intento(f"sim_pi_{secrets.token_hex(10)}", None, centavos_pasarela(monto_bob), MONEDA_PAGO)
 
     def confirmar(self, *, referencia: str, tarjeta: Tarjeta | None, escenario_guardado: str | None) -> Resultado:
@@ -182,7 +182,7 @@ class PasarelaStripe:
             return previa
         return self.sdk.Customer.create(api_key=self.clave, email=email, name=nombre).id
 
-    def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar) -> Intento:
+    def crear_intento(self, *, monto_bob, descripcion, metadata, cliente_ref, metodo_ref, guardar, fuera_de_sesion=False, idempotencia=None) -> Intento:
         centavos = centavos_pasarela(monto_bob)
         params = dict(
             amount=centavos, currency=MONEDA_PAGO, capture_method="manual", automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
@@ -192,9 +192,12 @@ class PasarelaStripe:
             params["customer"] = cliente_ref
         if metodo_ref:
             params["payment_method"] = metodo_ref  # tarjeta guardada: el navegador solo confirma el pago
+            if fuera_de_sesion:
+                params.update(confirm=True, off_session=True)  # compra hecha sin conexión: el servidor confirma con la tarjeta guardada, sin que el cliente esté presente
         elif guardar and cliente_ref:
             params["setup_future_usage"] = "on_session"  # Stripe guarda la tarjeta para las próximas compras
-        pi = self.sdk.PaymentIntent.create(api_key=self.clave, **params)
+        opciones = {"idempotency_key": idempotencia} if idempotencia else {}  # reenviar la misma operación nunca cobra dos veces
+        pi = self.sdk.PaymentIntent.create(api_key=self.clave, **opciones, **params)
         return Intento(pi.id, pi.client_secret, centavos, MONEDA_PAGO)
 
     def confirmar(self, *, referencia: str, tarjeta=None, escenario_guardado=None) -> Resultado:

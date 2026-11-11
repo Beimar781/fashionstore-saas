@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../features/offline/presentation/offline_controller.dart';
 import '../data/datos_entrega.dart';
 import '../data/medio_de_pago.dart';
 import '../data/reservas_repository.dart';
@@ -46,6 +50,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
   Future<void> _cargarTarjetas() async {
     try {
       final t = await widget.repo.tarjetasGuardadas();
+      if (mounted) unawaited(context.read<OfflineController>().repo.guardarTarjetas([for (final x in t) x.aJson()])); // copia para comprar sin conexión
       if (mounted) setState(() { _tarjetas = t; _tarjetaId = t.isEmpty ? null : t.first.id; });
     } on ApiException {
       // sin la lista el cliente igual puede pagar con una tarjeta nueva

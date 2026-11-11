@@ -31,8 +31,28 @@ def _avisar(db: Session, empresa_id: int, fila: OperacionOffline, titulo: str, m
 
 def avisar_conflicto(db: Session, empresa_id: int, fila: OperacionOffline) -> None:
     """La prenda se agotó entre que el cliente la vio sin conexión y que sincronizó: no se descontó ni se cobró nada."""
+    sin_cobro = " No se le cobró nada." if (fila.payload or {}).get("tarjeta_guardada_id") is not None else ""  # compra con tarjeta guardada: se avisa que no hubo cobro
     _avisar(db, empresa_id, fila, "No se pudo realizar su compra" if fila.tipo != "RESERVA" else "No se pudo realizar su reserva",
-            f"Su {TEXTO[fila.tipo]} {codigo_visible(fila.tipo, fila.operacion_id)} no se pudo realizar porque la prenda se agotó.")
+            f"Su {TEXTO[fila.tipo]} {codigo_visible(fila.tipo, fila.operacion_id)} no se pudo realizar porque la prenda se agotó.{sin_cobro}")
+
+
+def avisar_cobrada(db: Session, empresa_id: int, fila: OperacionOffline) -> None:
+    """Compra hecha sin conexión con tarjeta guardada: el servidor la cobró al sincronizar."""
+    comprobante = f" Comprobante {fila.comprobante}." if fila.comprobante else ""
+    _avisar(db, empresa_id, fila, "Su compra fue cobrada y confirmada", f"Su compra {fila.referencia} fue cobrada con su tarjeta guardada y está confirmada.{comprobante}", "PEDIDO", fila.pedido_id)
+
+
+def avisar_no_cobrada(db: Session, empresa_id: int, fila: OperacionOffline, pendiente: bool = False) -> None:
+    """El cobro no se completó (rechazo del banco, 3D Secure o pasarela sin respuesta): la compra queda por pagar en «Mis compras»."""
+    if pendiente:
+        _avisar(db, empresa_id, fila, "Estamos verificando el cobro de su tarjeta", f"Su compra {fila.referencia} está pendiente de confirmación en la pasarela. Revise «Mis compras».", "PEDIDO", fila.pedido_id)
+    else:
+        _avisar(db, empresa_id, fila, "No pudimos cobrar su tarjeta", f"No pudimos cobrar su tarjeta; complete el pago desde Mis compras. Su compra {fila.referencia} sigue por pagar.", "PEDIDO", fila.pedido_id)
+
+
+def avisar_precio_distinto(db: Session, empresa_id: int, fila: OperacionOffline) -> None:
+    """El precio cambió desde que el cliente autorizó el cobro: no se cobró nada y debe confirmar el nuevo total."""
+    _avisar(db, empresa_id, fila, "El precio de su compra cambió", f"El precio cambió; confirme el nuevo total. Su compra {codigo_visible(fila.tipo, fila.operacion_id)} no se realizó y no se le cobró nada.")
 
 
 def avisar_confirmada(db: Session, empresa_id: int, fila: OperacionOffline) -> None:

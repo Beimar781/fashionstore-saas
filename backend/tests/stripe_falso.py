@@ -20,6 +20,7 @@ class StripeFalso:
         self.llamadas: list[tuple] = []
         self.intentos: dict[str, SimpleNamespace] = {}
         self.sin_red = False
+        self.rechazar_fuera_de_sesion: str | None = None  # código de rechazo del banco para los cobros confirmados por el servidor (off_session)
         self.Customer = SimpleNamespace(create=self._cliente)
         self.PaymentIntent = SimpleNamespace(create=self._crear, retrieve=self._consultar, capture=self._capturar, cancel=self._cancelar)
         self.PaymentMethod = SimpleNamespace(detach=lambda ref, **kw: self.llamadas.append(("detach", ref)))
@@ -34,6 +35,12 @@ class StripeFalso:
             raise ErrorStripe("The `payment_method_types` parameter is no longer supported. Payment methods are now managed from your Dashboard settings")
         pi = SimpleNamespace(id=f"pi_{len(self.intentos) + 1}", client_secret=f"pi_{len(self.intentos) + 1}_secret", status="requires_payment_method",
                              payment_method=None, last_payment_error=None, params=kw)
+        if kw.get("confirm") and kw.get("off_session"):  # el servidor confirma con una tarjeta guardada, sin el cliente presente
+            if self.rechazar_fuera_de_sesion:
+                self.llamadas.append(("crear", kw))
+                raise ErrorStripe(f"Your card was declined ({self.rechazar_fuera_de_sesion}).")
+            pi.status = "requires_capture"
+            pi.payment_method = SimpleNamespace(id=kw["payment_method"], card=SimpleNamespace(brand="visa", last4="4242", exp_month=12, exp_year=2099))
         self.intentos[pi.id] = pi
         self.llamadas.append(("crear", kw))
         return pi

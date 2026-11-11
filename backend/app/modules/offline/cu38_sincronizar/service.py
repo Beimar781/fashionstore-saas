@@ -18,9 +18,11 @@ from app.modules.offline import avisos, schemas
 from app.modules.offline.ejecucion import Ejecutor, PrecioCambio, Resultado, es_falta_de_stock
 from app.modules.offline.mapeo import resultado_de
 from app.modules.offline.models import OperacionOffline
+from app.modules.offline.schemas import DATOS_DE_TARJETA
 from app.modules.offline.repository import OperacionRepository
 from app.modules.reservas.publico import notificar
 from app.modules.sucursales.publico import sucursal_de_empresa
+from app.primer_parcial.ventas.publico import ConfirmarIn, IniciarIn, PagoService, SinStock
 
 logger = logging.getLogger(__name__)
 MSG_PERMISOS = "No tiene permisos para registrar este tipo de operación sin conexión."
@@ -31,12 +33,25 @@ MSG_SUCURSAL = "Sucursal no encontrada."
 MSG_CONFLICTO = "No hay existencias suficientes para esta operación. No se descontó nada del inventario; el Encargado debe resolverla."
 MSG_ERROR = "El servidor no pudo procesar la operación ahora. Se conserva en el dispositivo y se reintentará."
 MSG_CONFIRMADA = "Operación confirmada."
+MSG_COBRADA = "Compra cobrada y confirmada."
+MSG_NO_COBRADA = "No pudimos cobrar su tarjeta; complete el pago desde Mis compras."
+MSG_COBRO_PENDIENTE = "Estamos verificando el cobro de su tarjeta; revise Mis compras."
+MSG_AGOTADA_SIN_COBRO = "La prenda se agotó mientras estaba sin conexión. No se le cobró nada."
 MSG_RELOJ = "La hora de este dispositivo parece incorrecta; revísela para que sus ventas queden con la fecha correcta."
 TOLERANCIA_RELOJ = 300  # segundos (5 minutos)
 NOMBRE_TIPO = {"VENTA_CONTADO": "venta de contado", "RESERVA": "reserva", "COMPRA": "compra", "CANCELAR_RESERVA": "cancelación de reserva", "DEVOLUCION": "devolución", "RECEPCION": "recepción de mercadería", "AJUSTE_INVENTARIO": "ajuste de inventario", "PREPARAR_RESERVA": "preparación de reserva", "PRENDA_NO_ENCONTRADA": "prenda no encontrada", "ATENDER_RESERVA": "atención de reserva", "PROPUESTA_PROVEEDOR": "propuesta de producto"}
 PERMISOS = {"VENTA_CONTADO": (CAJERO, ENCARGADO), "RESERVA": (CLIENTE,), "COMPRA": (CLIENTE,), "CANCELAR_RESERVA": (CLIENTE,), "DEVOLUCION": (CAJERO, ENCARGADO), "RECEPCION": (ENCARGADO,), "AJUSTE_INVENTARIO": (ENCARGADO,), "PREPARAR_RESERVA": (ENCARGADO,), "PRENDA_NO_ENCONTRADA": (ENCARGADO,), "ATENDER_RESERVA": (ENCARGADO,), "PROPUESTA_PROVEEDOR": (PROVEEDOR,)}
 SIN_SUCURSAL = ("PROPUESTA_PROVEEDOR",)  # el portal del proveedor no pertenece a una sucursal
 CON_SUCURSAL = ("COMPRA", "RECEPCION", "AJUSTE_INVENTARIO")  # el ejecutor las aplica en la sucursal de la operación
+
+
+def sin_datos_de_tarjeta(payload):
+    """Nada de número, fecha ni CVC en la cola ni en la base: aunque un cliente los mandara por error, se descartan antes de guardar la operación (aun si se rechaza)."""
+    if isinstance(payload, dict):
+        return {k: sin_datos_de_tarjeta(v) for k, v in payload.items() if k not in DATOS_DE_TARJETA}
+    if isinstance(payload, list):
+        return [sin_datos_de_tarjeta(v) for v in payload]
+    return payload
 
 
 class SincronizacionService:
@@ -77,7 +92,10 @@ class SincronizacionService:
         except Exception as e:  # noqa: BLE001
             self.db.rollback()
             return self._fallida(op, sucursal_id, e)
-        avisos.avisar_confirmada(self.db, self.empresa_id, fila)  # regla 17: con la operación ya confirmada
+        if resultado.tarjeta_a_cobrar is not None:
+            fila = self._cobrar_con_tarjeta(fila, resultado.tarjeta_a_cobrar)  # el cobro y su aviso (regla 17)
+        else:
+            avisos.avisar_confirmada(self.db, self.empresa_id, fila)  # regla 17: con la operación ya confirmada
         if resultado.despues is not None:
             try:
                 resultado.despues()  # por ejemplo, el aviso push de una devolución; un fallo se registra y no deshace la operación
@@ -85,6 +103,35 @@ class SincronizacionService:
                 logger.exception("sync operacion=%s: falló el aviso posterior", op.id)
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
+
+    def _cobrar_con_tarjeta(self, fila: OperacionOffline, tarjeta_id: int) -> OperacionOffline:
+        """Compra con tarjeta guardada: con la compra ya confirmada se cobra desde el servidor, fuera de sesión (CU-32), y el operacion_id sirve de clave de idempotencia en la pasarela.
+        Si el banco rechaza, la tarjeta pide autenticación (3D Secure) o la pasarela no responde, el pedido queda por pagar: el cobro nunca deshace la compra."""
+        operacion_id, pedido_id, cobrado, pendiente, sin_stock = fila.operacion_id, fila.pedido_id, False, False, False
+        comprobante = None
+        try:
+            pagos = PagoService(self.db, self.ctx)
+            iniciado = pagos.iniciar(pedido_id, IniciarIn(tarjeta_guardada_id=tarjeta_id), fuera_de_sesion=True, idempotencia=str(operacion_id))
+            r = pagos.confirmar(iniciado.pago_id, ConfirmarIn())
+            cobrado, pendiente, comprobante = r.aprobado, r.pendiente, r.pedido.comprobante_numero
+        except SinStock:
+            sin_stock = True  # la prenda se agotó entre la confirmación y el cobro: la autorización se anuló y no se cobró nada
+        except Exception as e:  # noqa: BLE001
+            self.db.rollback()
+            logger.warning("sync operacion=%s: no se pudo cobrar la tarjeta guardada (%s)", operacion_id, e.__class__.__name__)
+        fila = self.ops.por_operacion(operacion_id)
+        if cobrado:
+            fila.mensaje, fila.comprobante = MSG_COBRADA, comprobante
+        elif sin_stock:
+            fila.estado, fila.mensaje = "EN_CONFLICTO", MSG_AGOTADA_SIN_COBRO
+        else:
+            fila.mensaje = MSG_COBRO_PENDIENTE if pendiente else MSG_NO_COBRADA
+        self.db.commit()
+        if cobrado:
+            avisos.avisar_cobrada(self.db, self.empresa_id, fila)
+        elif not sin_stock:  # si se agotó, CU-32 ya avisó al cliente
+            avisos.avisar_no_cobrada(self.db, self.empresa_id, fila, pendiente)
+        return fila
 
     def _sucursal(self, op: schemas.OperacionIn) -> int | None:
         """La sucursal de la operación: la del empleado (RN10) o, para la reserva de un cliente, la que eligió. None: no existe; -1: es de otra sucursal."""
@@ -96,7 +143,8 @@ class SincronizacionService:
     def _fallida(self, op: schemas.OperacionIn, sucursal_id: int, e: Exception) -> schemas.ResultadoOperacionOut:
         if es_falta_de_stock(e):  # RN14: conflicto, nada descontado a medias
             detalle = {"faltantes": Ejecutor(self.db, self.ctx).faltantes(op.payload, sucursal_id)}
-            fila = self._guardar(op, sucursal_id, "EN_CONFLICTO", MSG_CONFLICTO, Resultado(None, None), detalle)
+            con_tarjeta = op.tipo == "COMPRA" and op.payload.get("tarjeta_guardada_id") is not None
+            fila = self._guardar(op, sucursal_id, "EN_CONFLICTO", MSG_AGOTADA_SIN_COBRO if con_tarjeta else MSG_CONFLICTO, Resultado(None, None), detalle)
             self.db.flush()
             notificar(
                 self.db, self.empresa_id, "CONFLICTO_SYNC", "Operación offline en conflicto",
@@ -121,12 +169,14 @@ class SincronizacionService:
         self.db.commit()
         if fila.estado == "EN_CONFLICTO" and "faltantes" in (fila.detalle or {}):
             avisos.avisar_conflicto(self.db, self.empresa_id, fila)  # regla 17: el cliente se entera, además del personal de la sucursal
+        elif fila.estado == "EN_CONFLICTO" and fila.tipo == "COMPRA" and "precios" in (fila.detalle or {}):
+            avisos.avisar_precio_distinto(self.db, self.empresa_id, fila)  # la compra con tarjeta no se cobró: el precio cambió
         logger.info("sync operacion=%s tipo=%s estado=%s empresa=%s sucursal=%s", op.id, op.tipo, fila.estado, self.empresa_id, sucursal_id)
         return resultado_de(fila)
 
     def _guardar(self, op: schemas.OperacionIn, sucursal_id: int, estado: str, mensaje: str, r: Resultado, detalle: dict | None = None) -> OperacionOffline:
         return self.ops.agregar(OperacionOffline(
-            operacion_id=op.id, usuario_id=self.ctx.usuario.id, sucursal_id=sucursal_id, tipo=op.tipo, estado=estado, payload=op.payload, creada_en_cliente=a_local(op.creada_en),
+            operacion_id=op.id, usuario_id=self.ctx.usuario.id, sucursal_id=sucursal_id, tipo=op.tipo, estado=estado, payload=sin_datos_de_tarjeta(op.payload), creada_en_cliente=a_local(op.creada_en),
             mensaje=mensaje, referencia=r.referencia, comprobante=r.comprobante, detalle=detalle, pedido_id=r.pedido_id, reserva_id=r.reserva_id,
             desfase_reloj_segundos=self.desfase,
         ))

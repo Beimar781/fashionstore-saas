@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/modelos.dart';
+import '../../../primer_parcial/reservas/data/medio_de_pago.dart';
 import 'comprobante_provisional_accion.dart';
 import 'escaner_screen.dart';
 import 'offline_controller.dart';
+
+const msgTarjetaNueva = 'Para usar una tarjeta nueva necesita Internet. Puede pagar con una tarjeta guardada o dejar la compra por pagar.';
+const msgAutorizar = 'Confirme la autorización del cobro para pagar con la tarjeta guardada.';
 
 class _Linea {
   _Linea(this.prenda, this.max);
@@ -29,6 +33,9 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
   final _nitCi = TextEditingController();
   final _razonSocial = TextEditingController();
   final _codigoReserva = TextEditingController();
+  List<TarjetaGuardada> _tarjetas = []; // las guardadas la última vez con red y no vencidas
+  int? _tarjetaOffline; // null = dejar la compra por pagar
+  bool _autorizo = false;
   Map<String, dynamic>? _reserva; // reserva preparada o atendida que se está cobrando (copia descargada)
   List<PrendaLocal> _resultados = [];
   List<SucursalLocal> _sucursales = [];
@@ -51,6 +58,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     final c = context.read<OfflineController>();
     final sucursales = await c.repo.sucursales();
     final clientes = await c.repo.clientes();
+    final tarjetas = [for (final j in await c.repo.tarjetasLocales()) TarjetaGuardada.desdeJson(j)].where((t) => t.vigente(DateTime.now())).toList();
     final empresaId = c.sesion?.empresaId;
     final usuarioId = c.sesion?.usuarioId;
     final guardado = c.esCliente && empresaId != null && usuarioId != null
@@ -63,6 +71,8 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     setState(() {
       _sucursales = sucursales;
       _clientes = clientes;
+      _tarjetas = tarjetas;
+      if (!tarjetas.any((t) => t.id == _tarjetaOffline)) _tarjetaOffline = null;
       _sucursalId = c.sesion?.sucursalId ??
           (sucursales.isNotEmpty ? sucursales.first.id : null);
       if (guardado != null) {
@@ -201,6 +211,9 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       return setState(
           () => _error = 'Ingrese su NIT o CI para la facturación.');
     }
+    if (c.esCliente && _modo == 'COMPRA' && _tarjetaOffline != null && !_autorizo) {
+      return setState(() => _error = msgAutorizar);
+    }
     if (c.esCliente &&
         _modo == 'COMPRA' &&
         _tipoEntrega == 'DELIVERY' &&
@@ -223,10 +236,13 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           'direccion_entrega': _direccionEntrega.text.trim(),
           'nit_ci': _nitCi.text.trim(),
           'razon_social': _razonSocial.text.trim(),
-          'items': items
+          'items': items,
+          // solo el identificador de la tarjeta guardada y el total autorizado: el cobro lo hace el servidor al sincronizar
+          if (_tarjetaOffline != null) 'tarjeta_guardada_id': _tarjetaOffline,
+          if (_tarjetaOffline != null) 'total_autorizado': _total.toStringAsFixed(2),
         },
         sucursalId: _sucursalId!,
-        resumen: 'Compra: $detalle',
+        resumen: _tarjetaOffline == null ? 'Compra: $detalle' : 'Compra: $detalle · se cobrará a ${_tarjetas.firstWhere((t) => t.id == _tarjetaOffline).marca} terminada en ${_tarjetas.firstWhere((t) => t.id == _tarjetaOffline).ultimos4}',
       );
       final empresaId = c.sesion?.empresaId;
       final usuarioId = c.sesion?.usuarioId;
@@ -285,6 +301,8 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       _texto.clear();
       _recibido.clear();
       _reserva = null;
+      _tarjetaOffline = null;
+      _autorizo = false;
       _notas.clear();
       _direccionEntrega.clear();
       _nitCi.clear();
@@ -367,6 +385,25 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
               maxLength: 20,
               onChanged: (_) => _guardarCarrito(),
               decoration: const InputDecoration(labelText: 'NIT o CI')),
+          Text('Pago', style: Theme.of(context).textTheme.titleSmall),
+          if (_tarjetas.isNotEmpty)
+            RadioGroup<int?>(
+              groupValue: _tarjetaOffline,
+              onChanged: (v) => setState(() { _tarjetaOffline = v; _autorizo = false; }),
+              child: Column(children: [
+                const RadioListTile<int?>(value: null, contentPadding: EdgeInsets.zero, title: Text('Dejar por pagar')),
+                for (final t in _tarjetas) RadioListTile<int?>(value: t.id, contentPadding: EdgeInsets.zero, title: Text('Pagar con ${t.marca} terminada en ${t.ultimos4} al volver la conexión')),
+              ]),
+            ),
+          if (_tarjetaOffline != null)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text('Autorizo el cobro de Bs ${_total.toStringAsFixed(2)} a esta tarjeta cuando se confirme mi compra.'),
+              value: _autorizo,
+              onChanged: (v) => setState(() => _autorizo = v ?? false),
+            ),
+          const Padding(padding: EdgeInsets.only(bottom: 4), child: Text(msgTarjetaNueva, style: TextStyle(fontSize: 12))),
           TextField(
               controller: _razonSocial,
               maxLength: 120,
