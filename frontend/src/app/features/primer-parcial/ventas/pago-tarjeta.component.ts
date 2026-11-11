@@ -20,7 +20,7 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
         <p class="small muted">@if (cfg.modo === 'stripe') { Pago procesado por <strong>Stripe en modo de prueba</strong>: no se cobra dinero real. } @else { <strong>Pasarela de pruebas</strong>: no se cobra dinero real. Use una de las tarjetas de ejemplo. }</p>
       }
 
-      @if (fase() === 'pago' || fase() === 'rechazado' || fase() === 'error') {
+      <div class="stack" [hidden]="!formularioVisible()">
         @if (tarjetas().length) {
           <div class="stack">
             <strong>Tarjetas guardadas</strong>
@@ -61,7 +61,7 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
           <span class="muted small">Se cobrará <strong>{{ total() | bs }}</strong> a su tarjeta.</span>
           <button type="button" class="btn primary" (click)="pagar()">Pagar {{ total() | bs }}</button>
         </div>
-      }
+      </div>
 
       @if (fase() === 'procesando') {
         <div class="resultado cargando" role="status"><span class="rueda"></span><div><strong>Verificando la tarjeta con el banco…</strong><br /><span class="small muted">No cierre esta ventana.</span></div></div>
@@ -75,6 +75,7 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
       }
     </div>`,
   styles: `
+    [hidden] { display: none !important; }
     .campo-stripe { padding: .7rem; border: 1px solid #d6d1c9; border-radius: 9px; background: #fff; min-height: 2.6rem; }
     .opcion { border: 1px solid var(--line); border-radius: 10px; padding: .6rem .8rem; } .opcion:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
     .prueba { border: 1px dashed var(--line); border-radius: 10px; padding: .6rem .8rem; } .prueba summary { cursor: pointer; font-weight: 600; }
@@ -110,6 +111,7 @@ export class PagoTarjetaComponent implements OnInit {
   private stripe: any = null;
   private campoTarjeta: any = null;
   private motivoStripe = '';
+  readonly formularioVisible = computed(() => ['pago', 'rechazado', 'error'].includes(this.fase()));
 
   ngOnInit() {
     this.api.configPago().subscribe((cfg) => {
@@ -127,7 +129,7 @@ export class PagoTarjetaComponent implements OnInit {
       this.stripe ??= Stripe(cfg.publishable_key!, { locale: 'es' });
       const destino = document.getElementById('tarjeta-stripe');
       if (!destino) { if (intentos > 0) setTimeout(() => void this.montarStripe(cfg, intentos - 1), 50); return; }
-      if (!destino.hasChildNodes()) {
+      if (!this.campoTarjeta || !destino.hasChildNodes()) {
         this.campoTarjeta?.destroy?.();
         this.campoTarjeta = this.stripe.elements().create('card', { hidePostalCode: true });
         this.campoTarjeta.mount('#tarjeta-stripe');
@@ -166,9 +168,18 @@ export class PagoTarjetaComponent implements OnInit {
       this.stripe ??= Stripe(clave, { locale: 'es' });
       const datos = this.guardadaId !== null ? undefined : { payment_method: { card: this.campoTarjeta, billing_details: { name: this.titular } } };
       const r = await this.stripe.confirmCardPayment(secreto, datos);
+      // card_error = rechazo real del banco: el servidor lo confirma y responde 402. Cualquier otro error es del formulario (campo vacío, número inválido, Element sin montar).
+      if (r.error && r.error.type !== 'card_error') return this.errorDeFormulario();
       if (r.error) this.motivoStripe = r.error.message ?? '';
-    } catch (e) { this.motivoStripe = String((e as Error).message); }
+    } catch { return this.errorDeFormulario(); }
     this.confirmar(pagoId, null);
+  }
+
+  private errorDeFormulario() {
+    this.motivoStripe = '';
+    this.mensaje.set('Revise los datos de la tarjeta e intente de nuevo. No se cobró nada.');
+    this.fase.set('error');
+    if (this.guardadaId === null && this.config()?.modo === 'stripe') void this.montarStripe(this.config()!);
   }
 
   private confirmar(pagoId: number, tarjeta: TarjetaSimulada | null) {

@@ -106,6 +106,8 @@ import { BsPipe } from '../../core/formato-bs';
             </dl>
           </div>
         </div>
+      } @else if (noEncontrada()) {
+        <div class="card empty" role="alert"><h2>Prenda no encontrada</h2><p class="muted">La prenda que busca no existe o ya no está disponible.</p><a class="btn primary" routerLink="/tienda/catalogo">Ir al catálogo</a></div>
       } @else { <app-cargando /> }
     </div>`,
   styles: `
@@ -144,6 +146,7 @@ export class PrendaPage implements OnInit {
   readonly tallaCodigo = signal<string | null>(null); // la talla se recuerda por código, no por id: cambia entre grupos de tallas
   readonly fotoElegida = signal<number | null>(null);
   readonly vestidorDisponible = signal(false);
+  readonly noEncontrada = signal(false);
   private id = 0;
 
   readonly colorElegido = computed(() => this.opciones()?.colores.find((c) => c.id === this.colorId()) ?? null);
@@ -165,7 +168,7 @@ export class PrendaPage implements OnInit {
       this.id = Number(pm.get('id'));
       const s = this.ruta.snapshot.queryParamMap.get('sucursal');
       this.sucursalId.set(s ? Number(s) : null);
-      this.colorId.set(null); this.tallaCodigo.set(null); this.fotoElegida.set(null);
+      this.colorId.set(null); this.tallaCodigo.set(null); this.fotoElegida.set(null); this.noEncontrada.set(false); this.prenda.set(null);
       this.aprendizaje.vista(this.id);
       this.vestidorApi.producto(this.id).subscribe({ next: (v) => this.vestidorDisponible.set(v.admite && v.colores.some((c) => c.listo && !!c.imagen_url && !!c.anclaje)), error: () => this.vestidorDisponible.set(false) });
       this.cargar();
@@ -176,9 +179,9 @@ export class PrendaPage implements OnInit {
     this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: async (e) => {
       await this.catalogoLocal.listo();  // al recargar sin red, la copia guardada puede no haberse leído todavía
       const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
-      if (p) this.prenda.set(this.detalleLocal(p)); else this.toast.error(mensajeError(e));
+      if (p) this.prenda.set(this.detalleLocal(p)); else this.falloConsulta(e);
     } });
-    this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.toast.error(mensajeError(e)) });
+    this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.falloConsulta(e) });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
       error: async (e) => {
@@ -190,9 +193,15 @@ export class PrendaPage implements OnInit {
           const tallas = [...new Map(variantes.map((v) => [v.talla, { id: v.talla_id, codigo: v.talla, orden: 0, disponible: variantes.some((x) => x.talla === v.talla && x.disponible) }])).values()];
           const o: Opciones = { producto_id: p.id, sucursal_id: this.sucursalId(), colores, tallas, variantes };
           this.opciones.set(o); this.ajustarSeleccion(o);
-        } else this.toast.error(mensajeError(e));
+        } else this.falloConsulta(e);
       },
     });
+  }
+
+  /** Un id inexistente (404) se muestra una sola vez como «Prenda no encontrada»; otros fallos siguen con su aviso. */
+  private falloConsulta(e: { status?: number }) {
+    if (e.status === 404) this.noEncontrada.set(true);
+    else if (!this.noEncontrada()) this.toast.error(mensajeError(e));
   }
 
   private detalleLocal(p: ProductoLocal): PrendaDetalle {

@@ -67,6 +67,8 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
             </div>
           } @empty { <p class="muted small">Sin intentos de pago.</p> }
         </section>
+      } @else if (noEncontrado()) {
+        <div class="card empty" role="alert"><h2>Compra no encontrada</h2><a class="btn primary" routerLink="/tienda/compras">Ir a mis compras</a></div>
       } @else { <app-cargando /> }
     </div>`,
 })
@@ -81,12 +83,13 @@ export class CompraDetallePage implements OnInit {
   readonly CLASE = CLASE_ESTADO_PEDIDO;
   readonly pedido = signal<Pedido | null>(null);
   readonly verificando = signal(false);
+  readonly noEncontrado = signal(false);
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   private cargar() {
-    this.api.compra(Number(this.ruta.snapshot.paramMap.get('id'))).subscribe({ next: (p) => this.pedido.set(p), error: (e) => this.toast.error(mensajeError(e)) });
+    this.api.compra(Number(this.ruta.snapshot.paramMap.get('id'))).subscribe({ next: (p) => this.pedido.set(p), error: (e) => { if (e.status === 404) this.noEncontrado.set(true); else this.toast.error(mensajeError(e)); } });
   }
 
   pagoCompletado(r: import('../../../core/compras.models').ResultadoPago) { this.pedido.set(r.pedido); this.toast.ok(r.aprobado ? 'Pago aprobado.' : r.mensaje); }

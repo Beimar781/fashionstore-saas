@@ -92,6 +92,8 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
           </div>
         </section>
         <app-vestidor-producto [productoId]="prod.id" />
+      } @else if (noEncontrado()) {
+        <div class="card empty" role="alert"><h2>Producto no encontrado</h2><a class="btn primary" routerLink="/empresa/catalogo/productos">Ir a productos</a></div>
       } @else { <app-cargando /> }
     </div>`,
   styles: `
@@ -116,6 +118,7 @@ export class ProductoDetallePage implements OnInit {
   readonly marcas = signal<Marca[]>([]);
   readonly colecciones = signal<Coleccion[]>([]);
   readonly guardando = signal(false);
+  readonly noEncontrado = signal(false);
   readonly subiendo = signal(false);
   readonly errorDatos = signal('');
   readonly errorVariantes = signal('');
@@ -137,7 +140,7 @@ export class ProductoDetallePage implements OnInit {
     this.cargar();
   }
 
-  cargar() { this.api.producto(this.id).subscribe({ next: (p) => this.mostrar(p), error: (e) => this.toast.error(mensajeError(e)) }); }
+  cargar() { this.api.producto(this.id).subscribe({ next: (p) => this.mostrar(p), error: (e) => { if (e.status === 404) this.noEncontrado.set(true); else this.toast.error(mensajeError(e)); } }); }
 
   private mostrar(p: ProductoDetalle) {
     this.p.set(p);
