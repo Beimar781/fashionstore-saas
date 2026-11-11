@@ -42,6 +42,8 @@ class _EscanerScreenState extends State<EscanerScreen> {
       await controlador.startImageStream((imagen) => _alCuadro(imagen, trasera.sensorOrientation));
     } on CameraException catch (e) {
       if (mounted) setState(() => _error = e.code.startsWith('CameraAccess') ? 'Permita el acceso a la cámara para escanear códigos.' : 'No se pudo abrir la cámara.');
+    } catch (_) {
+      if (mounted) setState(() => _error = 'No se pudo abrir la cámara.');
     }
   }
 

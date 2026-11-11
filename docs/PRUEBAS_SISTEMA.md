@@ -309,6 +309,18 @@ Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se desca
 | 19.6 | Móvil | Cliente | Sin conexión abrir «Mi carrito» en un teléfono que nunca lo abrió. | «Sin conexión: su carrito no está guardado en este teléfono. Ábralo con conexión una vez.» (sin spinner). | ☐ |
 | 19.7 | Móvil | Cliente | Con el catálogo descargado, buscar sin conexión y abrir una prenda. | Las fotos se ven (descargadas con el catálogo) y la ficha abre. | ☐ |
 
+## 20. Cajero, Encargado y otros roles en el teléfono (segunda ronda · E4)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 20.1 | Móvil | Cajero | Mirar el inicio con y sin conexión. | Una sola «Caja» y una sola «Devoluciones» (la misma pantalla con y sin red); «Diagnóstico sin conexión» queda como apoyo. | ☐ |
+| 20.2 | Móvil | Encargado | Mirar el inicio. | Además: «Tareas de la sucursal» (Recepción, Ajuste, Reservas) y «Conflictos de sincronización». | ☐ |
+| 20.3 | Móvil | Encargado | En «Tareas → Reservas» preparar una reserva sin conexión, volver la red y esperar. | La lista de reservas se renueva sola con lo del servidor (no queda lo viejo). | ☐ |
+| 20.4 | Móvil | Encargado | Abrir «Conflictos» con red, cortar la red y volver a abrirlo. | Se ve la última lista con «Sin conexión · datos al…»; Reintentar y Descartar quedan apagados; al volver la red se activan solos. | ☐ |
+| 20.5 | Móvil | Cliente o Cajero | Dejar operaciones pendientes, mandar la app a segundo plano y volver la red. | Llega la notificación «Volvió la conexión: se enviaron N operaciones.» | ☐ |
+| 20.6 | Móvil | Proveedor o Administrador | Abrir la app con y sin conexión. | Con red: «Las funciones de su rol se usan desde la web…»; sin red: «Esta función necesita Internet.» y «Actualizar mi plan» apagado. Nunca un spinner infinito. | ☐ |
+| 20.7 | Web | Encargado | Abrir «Conflictos de sincronización» sin conexión. | Se ve lo último guardado; Reintentar y Descartar salen apagados («Esta función necesita Internet.»). | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

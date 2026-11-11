@@ -68,6 +68,7 @@ class DevolucionTab extends StatefulWidget {
 class _DevolucionTabState extends State<DevolucionTab> {
   final _buscar = TextEditingController();
   final _motivo = TextEditingController();
+  int? _refrescoVisto;
   List<Map<String, dynamic>> _ventas = [];
   Map<String, dynamic>? _venta;
   final Map<int, int> _cantidades = {};
@@ -115,6 +116,11 @@ class _DevolucionTabState extends State<DevolucionTab> {
 
   @override
   Widget build(BuildContext context) {
+    final refresco = context.select<OfflineController, int>((c) => c.refresco);
+    if (_refrescoVisto != null && _refrescoVisto != refresco) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _cargar(); }); // al volver la red lo descargado se renueva y la lista se actualiza sola
+    }
+    _refrescoVisto = refresco;
     final q = _buscar.text.trim().toLowerCase();
     final visibles = _ventas.where((v) => q.isEmpty || '${v['comprobante']}'.toLowerCase().contains(q)).toList();
     final margen = MediaQuery.viewPaddingOf(context).bottom + 16;
@@ -307,6 +313,8 @@ class _ReservasTabState extends State<ReservasTab> {
     _cargar();
   }
 
+  int? _refrescoVisto;
+
   Future<void> _cargar() async {
     final r = await context.read<OfflineController>().repo.reservasSucursal();
     if (mounted) setState(() => _reservas = r);
@@ -339,6 +347,11 @@ class _ReservasTabState extends State<ReservasTab> {
 
   @override
   Widget build(BuildContext context) {
+    final refresco = context.select<OfflineController, int>((c) => c.refresco);
+    if (_refrescoVisto != null && _refrescoVisto != refresco) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _cargar(); }); // al volver la red lo descargado se renueva y la lista se actualiza sola
+    }
+    _refrescoVisto = refresco;
     final q = _codigo.text.trim().toLowerCase();
     final visibles = _reservas.where((r) => q.isEmpty || '${r['codigo']}'.toLowerCase().contains(q)).toList();
     return ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [

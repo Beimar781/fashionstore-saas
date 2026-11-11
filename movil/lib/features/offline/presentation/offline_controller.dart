@@ -15,6 +15,8 @@ const msgSinRed = 'Sin conexión: sus acciones se guardarán en este dispositivo
 
 String textoReconexion(int pendientes) => pendientes > 0 ? 'Conexión restablecida. Sincronizando $pendientes operaciones…' : 'Conexión restablecida.';
 
+String textoVolvioLaConexion(int enviadas) => 'Volvió la conexión: se enviaron $enviadas ${enviadas == 1 ? 'operación' : 'operaciones'}.';
+
 String textoResumen(ResumenSync r) => 'Sincronización completa: ${r.confirmadas} confirmadas, ${r.enConflicto} en conflicto, ${r.rechazadas} rechazadas';
 
 class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
@@ -166,7 +168,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     }
     notifyListeners();
     if (hayRed && pendientes.isNotEmpty) sincronizar();
-    if (hayRed) actualizarSiVencido();
+    if (hayRed) actualizarTrasReconectar();
   }
 
   Future<void> recargar() async {
@@ -178,6 +180,14 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     catalogoGeneradoEn = await _repo.catalogoGeneradoEn();
     ultimaSync = await _repo.ultimaSincronizacion();
     notifyListeners();
+  }
+
+  /// Al volver la red, lo descargado que cambia a diario (reservas de la sucursal, ventas recientes, stock) se renueva si tiene más de 15 minutos.
+  Future<void> actualizarTrasReconectar() async {
+    if (!habilitado || !enLinea || descargando) return;
+    final fecha = DateTime.tryParse(catalogoGeneradoEn ?? '');
+    if (descargaAutomatica && hayCatalogo && fecha != null && DateTime.now().difference(fecha).inMinutes >= 15) return descargarCatalogo();
+    return actualizarSiVencido();
   }
 
   /// Horas después de las cuales el catálogo descargado se actualiza solo con conexión (§5.3).
@@ -291,9 +301,9 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     if (_enSegundoPlano) alNotificar?.call(texto);
   }
 
-  void _avisarResumen(String texto) {
+  void _avisarResumen(String texto, {bool notificar = true}) {
     (alResumir ?? alAvisar)?.call(texto);
-    if (_enSegundoPlano) alNotificar?.call(texto);
+    if (notificar && _enSegundoPlano) alNotificar?.call(texto);
   }
 
   /// Al perder la red y al recuperarla (real o con «Simular sin conexión»), sin reiniciar la app ni salir de la pantalla.
@@ -324,8 +334,11 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     }
     final total = resumen.confirmadas + resumen.enConflicto + resumen.rechazadas;
     if (!resumen.sinConexion && (_esperaResumen || resumen.enConflicto > 0 || resumen.rechazadas > 0 || total >= 2)) {
+      final traseReconexion = _esperaResumen;
       _esperaResumen = false;
-      _avisarResumen(textoResumen(resumen)); // tras una reconexión, o cuando algo quedó en conflicto o se enviaron varias operaciones juntas
+      final conAviso = traseReconexion && total > 0;
+      _avisarResumen(textoResumen(resumen), notificar: !conAviso); // tras una reconexión, o cuando algo quedó en conflicto o se enviaron varias operaciones juntas
+      if (conAviso && _enSegundoPlano) alNotificar?.call(textoVolvioLaConexion(total)); // notificación local (no push del servidor) con la app en segundo plano
     }
     if (_repetir) {
       _repetir = false;

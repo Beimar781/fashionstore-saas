@@ -844,3 +844,20 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Carrito sin conexión (CU-08):** igual que en la web: copia del carrito del servidor + cambios del teléfono (cantidad, quitar, vaciar) + prendas agregadas sin conexión. Al volver la red los cambios se repiten en orden y las prendas nuevas se fusionan con un identificador fijo (no se duplican aunque el envío se repita). Cambiar de sucursal necesita Internet.
 - **Pago sin conexión desde Mi carrito (CU-11/CU-32):** «Guardar compra para sincronizar» pide los datos de entrega y facturación, permite elegir una tarjeta guardada vigente (con autorización expresa del cobro) o dejar la compra por pagar; una tarjeta nueva necesita Internet.
 - **Fotos del catálogo descargado:** las rutas de imagen del catálogo descargado se completan con `/media/` (antes salían rotas sin conexión).
+
+## Segunda ronda sin conexión · E4 (móvil: Cajero, Encargado y otros roles)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Notificación local al volver la red con la app en segundo plano | «Volvió la conexión: se enviaron N operaciones.» | — (solo en la app; no es un aviso del servidor) | Pendiente |
+| Conflictos sin conexión (lista guardada) | «Sin conexión · datos al …. Reintentar y descartar necesitan Internet.» | — (solo en la app) | Pendiente |
+| Resolver un conflicto sin respuesta del servidor | «Esta función necesita Internet.» | — (solo en la app) | Pendiente |
+| Inicio de Proveedor / Administrador con conexión | «Las funciones de su rol se usan desde la web de FashionStore.» | — (solo en la app) | Pendiente |
+| Inicio de Proveedor / Administrador sin conexión | «Esta función necesita Internet.» (botón «Actualizar mi plan» apagado) | — (solo en la app) | Pendiente |
+| Cámara del escáner que no abre | «No se pudo abrir la cámara.» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Notificación de reconexión (RNF06):** si la app estaba en segundo plano al volver la red y se enviaron operaciones, se muestra una notificación local (no un push del servidor) con cuántas se enviaron; en primer plano basta el resumen dentro de la app.
+- **Conflictos (CU-40) en el móvil:** sin conexión se ve la última lista guardada con su fecha; reintentar y descartar solo funcionan con respuesta del servidor. La lista se recarga sola al volver la red.
+- **Puesta al día al reconectar:** al volver la red, el Cajero y el Encargado renuevan lo descargado (stock, reservas de la sucursal, ventas recientes) si tiene más de 15 minutos; las reservas y las devoluciones se recargan solas.
+- **Proveedor y Administrador en el móvil:** la app solo muestra su plan y su suscripción (contexto guardado); sus funciones son de la web y no hay pantallas con spinner.

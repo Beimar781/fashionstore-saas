@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { VacioComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
@@ -11,7 +12,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-40 · Conflictos de sincronización: operaciones hechas sin conexión que no se pudieron aplicar por falta de existencias. Nada se descontó (RN14): el Encargado reintenta o descarta. */
 @Component({
   selector: 'app-conflictos',
-  imports: [VacioComponent, BsPipe, FormsModule, DatePipe],
+  imports: [NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Conflictos de sincronización</h1><p>Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.</p></div><button class="btn" (click)="cargar()">Actualizar</button></div>
@@ -44,11 +45,11 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                 </fieldset>
               }
             }
-            <div class="row"><button class="btn danger" (click)="descartar(c)" [disabled]="devolverDinero && !condicionCompleta()">{{ devolverDinero ? (c.monto_a_devolver ? 'Descartar y devolver ' + (c.monto_a_devolver | bs) : 'Descartar y devolver el dinero') : 'Confirmar descarte' }}</button><button class="btn ghost" (click)="descartando.set(null)">Cancelar</button></div>
+            <div class="row"><button necesitaInternet class="btn danger" (click)="descartar(c)" [disabled]="devolverDinero && !condicionCompleta()">{{ devolverDinero ? (c.monto_a_devolver ? 'Descartar y devolver ' + (c.monto_a_devolver | bs) : 'Descartar y devolver el dinero') : 'Confirmar descarte' }}</button><button class="btn ghost" (click)="descartando.set(null)">Cancelar</button></div>
           } @else {
             <div class="row">
-              <button class="btn primary" (click)="reintentar(c)" [disabled]="trabajando()">Reintentar con las existencias de ahora</button>
-              <button class="btn ghost" (click)="descartando.set(c.id); motivo = ''; devolverDinero = false; condicion = { sin_danos: false, sin_desgaste: false, con_etiquetas: false }">Descartar…</button>
+              <button necesitaInternet class="btn primary" (click)="reintentar(c)" [disabled]="trabajando()">Reintentar con las existencias de ahora</button>
+              <button necesitaInternet class="btn ghost" (click)="descartando.set(c.id); motivo = ''; devolverDinero = false; condicion = { sin_danos: false, sin_desgaste: false, con_etiquetas: false }">Descartar…</button>
             </div>
             <p class="small muted">Si llegó mercadería, recíbala primero en «Recepción de mercadería» y luego reintente. Al descartar una venta de contado, puede devolver el efectivo desde aquí o hacerlo a mano.</p>
           }

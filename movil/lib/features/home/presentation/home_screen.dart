@@ -187,6 +187,25 @@ class HomeScreen extends StatelessWidget {
             if (s.rol == 'Encargado') _acceso(context, Icons.assignment_outlined, 'Tareas de la sucursal', 'Recepción, ajuste de inventario y reservas, con o sin conexión', const TareasSucursalScreen()),
             if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, 'Conflictos de sincronización', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
           ],
+          if (!const ['Cliente', 'Cajero', 'Encargado'].contains(s.rol))
+            // Proveedor, Administrador y SuperAdministrador trabajan en la web; en la app solo ven su contexto guardado (nunca un spinner infinito)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(offline.enLinea && !auth.sinConexion ? 'Las funciones de su rol se usan desde la web de FashionStore.' : 'Esta función necesita Internet.', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(offline.enLinea && !auth.sinConexion
+                      ? 'Ingrese a la web con esta misma cuenta para gestionar su panel. Aquí puede consultar su plan y su estado de suscripción.'
+                      : 'Sin conexión se muestra el contexto guardado en este dispositivo (plan, estado y vencimiento); puede estar desactualizado.'),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                      onPressed: offline.enLinea && !auth.sinConexion ? auth.actualizarContexto : null,
+                      icon: const Icon(Icons.sync),
+                      label: const Text('Actualizar mi plan')),
+                ]),
+              ),
+            ),
           if (s.rol == 'Cajero' || s.rol == 'Encargado') const OperacionesConProblema(tipos: ['VENTA_CONTADO'], titulo: 'Ventas con problema'),
           const InterruptorSimulacion(),
           if (offline.habilitado && !s.restringido)
@@ -222,7 +241,8 @@ class HomeScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(etiqueta),
+            Flexible(child: Text(etiqueta)),
+            const SizedBox(width: 12),
             Flexible(
                 child: Text(valor,
                     style: const TextStyle(fontWeight: FontWeight.w600),

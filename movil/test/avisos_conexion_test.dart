@@ -97,6 +97,31 @@ void main() {
     await red.close();
   });
 
+  test('Con la app en segundo plano, al volver la red sale la notificación local «Volvió la conexión: se enviaron N operaciones»', () async {
+    await LocalDatabase.instance.reiniciar(ruta: inMemoryDatabasePath);
+    final red = StreamController<bool>();
+    final repo = OfflineRepository(ApiFalsa());
+    final notificaciones = <String>[];
+    final c = OfflineController(repo, conectividad: red.stream)
+      ..alNotificar = notificaciones.add
+      ..usarSesion(_sesion);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    red.add(false);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    for (final n in [1, 2]) {
+      await repo.registrar(tipo: 'RESERVA', payload: {'items': []}, sucursalId: 1, resumen: 'R$n', usuarioId: 5, empresaId: 1);
+    }
+    await c.recargar();
+    c.didChangeAppLifecycleState(AppLifecycleState.paused);
+    notificaciones.clear();
+    red.add(true);
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(notificaciones, contains('Volvió la conexión: se enviaron 2 operaciones.'));
+    expect(textoVolvioLaConexion(1), 'Volvió la conexión: se enviaron 1 operación.');
+    c.dispose();
+    await red.close();
+  });
+
   test('Los textos de los avisos', () {
     expect(textoReconexion(0), 'Conexión restablecida.');
     expect(textoResumen(ResumenSync(confirmadas: 2, enConflicto: 1, rechazadas: 3)), 'Sincronización completa: 2 confirmadas, 1 en conflicto, 3 rechazadas');

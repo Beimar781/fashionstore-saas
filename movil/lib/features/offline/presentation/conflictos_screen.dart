@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../auth/data/auth_repository.dart';
+import 'offline_controller.dart';
 import 'modo_offline_screen.dart' show fechaCorta;
 
 String _bs(Object? valor) => valor == null ? '' : 'Bs ${(double.tryParse('$valor') ?? 0).toStringAsFixed(2)}';
@@ -24,6 +25,9 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
   List<Map<String, dynamic>>? _conflictos;
   String? _error;
   bool _trabajando = false;
+  bool _desdeCopia = false; // sin conexión: se ve la última lista guardada, pero resolver necesita Internet
+  String? _fechaCopia;
+  int? _refrescoVisto;
 
   ApiClient get _api => widget.api ?? context.read<AuthRepository>().api;
 
@@ -35,10 +39,11 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
 
   Future<void> _cargar() async {
     try {
+      ApiClient.lecturaLocalDesde = null;
       final lista = (await _api.getLista('/offline/conflictos')).cast<Map<String, dynamic>>();
-      if (mounted) setState(() { _conflictos = lista; _error = null; });
+      if (mounted) setState(() { _conflictos = lista; _error = null; _fechaCopia = ApiClient.lecturaLocalDesde; _desdeCopia = _fechaCopia != null; });
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: los conflictos se resuelven cuando hay Internet.' : e.mensaje);
+      if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: los conflictos se resuelven cuando hay Internet. Todavía no se guardó ninguna lista.' : e.mensaje);
     }
   }
 
@@ -49,7 +54,7 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
       final r = await _api.post('/offline/conflictos/${c['id']}/resolver', cuerpo);
       mensajes.showSnackBar(SnackBar(content: Text(cuerpo['accion'] == 'REINTENTAR' ? 'Operación confirmada${r['referencia'] != null ? ' (${r['referencia']})' : ''}.' : '${r['mensaje']}')));
     } on ApiException catch (e) {
-      mensajes.showSnackBar(SnackBar(content: Text(e.mensaje)));
+      mensajes.showSnackBar(SnackBar(content: Text(e.sinConexion ? 'Esta función necesita Internet.' : e.mensaje)));
     }
     if (mounted) setState(() => _trabajando = false);
     await _cargar();
@@ -103,12 +108,25 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // al volver la red la lista se recarga sola (en las pruebas puede no haber controlador)
+    int? refresco;
+    try {
+      refresco = context.select<OfflineController, int>((c) => c.refresco);
+    } catch (_) {
+      refresco = null;
+    }
+    if (_refrescoVisto != null && refresco != null && _refrescoVisto != refresco) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _cargar(); });
+    }
+    _refrescoVisto = refresco;
     return Scaffold(
       appBar: AppBar(title: const Text('Conflictos de sincronización'), actions: [IconButton(tooltip: 'Actualizar', icon: const Icon(Icons.refresh), onPressed: _cargar)]),
       body: ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
         const Text('Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.'),
         const SizedBox(height: 8),
         if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
+        if (_desdeCopia)
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Sin conexión · datos al ${fechaCorta(_fechaCopia)}. Reintentar y descartar necesitan Internet.', style: const TextStyle(fontSize: 12, color: Color(0xFF8A5A00)))),
         if (_conflictos == null && _error == null) const Center(child: CircularProgressIndicator()),
         if (_conflictos != null && _conflictos!.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No hay operaciones en conflicto.'))),
         for (final c in _conflictos ?? const <Map<String, dynamic>>[])
@@ -133,8 +151,8 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
                   ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, children: [
-                  FilledButton(onPressed: _trabajando ? null : () => _resolver(c, {'accion': 'REINTENTAR'}), child: const Text('Reintentar')),
-                  OutlinedButton(onPressed: _trabajando ? null : () => _descartar(c), child: const Text('Descartar…')),
+                  FilledButton(onPressed: _trabajando || _desdeCopia ? null : () => _resolver(c, {'accion': 'REINTENTAR'}), child: const Text('Reintentar')),
+                  OutlinedButton(onPressed: _trabajando || _desdeCopia ? null : () => _descartar(c), child: const Text('Descartar…')),
                 ]),
               ]),
             ),
