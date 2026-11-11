@@ -21,13 +21,17 @@ String fechaCorta(String? iso) {
 
 /// Modo sin conexión: catálogo descargado (CU-37), registro de ventas de contado o reservas (RF19) y la cola de operaciones con su estado (CU-38, CU-39).
 class ModoOfflineScreen extends StatelessWidget {
-  const ModoOfflineScreen({super.key});
+  const ModoOfflineScreen({super.key, this.pestana = 0});
+
+  /// 0 catálogo, 1 registrar, 2 operaciones (la cola, a donde lleva «Ver detalle»).
+  final int pestana;
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<OfflineController>();
     return DefaultTabController(
       length: 3,
+      initialIndex: pestana,
       child: Scaffold(
         appBar: AppBar(
           title: Text(c.esCliente ? 'Modo sin conexión' : 'Diagnóstico sin conexión'),

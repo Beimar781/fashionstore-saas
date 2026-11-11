@@ -13,6 +13,14 @@ String motivoParaCliente(OperacionLocal o) {
   return o.mensaje.isEmpty ? 'No se pudo realizar la operación.' : o.mensaje;
 }
 
+/// Nombre de la primera prenda de la operación (para llevar al cliente a esa prenda); null si no se conoce.
+String? nombreDePrenda(BuildContext context, OperacionLocal o) {
+  final items = (o.payload['items'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+  if (items.isEmpty) return null;
+  final nombre = context.read<OfflineController>().nombreDeVariante(items.first['variante_id'] as int);
+  return nombre.startsWith('Prenda ') ? null : nombre.split(' (').first;
+}
+
 /// Estado de la devolución del efectivo de una venta de caja con problema (la registra el Encargado al descartarla, CU-40).
 String devolucionDeEfectivo(OperacionLocal o) {
   if (o.estado == Estado.enConflicto) return 'Pendiente: el Encargado debe reintentarla o descartarla.';
@@ -27,8 +35,8 @@ class OperacionesConProblema extends StatelessWidget {
   final List<String> tipos;
   final String titulo;
 
-  /// Solo para el cliente: abre el catálogo para elegir otra talla o sucursal.
-  final VoidCallback? alElegirOtra;
+  /// Solo para el cliente: abre la prenda de la operación para que elija otra talla o sucursal (recibe el nombre de la prenda).
+  final void Function(String? prenda)? alElegirOtra;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +58,7 @@ class OperacionesConProblema extends StatelessWidget {
             Text(alElegirOtra != null ? motivoParaCliente(o) : o.mensaje),
             if (alElegirOtra == null) Text('Devolución del efectivo: ${devolucionDeEfectivo(o)}'),
             for (final f in o.faltantes) Text('• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay ${f['disponibles']}'),
-            if (alElegirOtra != null) Align(alignment: Alignment.centerRight, child: TextButton(onPressed: alElegirOtra, child: const Text('Elegir otra talla o sucursal'))),
+            if (alElegirOtra != null) Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => alElegirOtra!(nombreDePrenda(context, o)), child: const Text('Elegir otra talla o sucursal'))),
           ],
         ]),
       ),

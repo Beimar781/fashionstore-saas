@@ -63,10 +63,11 @@ class ItemReservaLocalOut(BaseModel):
 
 
 class ReservaSucursalLocalOut(BaseModel):
-    """Reserva de la sucursal descargada para atenderla sin conexión (B4): solo la ven los Encargados."""
+    """Reserva de la sucursal descargada para atenderla o cobrarla sin conexión: el Encargado recibe las activas (B4) y el Cajero solo las que ya se pueden cobrar."""
 
     id: int
     codigo: str
+    cliente: str = ""
     estado: str
     programada_para: datetime
     items: list[ItemReservaLocalOut]

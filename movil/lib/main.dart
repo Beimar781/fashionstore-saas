@@ -14,10 +14,12 @@ import 'features/notificaciones/data/proveedor_push.dart';
 import 'features/notificaciones/data/push_repository.dart';
 import 'core/notificacion_local.dart';
 import 'features/notificaciones/presentation/push_controller.dart';
+import 'features/offline/presentation/modo_offline_screen.dart';
 import 'features/offline/presentation/offline_controller.dart';
 import 'primer_parcial/reservas/data/reserva_borrador.dart';
 
 final _mensajero = GlobalKey<ScaffoldMessengerState>();
+final _navegador = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,10 +58,17 @@ class FashionStoreApp extends StatelessWidget {
           create: (_) => OfflineController(OfflineRepository(authRepo.api),
               conectividad: conectividadDelDispositivo(), descargaAutomatica: true)
             ..alNotificar = NotificacionLocal.mostrar
-            ..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(
-                SnackBar(
-                    content: Text(texto),
-                    duration: const Duration(seconds: 8))),
+            ..alResumir = (texto) {
+              _mensajero.currentState?.showSnackBar(SnackBar(
+                  content: Text(texto),
+                  duration: const Duration(seconds: 12),
+                  action: SnackBarAction(
+                      label: 'Ver detalle',
+                      onPressed: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => const ModoOfflineScreen(pestana: 2))))));
+            }
+            ..alAvisar = (texto) {
+              _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8)));
+            },
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
         ),
         // las prendas elegidas para reservar se guardan por usuario
@@ -76,6 +85,7 @@ class FashionStoreApp extends StatelessWidget {
       ],
       child: MaterialApp(
         scaffoldMessengerKey: _mensajero,
+        navigatorKey: _navegador,
         title: 'FashionStore',
         debugShowCheckedModeBanner: false,
         theme: Tema.claro(),

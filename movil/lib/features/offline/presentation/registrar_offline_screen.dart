@@ -28,6 +28,8 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
   final _direccionEntrega = TextEditingController();
   final _nitCi = TextEditingController();
   final _razonSocial = TextEditingController();
+  final _codigoReserva = TextEditingController();
+  Map<String, dynamic>? _reserva; // reserva preparada o atendida que se está cobrando (copia descargada)
   List<PrendaLocal> _resultados = [];
   List<SucursalLocal> _sucursales = [];
   List<ClienteLocal> _clientes = [];
@@ -104,6 +106,32 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     setState(() => _resultados = r);
     if (r.length == 1 && r.first.variante.stockEn(_sucursalId) > 0) _agregar(r.first);
     if (r.isEmpty) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay una prenda con ese código en el catálogo guardado.')));
+  }
+
+  /// Cobrar una reserva sin conexión: sale de la copia descargada y solo se puede cobrar si ya está preparada o atendida (CU-29).
+  /// Se cargan sus prendas tal como se reservaron; su stock ya estaba apartado, así que la venta no lo descuenta otra vez.
+  Future<void> _cargarReserva() async {
+    final c = context.read<OfflineController>();
+    final codigo = _codigoReserva.text.trim().toUpperCase();
+    final reserva = (await c.repo.reservasSucursal()).where((r) => '${r['codigo']}'.toUpperCase() == codigo).firstOrNull;
+    if (reserva == null || !['PREPARADA', 'EN_PROBADOR'].contains(reserva['estado'])) {
+      return setState(() => _error = 'El código de reserva no existe, no está lista para cobrar o no está en la copia de este dispositivo.');
+    }
+    final prendas = await c.repo.buscar('', limite: 100000);
+    final lineas = <_Linea>[];
+    for (final item in (reserva['items'] as List).cast<Map<String, dynamic>>().where((i) => i['estado'] == 'RESERVADO')) {
+      final prenda = prendas.where((p) => p.variante.id == item['variante_id']).firstOrNull;
+      if (prenda != null) lineas.add(_Linea(prenda, item['cantidad'] as int)..cantidad = item['cantidad'] as int);
+    }
+    if (!mounted) return;
+    setState(() {
+      _reserva = reserva;
+      _lineas
+        ..clear()
+        ..addAll(lineas);
+      _error = null;
+      _codigoReserva.clear();
+    });
   }
 
   void _agregar(PrendaLocal p) {
@@ -236,11 +264,13 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           ],
           'forma_pago': 'EFECTIVO',
           'monto_recibido': recibido.toStringAsFixed(2),
-          'cliente_email': _clienteEmail
+          if (_reserva != null) 'reserva_codigo': _reserva!['codigo'] else 'cliente_email': _clienteEmail
         },
         sucursalId: _sucursalId!,
-        resumen: 'Venta de contado Bs ${_total.toStringAsFixed(2)}: $detalle',
+        resumen: '${_reserva != null ? 'Cobro de la reserva ${_reserva!['codigo']}' : 'Venta de contado'} Bs ${_total.toStringAsFixed(2)}: $detalle',
+        comprometer: _reserva == null, // la reserva ya tenía su stock apartado
       );
+      if (_reserva != null) await c.repo.actualizarReservaLocal(_reserva!['id'] as int, quitar: true); // ya se cobró: sale de la copia
     }
     final vendida = venta;
     messenger.showSnackBar(SnackBar(
@@ -254,6 +284,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       _resultados = [];
       _texto.clear();
       _recibido.clear();
+      _reserva = null;
       _notas.clear();
       _direccionEntrega.clear();
       _nitCi.clear();
@@ -373,6 +404,22 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           ),
         const SizedBox(height: 8),
       ],
+      if (!c.esCliente)
+        if (_reserva == null)
+          Row(children: [
+            Expanded(child: TextField(controller: _codigoReserva, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'Cobrar una reserva (código)'))),
+            IconButton(tooltip: 'Cargar la reserva', icon: const Icon(Icons.event_available), onPressed: _cargarReserva),
+          ])
+        else
+          Card(
+            color: const Color(0xFFE8F3EC),
+            child: ListTile(
+              dense: true,
+              title: Text('Reserva ${_reserva!['codigo']} de ${_reserva!['cliente'] ?? 'cliente'}'),
+              subtitle: const Text('Se cobra lo reservado; su stock ya estaba apartado.'),
+              trailing: IconButton(tooltip: 'Quitar la reserva', icon: const Icon(Icons.close), onPressed: () => setState(() { _reserva = null; _lineas.clear(); })),
+            ),
+          ),
       TextField(
           controller: _texto,
           onChanged: _buscar,

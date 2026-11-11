@@ -33,6 +33,28 @@ class TareasSucursalScreen extends StatelessWidget {
   }
 }
 
+/// Pantalla normal de Devoluciones (CU-41) para el Cajero y el Encargado: funciona igual con y sin conexión, con las mismas validaciones (plazo y lo ya devuelto).
+class DevolucionesScreen extends StatelessWidget {
+  const DevolucionesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final enLinea = context.select<OfflineController, bool>((c) => c.enLinea);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Devoluciones')),
+      body: Column(children: [
+        if (!enLinea)
+          Container(
+              width: double.infinity,
+              color: const Color(0xFFFBEFD9),
+              padding: const EdgeInsets.all(10),
+              child: const Text('Sin conexión: la devolución se guarda en este dispositivo y se envía sola al volver la red.')),
+        const Expanded(child: DevolucionTab()),
+      ]),
+    );
+  }
+}
+
 void _avisar(BuildContext c, String texto) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(texto)));
 
 // ---------------- B3: devolución sin conexión ----------------

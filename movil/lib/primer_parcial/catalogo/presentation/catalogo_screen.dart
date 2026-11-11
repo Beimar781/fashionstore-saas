@@ -23,11 +23,15 @@ class CatalogoScreen extends StatefulWidget {
       {super.key,
       this.integrado = false,
       this.soloPromociones = false,
-      this.nombreEmpresa});
+      this.nombreEmpresa,
+      this.consultaInicial});
 
   final bool integrado;
   final bool soloPromociones;
   final String? nombreEmpresa;
+
+  /// Si viene, el catálogo abre buscando esa prenda y, con conexión, muestra su ficha (por ejemplo desde «Elegir otra talla o sucursal»).
+  final String? consultaInicial;
 
   @override
   State<CatalogoScreen> createState() => _CatalogoScreenState();
@@ -86,7 +90,9 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       }
     } catch (_) {}
     if (!mounted) return;
+    if (widget.consultaInicial != null) _texto.text = widget.consultaInicial!;
     await _buscar();
+    if (widget.consultaInicial != null && mounted && _items.isNotEmpty) await _detalle(_items.first);
   }
 
   List<Map<String, dynamic>> get _promociones =>

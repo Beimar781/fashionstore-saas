@@ -45,6 +45,9 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   bool descargando = false;
   bool enLinea = true;
 
+  /// Sube tras cada sincronización y al volver la red: las pantallas abiertas (Mis compras, Mis reservas) vuelven a pedir sus datos sin que el usuario salga de ellas.
+  int refresco = 0;
+
   /// «Simular sin conexión» (§B11): fuerza el modo sin conexión aunque haya Internet. Al apagarlo se sincroniza en el acto.
   bool simulado = false;
   String? error;
@@ -142,7 +145,10 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     if (simulado) return; // con la simulación activa, la red real no cambia el modo
     if (hayRed != enLinea) _anunciarRed(hayRed);
     enLinea = hayRed;
-    if (hayRed) _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0); // al volver la red se reintenta en el acto, sin esperar
+    if (hayRed) {
+      _proximoIntento = DateTime.fromMillisecondsSinceEpoch(0); // al volver la red se reintenta en el acto, sin esperar
+      refresco++;
+    }
     notifyListeners();
     if (hayRed && pendientes.isNotEmpty) sincronizar();
     if (hayRed) actualizarSiVencido();
@@ -202,7 +208,8 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       {required String tipo,
       required Map<String, dynamic> payload,
       required int sucursalId,
-      required String resumen}) async {
+      required String resumen,
+      bool comprometer = true}) async {
     final s = _sesion!;
     final operacion = await _repo.registrar(
         tipo: tipo,
@@ -211,8 +218,10 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
         resumen: resumen,
         usuarioId: s.usuarioId,
         empresaId: s.empresaId!);
-    await _repo.comprometerStock(
-        (payload['items'] as List).cast<Map<String, dynamic>>(), sucursalId);
+    if (comprometer) {
+      await _repo.comprometerStock(
+          (payload['items'] as List).cast<Map<String, dynamic>>(), sucursalId);
+    }
     await recargar();
     sincronizar();
     return operacion;
@@ -235,9 +244,17 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   bool _enSegundoPlano = false;
   bool _esperaResumen = false;
 
+  /// Quién muestra el resumen de la sincronización con su botón «Ver detalle» (lo conecta la app); si nadie lo conecta, se usa el aviso común.
+  void Function(String)? alResumir;
+
   /// Aviso global (SnackBar en cualquier pantalla) y, con la app en segundo plano, además notificación del sistema.
   void _avisar(String texto) {
     alAvisar?.call(texto);
+    if (_enSegundoPlano) alNotificar?.call(texto);
+  }
+
+  void _avisarResumen(String texto) {
+    (alResumir ?? alAvisar)?.call(texto);
     if (_enSegundoPlano) alNotificar?.call(texto);
   }
 
@@ -262,12 +279,15 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     error = resumen.error;
     sincronizando = false;
     await recargar();
+    refresco++;
+    notifyListeners();
     for (final aviso in resumen.avisos) {
       _avisar(aviso);
     }
-    if (_esperaResumen && !resumen.sinConexion) {
+    final total = resumen.confirmadas + resumen.enConflicto + resumen.rechazadas;
+    if (!resumen.sinConexion && (_esperaResumen || resumen.enConflicto > 0 || resumen.rechazadas > 0 || total >= 2)) {
       _esperaResumen = false;
-      _avisar(textoResumen(resumen)); // tras una reconexión: cómo terminó la sincronización
+      _avisarResumen(textoResumen(resumen)); // tras una reconexión, o cuando algo quedó en conflicto o se enviaron varias operaciones juntas
     }
     if (_repetir) {
       _repetir = false;

@@ -50,9 +50,11 @@ export class AvisosConexionService {
     this.avisar('ok', textoReconexion(pendientes));
   }
 
-  /** El resumen solo se anuncia después de una reconexión: una operación hecha con red ya avisa en su propia pantalla. */
+  /** El resumen se anuncia tras una reconexión y, aunque no la haya habido, cuando algo quedó en conflicto o rechazado o se enviaron varias operaciones juntas
+   *  (reintentos automáticos, sincronización en segundo plano). Una sola operación confirmada ya avisa en su propia pantalla. */
   private alSincronizar(r: ResumenSync) {
-    if (!this.esperaResumen) return;
+    const total = r.confirmadas + r.conflictos + r.rechazadas;
+    if (!this.esperaResumen && !r.conflictos && !r.rechazadas && total < 2) return;
     this.esperaResumen = false;
     this.avisar(r.conflictos || r.rechazadas ? 'warn' : 'ok', textoResumen(r), true);
   }

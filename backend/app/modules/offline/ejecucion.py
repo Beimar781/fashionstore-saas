@@ -54,7 +54,7 @@ class Ejecutor:
             if validar_precio:
                 self._validar_precios(datos)
             venta = VentaPresencialService(self.db, self.ctx).crear(
-                VentaIn(items=[LineaIn(variante_id=i.variante_id, cantidad=i.cantidad) for i in datos.items], cliente_email=datos.cliente_email, nit_ci=datos.nit_ci, razon_social=datos.razon_social),
+                VentaIn(items=[LineaIn(variante_id=i.variante_id, cantidad=i.cantidad) for i in datos.items], cliente_email=datos.cliente_email, nit_ci=datos.nit_ci, razon_social=datos.razon_social, reserva_codigo=datos.reserva_codigo),
                 commit=False,
             )
             cobro = CobroCajaService(self.db, self.ctx).cobrar(venta.id, CobroIn(metodo="EFECTIVO", monto_recibido=datos.monto_recibido), commit=False)  # RN13: de contado

@@ -17,7 +17,7 @@ from app.modules.acceso.publico import nombres_y_correos_de_clientes
 from app.modules.inventario.publico import Existencia
 from app.modules.offline.cu37_catalogo_offline import schemas
 from app.modules.sucursales.publico import sucursales_activas
-from app.modules.ventas.publico import DevolucionService
+from app.modules.ventas.publico import ESTADOS_COBRABLES, DevolucionService
 from app.primer_parcial.reservas.publico import ReservasSucursalService
 from app.primer_parcial.ventas.publico import Pedido
 from app.primer_parcial.catalogo.publico import Producto, descuentos_vigentes
@@ -83,10 +83,11 @@ class CatalogoOfflineService:
                 items=[schemas.ItemVentaLocalOut(pedido_item_id=i.pedido_item_id, producto=i.producto, talla=i.talla, color=i.color, vendida=i.vendida, devolvible=i.devolvible, precio_final=i.precio_final) for i in v.items],
             ))
         reservas = []
-        if self.ctx.rol == ENCARGADO:
-            for r in ReservasSucursalService(self.db, self.ctx).listar(None, None):
-                reservas.append(schemas.ReservaSucursalLocalOut(
-                    id=r.id, codigo=r.codigo, estado=r.estado, programada_para=r.programada_para,
-                    items=[schemas.ItemReservaLocalOut(id=i.id, variante_id=i.variante_id, producto=i.producto, talla=i.talla, color=i.color, cantidad=i.cantidad, estado=i.estado) for i in r.items],
-                ))
+        for r in ReservasSucursalService(self.db, self.ctx).listar(None, None):
+            if self.ctx.rol == CAJERO and r.estado not in ESTADOS_COBRABLES:
+                continue  # el Cajero solo cobra reservas ya preparadas o atendidas (CU-29)
+            reservas.append(schemas.ReservaSucursalLocalOut(
+                id=r.id, codigo=r.codigo, cliente=r.cliente, estado=r.estado, programada_para=r.programada_para,
+                items=[schemas.ItemReservaLocalOut(id=i.id, variante_id=i.variante_id, producto=i.producto, talla=i.talla, color=i.color, cantidad=i.cantidad, estado=i.estado) for i in r.items],
+            ))
         return {"plazo_devolucion_dias": plazo, "ventas_recientes": ventas, "reservas_sucursal": reservas}

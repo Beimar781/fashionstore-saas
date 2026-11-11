@@ -111,7 +111,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
             body: ChangeNotifierProvider<OfflineController>.value(
-                value: c, child: OperacionesConProblema(tipos: const ['COMPRA'], titulo: 'Compras que no se pudieron realizar', alElegirOtra: () => elegir++)))));
+                value: c, child: OperacionesConProblema(tipos: const ['COMPRA'], titulo: 'Compras que no se pudieron realizar', alElegirOtra: (_) => elegir++)))));
     expect(find.text('Compras que no se pudieron realizar'), findsOneWidget);
     expect(find.text(msgAgotada), findsOneWidget); // solo la compra en conflicto: ni la reserva ni la confirmada
     await tester.tap(find.text('Elegir otra talla o sucursal'));

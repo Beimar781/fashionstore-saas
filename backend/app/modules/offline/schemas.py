@@ -24,6 +24,7 @@ class VentaOfflineIn(BaseModel):
     cliente_email: str | None = Field(default=None, max_length=120)
     nit_ci: str = Field(default="0", max_length=20)
     razon_social: str = Field(default="Sin nombre", max_length=120)
+    reserva_codigo: str | None = Field(default=None, max_length=20)  # cobra una reserva ya preparada o atendida (su stock ya está apartado)
 
 
 class CompraOfflineIn(BaseModel):

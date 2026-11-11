@@ -10,7 +10,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogoLocalService, PrendaLocal } from '../../../core/offline/catalogo-local.service';
 import { comprobanteProvisional, numeroLocal } from '../../../core/offline/comprobante-provisional';
 import { ConnectivityService } from '../../../core/offline/connectivity.service';
-import { OperacionLocal } from '../../../core/offline.models';
+import { OperacionLocal, ReservaSucursalLocal } from '../../../core/offline.models';
 import { ResumenTurnoComponent } from '../../offline/resumen-turno.component';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
@@ -124,7 +124,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
                 <div class="tabs" role="tablist">
                   @for (m of metodos; track m.id) { <button role="tab" [class.activa]="metodo() === m.id" (click)="metodo.set(m.id)">{{ m.texto }}</button> }
                 </div>
-              } @else { <p class="small muted">Sin conexión solo se cobra en efectivo; la venta se enviará sola al volver la red.</p> }
+              } @else { <p class="small muted">Sin conexión solo se cobra en efectivo{{ reserva() ? ' (reserva ' + reserva()!.codigo + ')' : '' }}; la venta se enviará sola al volver la red.</p> }
               @if (metodo() === 'EFECTIVO') {
                 <div class="form-grid">
                   <label>Monto recibido (Bs)<input name="mr" type="number" min="0" step="0.01" [(ngModel)]="recibido" autofocus /></label>
@@ -295,7 +295,7 @@ export class CajaPage implements OnInit {
   cargarReserva() {
     if (!this.codigoReserva.trim()) return;
     this.errorReserva.set('');
-    if (!this.enLinea()) { this.errorReserva.set('Para cobrar una reserva necesita Internet.'); return; }
+    if (!this.enLinea()) { this.cargarReservaLocal(); return; }
     this.api.reserva(this.codigoReserva.trim()).subscribe({
       next: (r) => {
         this.reserva.set(r); this.lineas.set([]);
@@ -305,6 +305,22 @@ export class CajaPage implements OnInit {
       error: (e) => this.errorReserva.set(mensajeError(e)),
     });
   }
+  /** Sin conexión la reserva sale de la copia descargada: solo las que ya están preparadas o atendidas se pueden cobrar (CU-29). */
+  private cargarReservaLocal() {
+    const codigo = this.codigoReserva.trim().toUpperCase();
+    const local = (this.local.meta()?.reservas_sucursal ?? []).find((r) => r.codigo.toUpperCase() === codigo);
+    if (!local || !['PREPARADA', 'EN_PROBADOR'].includes(local.estado)) { this.errorReserva.set('El código de reserva no existe, no está lista para cobrar o no está en la copia de este dispositivo.'); return; }
+    this.reserva.set({ id: local.id, codigo: local.codigo, estado: local.estado, cliente: local.cliente ?? '', items: local.items } as unknown as Reserva);
+    this.lineas.set([]);
+    this.itemsReserva.set(local.items.filter((i) => i.estado === 'RESERVADO').map((i) => ({ variante_id: i.variante_id, sku: '', producto: i.producto, talla: i.talla, color: i.color, precio_final: this.precioLocal(i.variante_id), cantidad: i.cantidad, max: i.cantidad })));
+    this.codigoReserva = '';
+  }
+
+  private precioLocal(varianteId: number): number {
+    for (const p of this.local.productos()) { const v = p.variantes.find((x) => x.id === varianteId); if (v) return Number(v.precio_final); }
+    return 0;
+  }
+
   soltarReserva() { this.reserva.set(null); this.itemsReserva.set([]); }
 
   registrar() {
@@ -321,14 +337,15 @@ export class CajaPage implements OnInit {
   /** Sin conexión: se arma la misma pre-factura y se pasa al cobro; la venta se guarda en la cola al cobrar. */
   private registrarLocal() {
     this.registrando.set(false);
-    if (this.reserva()) { this.error.set('Para cobrar una reserva necesita Internet.'); return; }
-    if (this.sucursalId === null || !this.lineas().length) { this.error.set('Agregue al menos una prenda.'); return; }
-    const total = this.total();
-    const items = this.lineas().map((l, i) => ({ id: i, variante_id: l.variante_id, sku: l.sku, producto: l.producto, talla: l.talla, color: l.color, cantidad: l.cantidad, precio_unitario: l.precio_final.toFixed(2), precio_final: l.precio_final.toFixed(2), subtotal: (l.precio_final * l.cantidad).toFixed(2) }));
+    const r = this.reserva();
+    const lineas = r ? this.itemsReserva().filter((l) => l.cantidad > 0) : this.lineas();
+    if (this.sucursalId === null || !lineas.length) { this.error.set('Agregue al menos una prenda.'); return; }
+    const total = lineas.reduce((s, l) => s + l.precio_final * l.cantidad, 0).toFixed(2);
+    const items = lineas.map((l, i) => ({ id: i, variante_id: l.variante_id, sku: l.sku, producto: l.producto, talla: l.talla, color: l.color, cantidad: l.cantidad, precio_unitario: l.precio_final.toFixed(2), precio_final: l.precio_final.toFixed(2), subtotal: (l.precio_final * l.cantidad).toFixed(2) }));
     this.abrirCobro({
       id: 0, codigo: 'Venta local', estado: 'PENDIENTE_PAGO', canal: 'PRESENCIAL', tipo_entrega: 'EN_TIENDA', direccion_entrega: '', nit_ci: this.nit || '0', razon_social: this.razon || 'Sin nombre',
       sucursal_id: this.sucursalId, sucursal: '', subtotal: total, descuento: '0.00', iva_incluido: '0.00', total, moneda: 'BOB', total_unidades: items.reduce((s, i) => s + i.cantidad, 0),
-      comprobante_numero: null, comprobante_tipo: 'PROVISIONAL', cliente: this.clienteEmail.trim() || null, creado_en: new Date().toISOString(), pagado_en: null, items, pagos: [],
+      comprobante_numero: null, comprobante_tipo: 'PROVISIONAL', cliente: r ? r.cliente : this.clienteEmail.trim() || null, reserva_id: r?.id ?? null, creado_en: new Date().toISOString(), pagado_en: null, items, pagos: [],
     });
   }
 
@@ -358,8 +375,11 @@ export class CajaPage implements OnInit {
     this.cobrando.set(true); this.errorCobro.set('');
     const items = v.items.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad, precio_unitario: i.precio_unitario }));
     const resumen = v.items.map((i) => `${i.cantidad}× ${i.producto} (${i.talla}, ${i.color})`).join(', ');
-    const op = await this.cola.registrar('VENTA_CONTADO', { items, forma_pago: 'EFECTIVO', monto_recibido: Number(this.recibido).toFixed(2), cliente_email: v.cliente ?? null }, v.sucursal_id, `Venta de contado ${formatoBs(Number(v.total))}: ${resumen}`);
-    await this.local.comprometer(items, v.sucursal_id);
+    const reserva = this.reserva();
+    const cuerpo = { items, forma_pago: 'EFECTIVO', monto_recibido: Number(this.recibido).toFixed(2), ...(reserva ? { reserva_codigo: reserva.codigo } : { cliente_email: v.cliente ?? null }) };
+    const op = await this.cola.registrar('VENTA_CONTADO', cuerpo, v.sucursal_id, `${reserva ? `Cobro de la reserva ${reserva.codigo}` : 'Venta de contado'} ${formatoBs(Number(v.total))}: ${resumen}`);
+    if (reserva) await this.local.actualizarExtras((m) => { m.reservas_sucursal = (m.reservas_sucursal ?? []).filter((x) => x.id !== reserva.id); });  // ya se cobró: sale de la copia
+    else await this.local.comprometer(items, v.sucursal_id);  // la reserva ya tenía su stock apartado
     this.operacionLocal = op;
     const pedido: Pedido = { ...v, estado: 'PAGADO', comprobante_numero: numeroLocal(op), comprobante_tipo: 'PROVISIONAL' };
     const pago = { id: 0, estado: 'APROBADO', metodo: 'EFECTIVO', proveedor: 'LOCAL', monto: v.total, monto_recibido: Number(this.recibido).toFixed(2), cambio: this.cambioNum().toFixed(2), tarjeta_marca: '', tarjeta_ultimos4: '', mensaje: '', motivo: '', creado_en: op.creada_en };

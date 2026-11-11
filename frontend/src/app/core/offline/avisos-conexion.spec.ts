@@ -58,9 +58,16 @@ describe('Avisos globales de conexión (D1)', () => {
     expect(textos().at(-1)).toBe('Conexión restablecida.');
   });
 
-  it('una sincronización hecha con red (sin reconexión) no repite el resumen global', () => {
+  it('una sola operación confirmada con red (sin reconexión) no repite el resumen global', () => {
     ultimoResumen.set({ confirmadas: 1, conflictos: 0, rechazadas: 0 }); TestBed.tick();
     expect(textos()).toEqual([]);
+  });
+
+  it('sin reconexión, si algo quedó en conflicto o se enviaron varias operaciones juntas, el resumen sí se anuncia', () => {
+    ultimoResumen.set({ confirmadas: 0, conflictos: 1, rechazadas: 0 }); TestBed.tick();
+    expect(textos()).toEqual(['Sincronización completa: 0 confirmadas, 1 en conflicto, 0 rechazadas']);
+    ultimoResumen.set({ confirmadas: 2, conflictos: 0, rechazadas: 0 }); TestBed.tick();
+    expect(textos().at(-1)).toBe('Sincronización completa: 2 confirmadas, 0 en conflicto, 0 rechazadas');
   });
 });
 

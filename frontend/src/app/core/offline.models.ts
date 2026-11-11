@@ -13,7 +13,7 @@ export interface ItemVentaReciente { pedido_item_id: number; producto: string; t
 export interface VentaReciente { comprobante: string; pagado_en: string; total: string; vence_el: string; items: ItemVentaReciente[]; }
 /** B4: reserva activa de la sucursal descargada para atenderla sin conexión (solo el Encargado). */
 export interface ItemReservaLocal { id: number; variante_id: number; producto: string; talla: string; color: string; cantidad: number; estado: string; }
-export interface ReservaSucursalLocal { id: number; codigo: string; estado: string; programada_para: string; items: ItemReservaLocal[]; }
+export interface ReservaSucursalLocal { id: number; codigo: string; cliente?: string; estado: string; programada_para: string; items: ItemReservaLocal[]; }
 export interface ExtrasSucursal { plazo_devolucion_dias?: number | null; ventas_recientes?: VentaReciente[]; reservas_sucursal?: ReservaSucursalLocal[]; }
 export interface CatalogoDescargado extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }
 export interface MetaCatalogo extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }

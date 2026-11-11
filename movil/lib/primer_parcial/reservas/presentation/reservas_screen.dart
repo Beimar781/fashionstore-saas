@@ -33,6 +33,8 @@ class _ReservasScreenState extends State<ReservasScreen> {
     _cargar();
   }
 
+  int? _refrescoVisto;
+
   Future<void> _cargar() async {
     try {
       final r = await _repo.reservas();
@@ -192,6 +194,11 @@ class _ReservasScreenState extends State<ReservasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final refresco = context.select<OfflineController, int>((c) => c.refresco);
+    if (_refrescoVisto != null && _refrescoVisto != refresco) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _cargar(); }); // tras sincronizar o al volver la red, la lista se actualiza sola
+    }
+    _refrescoVisto = refresco;
     return Scaffold(
       appBar:
           widget.integrado ? null : AppBar(title: const Text('Mis reservas')),
@@ -206,7 +213,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
             children: [
-              OperacionesConProblema(tipos: const ['RESERVA', 'CANCELAR_RESERVA'], titulo: 'Reservas que no se pudieron realizar', alElegirOtra: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CatalogoScreen()))),
+              OperacionesConProblema(tipos: const ['RESERVA', 'CANCELAR_RESERVA'], titulo: 'Reservas que no se pudieron realizar', alElegirOtra: (prenda) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogoScreen(consultaInicial: prenda)))),
               if (_error != null)
                 Text(_error!, style: const TextStyle(color: Colors.red)),
               if (_reservas == null && _error == null)
