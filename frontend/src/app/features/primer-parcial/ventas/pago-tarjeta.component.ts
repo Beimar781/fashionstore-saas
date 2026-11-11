@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { TarjetasGuardadasService } from '../../../core/pagos/tarjetas-guardadas.service';
 import { Observable } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ComprasApi } from '../../../core/api/compras.api';
@@ -87,6 +88,7 @@ type Fase = 'pago' | 'procesando' | 'aprobado' | 'rechazado' | 'pendiente' | 'er
 export class PagoTarjetaComponent implements OnInit {
   private api = inject(ComprasApi);
   private stripeJs = inject(StripeJsService);
+  private tarjetasGuardadas = inject(TarjetasGuardadasService);
 
   readonly pedidoId = input(0);
   /** Para cobrar algo que no es un pedido (la diferencia de un cambio, CU-41): cómo iniciar y cómo confirmar el cobro. */
@@ -117,7 +119,7 @@ export class PagoTarjetaComponent implements OnInit {
     this.api.configPago().subscribe((cfg) => {
       this.config.set(cfg);
       if (!this.permitirGuardar()) { if (cfg.modo === 'stripe') void this.montarStripe(cfg); return; }
-      this.api.tarjetas().subscribe((t) => { this.tarjetas.set(t); this.guardadaId = t[0]?.id ?? null; if (cfg.modo === 'stripe') void this.montarStripe(cfg); });
+      this.api.tarjetas().subscribe((t) => { void this.tarjetasGuardadas.guardarCopia(t); this.tarjetas.set(t); this.guardadaId = t[0]?.id ?? null; if (cfg.modo === 'stripe') void this.montarStripe(cfg); });
     });
   }
 
@@ -146,7 +148,7 @@ export class PagoTarjetaComponent implements OnInit {
   usarPrueba(t: TarjetaPrueba) { this.sim.numero = t.numero; this.sim.cvc = '123'; this.sim.mes = 12; this.sim.anio = new Date().getFullYear() + 3; }
 
   olvidar(t: TarjetaGuardada) {
-    this.api.eliminarTarjeta(t.id).subscribe(() => { this.tarjetas.update((l) => l.filter((x) => x.id !== t.id)); if (this.guardadaId === t.id) this.elegirMedio(null); });
+    this.api.eliminarTarjeta(t.id).subscribe(() => { void this.tarjetasGuardadas.quitar(t.id); this.tarjetas.update((l) => l.filter((x) => x.id !== t.id)); if (this.guardadaId === t.id) this.elegirMedio(null); });
   }
 
   pagar() {
@@ -197,6 +199,7 @@ export class PagoTarjetaComponent implements OnInit {
 
   private terminar(r: ResultadoPago) {
     this.resultado.set(r); this.motivoStripe = '';
+    if (this.guardar && this.guardadaId === null) void this.tarjetasGuardadas.refrescar();  // la tarjeta recién guardada ya se ofrece sin conexión, sin reabrir el checkout
     this.fase.set(r.aprobado ? 'aprobado' : 'pendiente');
     this.listo.emit(r);
   }

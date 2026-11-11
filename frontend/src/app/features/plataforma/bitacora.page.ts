@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { ErrorComponent } from '../../core/ui/vacio.component';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
+import { LecturasLocalesService } from '../../core/offline/lecturas-locales.service';
+import { ErrorComponent, MSG_SIN_DATOS_SIN_RED } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -45,7 +47,7 @@ import { mensajeError } from '../../core/ui/toast.service';
                   <td class="detalle">{{ r.detalle }}</td>
                   <td class="nowrap">{{ r.ip ?? '—' }}</td>
                 </tr>
-              } @empty { <tr><td [attr.colspan]="general ? 7 : 6" class="empty">No hay registros con esos filtros.</td></tr> }
+              } @empty { <tr><td [attr.colspan]="general ? 7 : 6" class="empty">{{ sinDatos() ? msgSinDatos : 'No hay registros con esos filtros.' }}</td></tr> }
             </tbody>
           </table>
         </div>
@@ -75,6 +77,11 @@ export class BitacoraPage implements OnInit {
   readonly datos = signal<PaginaBitacora | null>(null);
   readonly opciones = signal<OpcionesBitacora | null>(null);
   readonly error = signal('');
+  private readonly red = inject(ConnectivityService);
+  private readonly lecturas = inject(LecturasLocalesService);
+  readonly msgSinDatos = MSG_SIN_DATOS_SIN_RED;
+  /** Sin conexión y sin copia de esta consulta: se dice «necesita Internet», no «No hay registros». */
+  readonly sinDatos = computed(() => !this.red.online() && this.lecturas.falloSinCopia());
   readonly paginas = computed(() => Math.max(1, Math.ceil((this.datos()?.total ?? 0) / (this.f.tamano ?? 25))));
   f: FiltrosBitacora = { usuario: '', entidad: '', accion: '', desde: '', hasta: '', q: '', empresa: '', pagina: 1, tamano: 25 };
 

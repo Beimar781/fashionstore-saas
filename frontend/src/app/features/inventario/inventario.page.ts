@@ -30,7 +30,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
       @if (modoLocal()) {
         <div class="alert warn small" role="status" style="margin-bottom:1rem">
-          @if (local.hayCatalogo()) { Sin conexión: se muestran las existencias de la copia descargada. Puede ajustar y recibir mercadería (se guarda en este dispositivo y se envía solo al volver la red); reservadas, vendidas y mínimos solo con Internet. }
+          @if (local.hayCatalogo()) { Sin conexión: se muestran las existencias de la copia descargada («—» = dato que solo da el servidor). Puede ajustar y recibir mercadería (se guarda en este dispositivo y se envía solo al volver la red); reservadas, vendidas y mínimos solo con Internet. }
           @else { Sin conexión y sin copia del catálogo en este dispositivo: se descarga sola cuando hay conexión. }
         </div>
       }
@@ -38,10 +38,10 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
       @if (datos(); as d) {
         <div class="resumen">
           <div class="card pad"><span class="muted small">Disponibles</span><strong>{{ d.resumen.disponibles }}</strong></div>
-          <div class="card pad"><span class="muted small">Reservadas</span><strong>{{ d.resumen.reservadas }}</strong></div>
-          <div class="card pad"><span class="muted small">Vendidas</span><strong>{{ d.resumen.vendidas }}</strong></div>
+          <div class="card pad"><span class="muted small">Reservadas</span><strong>{{ modoLocal() ? '—' : d.resumen.reservadas }}</strong></div>
+          <div class="card pad"><span class="muted small">Vendidas</span><strong>{{ modoLocal() ? '—' : d.resumen.vendidas }}</strong></div>
           <div class="card pad"><span class="muted small">Agotadas (variantes)</span><strong [class.rojo]="d.resumen.agotadas > 0">{{ d.resumen.agotadas }}</strong></div>
-          <div class="card pad"><span class="muted small">Próximas a ingresar</span><strong>{{ d.resumen.proximas_a_ingresar }}</strong></div>
+          <div class="card pad"><span class="muted small">Próximas a ingresar</span><strong>{{ modoLocal() ? '—' : d.resumen.proximas_a_ingresar }}</strong></div>
         </div>
         @if (d.por_sucursal.length) {
           <div class="card table-wrap" style="margin-bottom:1rem"><table>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../features/offline/data/estado_legible.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
@@ -88,7 +89,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
         'id': op.id,
         'codigo': op.referencia ?? 'RES-${op.id.substring(0, 8).toUpperCase()}',
         'estado': op.estado,
-        'estado_local': op.estado,
+        'estado_local': estadoLegible(op),
         'pendiente_local': true,
         'sucursal_id': op.sucursalId,
         'sucursal': (await offline.repo.sucursales())
@@ -121,7 +122,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
         resultado[i] = {
           ...resultado[i],
           'pendiente_local': true,
-          'estado_local': 'Cancelación pendiente',
+          'estado_local': 'Pendiente de enviar · se cancelará al reconectar',
           'puede_cancelar': false
         };
       }
@@ -232,7 +233,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
                   child: ListTile(
                     title: Text('${r['codigo']} · ${r['estado']}'),
                     subtitle: Text(
-                        '${r['pendiente_local'] == true ? 'Pendiente de sincronizar · ${r['estado_local']} · ' : ''}${r['sucursal']} · ${fechaCorta(r['programada_para'] as String?)}\n${((r['items'] as List?) ?? const []).map((i) => '${(i as Map)['cantidad']}× ${i['producto']}').join(', ')}'),
+                        '${r['pendiente_local'] == true ? '${r['estado_local']} · ' : ''}${r['sucursal']} · ${fechaCorta(r['programada_para'] as String?)}\n${((r['items'] as List?) ?? const []).map((i) => '${(i as Map)['cantidad']}× ${i['producto']}').join(', ')}'),
                     isThreeLine: true,
                     trailing: r['puede_cancelar'] == true
                         ? TextButton(

@@ -103,6 +103,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       Future.microtask(() async {
         await recargar();
         await sincronizar();
+        await _renovarTarjetas();
         if (descargaAutomatica) await actualizarSiVencido(); // al iniciar sesión: baja la copia si falta o venció (solo en la app)
       });
     } else {
@@ -158,6 +159,16 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Al perder la red se avisa en el acto; al recuperarla se sincroniza sin esperar al reintento.
+  /// La copia de tarjetas guardadas del Cliente se renueva al iniciar sesión y al volver la red (sirve para pagar sin conexión).
+  Future<void> _renovarTarjetas() async {
+    if (!esCliente || !enLinea || simulado) return;
+    try {
+      await _repo.actualizarTarjetas();
+    } catch (_) {
+      // sin respuesta: se conserva la copia anterior
+    }
+  }
+
   void _alCambiarLaRed(bool hayRed) {
     if (simulado) return; // con la simulación activa, la red real no cambia el modo
     if (hayRed != enLinea) _anunciarRed(hayRed);
@@ -169,6 +180,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     if (hayRed && pendientes.isNotEmpty) sincronizar();
     if (hayRed) actualizarTrasReconectar();
+    if (hayRed) _renovarTarjetas();
   }
 
   Future<void> recargar() async {

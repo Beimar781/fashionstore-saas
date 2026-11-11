@@ -73,6 +73,8 @@ def revisar_web(archivo: Path) -> list[tuple[str, str]]:
     # error rojo + «No hay…»: una lista vacía que no pasa por <app-vacio> afirma que no hay nada aunque no se haya podido consultar
     if re.search(r'<div class="(?:card )?empty">(?:No hay|Aún no|No tiene)', t) and ("error()" in t or ".subscribe(" in t):
         hallazgos.append(("FALLA", "error + «No hay…» engañoso: usar <app-vacio>"))
+    if re.search(r"\.subscribe\(\(\w+\) =>", t.replace("paramMap.subscribe", "")):
+        hallazgos.append(("AVISO", "hay lecturas con subscribe sin manejo de error (sin conexión quedan sin respuesta)"))
     llama = re.search(r"\.(?:post|put|patch|delete)\(|(?:api|this\.api)\.\w+\(.*\)\.subscribe", t) is not None
     escribe = re.search(r"\b(crear|guardar|eliminar|desactivar|activar|suspender|asignar|anular|cobrar|registrar|reintentar|descartar)\w*\(", t) is not None
     if llama and escribe and "necesitaInternet" not in t and "cola" not in t.lower() and "registrar(" not in t and "Local(" not in t:

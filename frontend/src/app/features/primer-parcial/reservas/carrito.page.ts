@@ -125,7 +125,7 @@ export class CarritoPage implements OnInit {
   private mostrar(c: Carrito) { this.carrito.set(c); this.estado.fijar(c); this.error.set(''); }
   /** Un error (por ejemplo, stock insuficiente) se muestra y el carrito se recarga con lo que realmente hay. */
   private fallo(e: unknown) {
-    this.api.carrito().subscribe((c) => { this.carrito.set(c); this.estado.fijar(c); this.error.set(mensajeError(e)); });
+    this.api.carrito().subscribe({ next: (c) => { this.carrito.set(c); this.estado.fijar(c); this.error.set(mensajeError(e)); }, error: () => this.error.set(mensajeError(e)) });
   }
 
   async cambiar(i: ItemCarrito, valor: string) {

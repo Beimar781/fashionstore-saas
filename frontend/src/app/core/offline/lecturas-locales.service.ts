@@ -5,7 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { LocalDbService } from './local-db.service';
 
 /** Rutas que nunca se guardan: la sesión, lo que genera la IA, las notificaciones y las descargas pesadas que ya tienen su propio almacén. */
-const EXCLUIDAS = ['/auth/', '/asistente', '/vestidor', '/notificaciones', '/offline/catalogo', '/pagos/config'];
+const EXCLUIDAS = ['/pagos/tarjetas', '/auth/', '/asistente', '/vestidor', '/notificaciones', '/offline/catalogo', '/pagos/config'];
 const MAXIMO = 400;
 
 /** E1 · Copia de las lecturas (GET) hechas con red. Sin red, el mismo GET se responde con la última copia de ESA cuenta, con su fecha («Datos al…»). */

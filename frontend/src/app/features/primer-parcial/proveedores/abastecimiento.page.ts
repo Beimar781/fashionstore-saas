@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
@@ -63,10 +63,19 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
         </div>
       } @else {
         <div class="card table-wrap">
-          @if (!propuestas().length) { <app-vacio>Aún no hay propuestas.</app-vacio> } @else {
+          @if (!propuestas().length && !propuestasLocales().length) { <app-vacio>Aún no hay propuestas.</app-vacio> } @else {
             <table>
               <thead><tr><th>Producto propuesto</th>@if (!esProveedor) { <th>Proveedor</th> }<th>Colección</th><th class="right">Precio</th><th>Estado</th><th></th></tr></thead>
               <tbody>
+                @for (l of propuestasLocales(); track l.op.id) {
+                  <tr>
+                    <td><strong>{{ l.nombre }}</strong><div class="muted small">{{ l.material }}</div></td>
+                    @if (!esProveedor) { <td>—</td> }
+                    <td>{{ l.coleccion }}</td><td class="right nowrap">{{ l.precio_base | bs }}</td>
+                    <td><span class="badge warn">Pendiente de enviar</span><div class="muted small">Se enviará sola al volver la conexión.</div></td>
+                    <td class="actions">@if (cola.puedeDeshacer(l.op)) { <button type="button" class="btn sm danger" (click)="cola.deshacer(l.op)">Deshacer</button> }</td>
+                  </tr>
+                }
                 @for (p of propuestas(); track p.id) {
                   <tr>
                     <td><strong>{{ p.nombre }}</strong><div class="muted small">{{ p.material }}</div></td>
@@ -190,7 +199,12 @@ export class AbastecimientoPage implements OnInit {
   readonly modalPropuesta = signal(false);
   readonly guardando = signal(false);
   private readonly red = inject(ConnectivityService);
-  private readonly cola = inject(ColaOperacionesService);
+  readonly cola = inject(ColaOperacionesService);
+  /** Propuestas guardadas sin conexión que todavía no se enviaron: se ven en la lista como «Pendiente de enviar». */
+  readonly propuestasLocales = computed(() => this.cola.operaciones().filter((o) => o.tipo === 'PROPUESTA_PROVEEDOR' && ['REGISTRADA_LOCAL', 'ENVIADA'].includes(o.estado)).map((o) => {
+    const p = o.payload as { nombre?: string; material?: string; coleccion_id?: number; precio_base?: string };
+    return { op: o, nombre: p.nombre ?? '', material: p.material ?? '', coleccion: this.colecciones().find((c) => c.id === p.coleccion_id)?.nombre ?? '', precio_base: p.precio_base ?? '0' };
+  }));
   readonly error = signal('');
   readonly textoEstado = (e: string) => ({ EN_TRANSITO: 'En tránsito', RECIBIDO: 'Recibido', CANCELADO: 'Cancelado' } as Record<string, string>)[e] ?? e;
   aviso: any = {}; lineas: Linea[] = []; busqueda = '';

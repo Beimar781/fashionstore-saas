@@ -104,7 +104,7 @@ export class SuscripcionPage implements OnInit {
 
   cargar() {
     const id = Number(this.id());
-    this.api.empresas().subscribe((es) => this.empresa.set(es.find((e) => e.id === id) ?? null));
+    this.api.empresas().subscribe({ next: (es) => this.empresa.set(es.find((e) => e.id === id) ?? null), error: () => undefined });
     this.api.suscripcion(id).subscribe({ next: (d) => this.detalle.set(d), error: (e) => this.toast.error(mensajeError(e)) });
   }
 
@@ -112,7 +112,7 @@ export class SuscripcionPage implements OnInit {
 
   abrir() {
     this.error.set('');
-    this.api.planes().subscribe((p) => this.planes.set(p.filter((x) => x.activo)));
+    this.api.planes().subscribe({ next: (p) => this.planes.set(p.filter((x) => x.activo)), error: () => undefined });
     this.modal.set(true);
   }
 

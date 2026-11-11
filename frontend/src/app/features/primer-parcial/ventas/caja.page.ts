@@ -156,7 +156,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
           </section>
 
           <aside class="card pad stack resumen">
-            <h2>Venta {{ v.codigo }}</h2>
+            <h2>{{ v.id ? 'Venta ' + v.codigo : 'Venta local' }}</h2>
             @for (i of v.items; track i.id) { <div class="row between small"><span>{{ i.cantidad }} × {{ i.producto }} · {{ i.talla }} · {{ i.color }}</span><span class="nowrap">{{ i.subtotal | bs }}</span></div> }
             <div class="row between"><span class="muted">Subtotal</span><span>{{ v.subtotal | bs }}</span></div>
             @if (v.descuento !== '0.00') { <div class="row between"><span class="muted">Descuento</span><span>− {{ v.descuento | bs }}</span></div> }

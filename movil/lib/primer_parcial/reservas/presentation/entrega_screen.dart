@@ -71,6 +71,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
   Future<void> _eliminar(TarjetaGuardada t) async {
     try {
       await widget.repo.eliminarTarjeta(t.id);
+      if (mounted) await context.read<OfflineController>().repo.quitarTarjetaLocal(t.id);
       if (!mounted) return;
       setState(() {
         _tarjetas = _tarjetas.where((x) => x.id != t.id).toList();
@@ -116,7 +117,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          TextField(controller: _nit, maxLength: 20, decoration: const InputDecoration(labelText: 'NIT o CI')),
+          TextField(controller: _nit, maxLength: 20, onChanged: (_) => setState(() => _error = null), decoration: const InputDecoration(labelText: 'NIT o CI')),
           TextField(controller: _razon, maxLength: 120, decoration: const InputDecoration(labelText: 'Razón social (opcional)')),
           const SizedBox(height: 8),
           Text('Tarjeta', style: Theme.of(context).textTheme.titleMedium),
@@ -129,6 +130,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
                   value: t.id,
                   contentPadding: EdgeInsets.zero,
                   title: Text(t.descripcion),
+                  subtitle: _sinConexion && t.expAnio == DateTime.now().year && t.expMes == DateTime.now().month ? const Text('Vence este mes: si la compra se envía después, quedará por pagar. Puede elegir «Dejar la compra por pagar».', style: TextStyle(fontSize: 12)) : null,
                   secondary: IconButton(tooltip: 'Eliminar tarjeta', icon: const Icon(Icons.delete_outline), onPressed: () => _eliminar(t)),
                 ),
               RadioListTile<int?>(value: null, contentPadding: EdgeInsets.zero, title: Text(_sinConexion ? 'Dejar la compra por pagar' : 'Usar otra tarjeta')),

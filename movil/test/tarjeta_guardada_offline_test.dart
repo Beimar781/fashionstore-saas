@@ -84,12 +84,13 @@ void main() {
     expect(TarjetaGuardada.desdeJson(_visa).aJson().keys, unorderedEquals(['id', 'marca', 'ultimos4', 'exp_mes', 'exp_anio'])); // nunca número ni CVC
   });
 
-  test('El cliente baja sus tarjetas guardadas junto con el catálogo y quedan en el dispositivo', () async {
+  test('El cliente baja sus tarjetas guardadas al iniciar sesión y con el catálogo, y quedan en el dispositivo', () async {
     await LocalDatabase.instance.reiniciar(ruta: inMemoryDatabasePath);
     final repo = OfflineRepository(ApiFalsa());
     final c = OfflineController(repo)..usarSesion(_cliente);
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(await repo.tarjetasLocales(), isEmpty);
+    // H · desde el inicio de sesión la copia de tarjetas ya se renueva sola (no hace falta abrir la entrega ni descargar el catálogo)
+    expect((await repo.tarjetasLocales()).map((t) => t['ultimos4']), ['4242', '4444']);
     await c.descargarCatalogo();
     expect((await repo.tarjetasLocales()).map((t) => t['ultimos4']), ['4242', '4444']);
     c.dispose();

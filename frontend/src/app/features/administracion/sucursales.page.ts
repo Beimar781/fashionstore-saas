@@ -102,7 +102,7 @@ export class SucursalesPage implements OnInit {
       next: (r) => { this.sucursales.set(r.sucursales); this.uso.set(r.uso_plan); this.cargando.set(false); },
       error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); },
     });
-    this.api.ciudades().subscribe((c) => this.ciudades.set(c));
+    this.api.ciudades().subscribe({ next: (c) => this.ciudades.set(c), error: () => undefined });
   }
 
   abrirNueva() { this.editandoId = 0; this.form = this.vacio(); this.form.ciudad_id = this.ciudades()[0]?.id ?? null; this.error.set(''); this.modal.set(true); }

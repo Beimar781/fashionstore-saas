@@ -891,3 +891,22 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Pantallas sin datos guardados:** una lista vacía sin conexión distingue entre «vacío real guardado» (se muestra «No hay…») y «consulta que no tenía copia» (se muestra «necesita Internet»); nunca ambos.
 - **Solo lectura sin conexión para Administrador y SuperAdministrador:** una regla común del shell apaga todos sus botones de escritura (nuevo, editar, activar, desactivar, eliminar, guardar, subir, generar…) sin Internet; las pantallas nuevas quedan cubiertas sin tocarlas una por una.
 - **Deshacer una venta local** devuelve la Caja al estado inicial (desaparece el panel «Venta cobrada»).
+
+## Cierre H (pago sin conexión, Encargado, Proveedor y Administrador)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| NIT o CI incompleto (web y móvil, validación en el dispositivo) | «Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).» (el servidor sigue respondiendo «Ingrese su NIT o CI para la facturación.» con 422) | — / 422 | Pendiente |
+| Compra pendiente con tarjeta guardada | «Pendiente de enviar · se cobrará a la Visa 4242 al reconectar» | — (solo en la app) | Pendiente |
+| Compra pendiente por pagar | «Pendiente de enviar · quedará por pagar al reconectar» | — (solo en la app) | Pendiente |
+| Tarjeta que vence este mes | «Vence antes del dd/mm: si se envía después, quedará por pagar» | — (solo en la app) | Pendiente |
+| Resultado de la compra al reconectar | «Su compra PED-… fue pagada con la Visa 4242 (comprobante CMP-…).» / «Su compra PED-… quedó por pagar: el banco rechazó la tarjeta. Complete el pago desde Mis compras.» / «Su compra no se pudo realizar: no había stock de la prenda. No se le cobró nada.» | — (aviso local) | Pendiente |
+| Propuesta guardada sin conexión | «Pendiente de enviar · se enviará sola al volver la conexión.» | — (solo en la app) | Pendiente |
+| Devoluciones sin ventas en el plazo | «No hay ventas de esta sucursal dentro del plazo hasta la última descarga (fecha).» (distinto de «Todavía no se descargó el catálogo con las ventas…») | — (solo en la app) | Pendiente |
+| Reportes sin conexión | «Los reportes necesitan Internet: sin conexión solo se ve lo último consultado…» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Copia de tarjetas guardadas (CU-32):** una sola copia local (marca, últimos 4 y vencimiento; nunca el número) que se renueva al iniciar sesión, al volver la red, al guardar una tarjeta con «Guardar esta tarjeta» y al eliminarla; así lo guardado o eliminado se refleja sin reabrir el checkout.
+- **Devoluciones sin conexión (CU-41):** el catálogo descargado trae las ventas pagadas en la sucursal (de caja o compras digitales) dentro del plazo, hasta 60; las ventas posteriores a la descarga aparecen al volver la conexión (la descarga se renueva al conectar si tiene más de 15 minutos).
+- **Inventario del Encargado sin conexión:** «Reservadas», «Vendidas» y «Próximas a ingresar» muestran «—» porque solo las conoce el servidor.
+- **Pantallas del Administrador:** botones de escritura apagados con aspecto atenuado (clase común) también en filas y modales.

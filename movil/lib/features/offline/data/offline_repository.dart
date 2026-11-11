@@ -500,12 +500,18 @@ class OfflineRepository {
     final nombre = o.tipo == 'COMPRA' ? 'compra' : 'reserva';
     if (o.estado == Estado.enConflicto) {
       resumen.avisos.add(
-          'Su $nombre no se pudo realizar porque la prenda se agotó. No se le cobró nada.');
+          'Su $nombre no se pudo realizar: no había stock de la prenda. No se le cobró nada.');
     } else if (o.estado == Estado.rechazada) {
       resumen.avisos.add('Su $nombre no se pudo realizar: $mensaje');
     } else if (o.estado == Estado.confirmada && o.tipo == 'COMPRA') {
-      resumen.avisos.add(
-          'Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».');
+      final tarjeta = RegExp(r'se cobrará a (.+?) terminada en (\d{4})').firstMatch(o.resumen);
+      if (mensaje.startsWith('Compra cobrada')) {
+        resumen.avisos.add('Su compra ${o.referencia} fue pagada con ${tarjeta != null ? 'la ${tarjeta.group(1)} ${tarjeta.group(2)}' : 'su tarjeta'}${o.comprobante != null ? ' (comprobante ${o.comprobante})' : ''}. Véala en «Mis compras».');
+      } else if (mensaje.startsWith('No pudimos cobrar')) {
+        resumen.avisos.add('Su compra ${o.referencia} quedó por pagar: el banco rechazó la tarjeta. Complete el pago desde «Mis compras».');
+      } else {
+        resumen.avisos.add('Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».');
+      }
     }
   }
 
@@ -539,6 +545,9 @@ class OfflineRepository {
 
   /// Baja la lista del servidor y la guarda; sin conexión conserva la anterior.
   Future<void> actualizarTarjetas() async => guardarTarjetas([for (final j in await _api.getLista('/pagos/tarjetas')) j as Map<String, dynamic>]);
+
+  /// Una tarjeta eliminada ya no se ofrece sin conexión.
+  Future<void> quitarTarjetaLocal(int id) async => guardarTarjetas([for (final t in await tarjetasLocales()) if (t['id'] != id) t]);
 
   Future<List<Map<String, dynamic>>> tarjetasLocales() async {
     final texto = await _meta('tarjetas_cliente');

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -154,6 +156,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   Future<void> _mostrar(ResultadoPagoMovil r) async {
     if (!mounted) return;
+    if (r.tipo == TipoPago.aprobado) unawaited(context.read<OfflineController>().repo.actualizarTarjetas().catchError((_) {}));  // una tarjeta recién guardada ya se ofrece sin conexión, sin reabrir la entrega
     setState(() => _resultado = r);
     await _cargar();
     if (mounted) setState(() => _trabajando = false);

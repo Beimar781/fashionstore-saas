@@ -27,7 +27,7 @@ import { BsPipe } from '../../core/formato-bs';
         <div class="grid cols-3" style="margin-bottom:1rem">
           @for (k of kpis(x); track k.titulo) {
             <div class="card pad"><div class="small muted">{{ k.titulo }}</div><div class="cifra">{{ k.moneda ? (k.ind.valor | bs) : k.prefijo + (k.ind.valor | number: k.formato) + k.sufijo }}</div>
-              <div class="small"><span class="badge" [class.ok]="(k.ind.variacion ?? 0) > 0" [class.danger]="(k.ind.variacion ?? 0) < 0">{{ variacion(k.ind) }}</span> <span class="muted">vs. periodo anterior ({{ k.moneda ? (k.ind.anterior | bs) : k.prefijo + (k.ind.anterior | number: k.formato) + k.sufijo }})</span></div></div>
+              <div class="small"><span class="badge" [class.ok]="(k.ind.variacion ?? 0) > 0" [class.danger]="(k.ind.variacion ?? 0) < 0">{{ variacion(k.ind) }}</span> @if (k.ind.variacion !== null) { <span class="muted">vs. periodo anterior ({{ k.moneda ? (k.ind.anterior | bs) : k.prefijo + (k.ind.anterior | number: k.formato) + k.sufijo }})</span> } @else { <span class="muted">sin ventas en el periodo anterior para comparar</span> }</div></div>
           }
           <div class="card pad"><div class="small muted">Inventario</div><div class="cifra">{{ x.stock.disponibles | number }}</div>
             <div class="small muted">disponibles · {{ x.stock.reservadas }} reservadas · {{ x.stock.agotadas }} variantes agotadas · {{ x.productos_activos }} productos activos</div></div>
@@ -77,7 +77,7 @@ export class IndicadoresPage implements OnInit {
   dias = 30; sucursal: number | null = null;
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
-  ngOnInit() { this.admin.sucursales().subscribe((r) => this.sucursales.set(r.sucursales)); this.cargar(); }
+  ngOnInit() { this.admin.sucursales().subscribe({ next: (r) => this.sucursales.set(r.sucursales), error: () => undefined }); this.cargar(); }
 
   cargar() {
     this.error.set('');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../features/offline/data/estado_legible.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
@@ -107,9 +108,9 @@ class _PedidosScreenState extends State<PedidosScreen> {
       });
       resultado.add({
         'id': operacion.id,
-        'codigo': operacion.referencia ??
-            'Compra local ${operacion.id.substring(0, 8)}',
+        'codigo': operacion.referencia ?? 'En este dispositivo',
         'estado': operacion.estado,
+        'leyenda': estadoLegible(operacion),
         'fecha': operacion.creadoEn,
         'sucursal': sucursales
                 .where((s) => s.id == operacion.sucursalId)
@@ -287,7 +288,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                             pedidoId: c['id'] as int,
                             numero: '${c['comprobante_numero']}'),
                     subtitle: Text(
-                        '${c['pendiente_local'] == true ? 'Pendiente de sincronizar · ' : ''}${c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
+                        '${c['pendiente_local'] == true ? c['leyenda'] : c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
                     isThreeLine: c['comprobante_numero'] != null,
                   ),
                 ),

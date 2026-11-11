@@ -154,7 +154,7 @@ export class EmpresasPage implements OnInit {
   abrirNueva() {
     this.form = this.formVacio();
     this.errorModal.set('');
-    this.api.planes().subscribe((p) => { this.planes.set(p.filter((x) => x.activo)); });
+    this.api.planes().subscribe({ next: (p) => { this.planes.set(p.filter((x) => x.activo)); }, error: () => undefined });
     this.modal.set('nueva');
   }
 

@@ -87,7 +87,7 @@ export class UsuariosPage implements OnInit {
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.cargar();
-    this.api.sucursales().subscribe((r) => this.sucursales.set(r.sucursales));
+    this.api.sucursales().subscribe({ next: (r) => this.sucursales.set(r.sucursales), error: () => undefined });
   }
 
   cargar() { this.api.usuarios().subscribe({ next: (u) => { this.usuarios.set(u); this.cargando.set(false); }, error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); } }); }

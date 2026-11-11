@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { VacioComponent } from '../../core/ui/vacio.component';
 import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
@@ -39,6 +40,7 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
         <button role="tab" [class.activa]="pestana() === 'pagos'" (click)="ir('pagos')">Pagos</button>
         <button role="tab" [class.activa]="pestana() === 'inventario'" (click)="ir('inventario')">Inventario</button>
       </div>
+      @if (!red.online()) { <div class="alert warn small" role="status">Los reportes necesitan Internet: sin conexión solo se ve lo último consultado (los botones de consulta y exportación se activan al volver la red).</div> }
 
       @if (pestana() === 'inventario' && inventario(); as inv) {
         <div class="grid cols-3" style="margin-bottom:1rem">
@@ -120,6 +122,7 @@ export class ReportesPage implements OnInit {
   private api = inject(ReportesApi);
   private admin = inject(AdministracionApi);
   private toast = inject(ToastService);
+  readonly red = inject(ConnectivityService);
 
   readonly pestana = signal<Pestana>('ventas');
   readonly ventas = signal<VentasReporte | null>(null);
@@ -133,7 +136,7 @@ export class ReportesPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.admin.sucursales().subscribe((r) => this.sucursales.set(r.sucursales));
+    this.admin.sucursales().subscribe({ next: (r) => this.sucursales.set(r.sucursales), error: () => undefined });
     this.cargar();
   }
 

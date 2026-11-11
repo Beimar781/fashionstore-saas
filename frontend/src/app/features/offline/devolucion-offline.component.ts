@@ -20,10 +20,10 @@ export const MSG_PLAZO_VENCIDO = 'El plazo de devolución de esta venta venció.
     @if (!local.meta()) { <div class="alert warn" role="status">Todavía no hay una copia de las ventas en este dispositivo: se descarga sola cuando hay conexión.</div> }
     @else if (!venta()) {
       <section class="card pad stack">
-        <p class="small muted">Ventas recientes de la sucursal, dentro del plazo de devolución, descargadas con el catálogo.</p>
+        <p class="small muted">Solo ventas pagadas en esta sucursal (de caja o compras digitales) dentro del plazo de devolución, hasta la última descarga ({{ local.meta()!.generado_en | date: 'dd/MM HH:mm' }}). Las ventas posteriores aparecen al volver la conexión.</p>
         <label>Buscar por número de comprobante<input name="cb" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" autocomplete="off" /></label>
         @for (v of ventasVisibles(); track v.comprobante) { <button type="button" class="btn" (click)="elegirVenta(v)">{{ v.comprobante }} · {{ v.total | bs }} · {{ v.pagado_en | date: 'dd/MM HH:mm' }}</button> }
-        @empty { <p class="muted small">No hay ventas descargadas con ese comprobante.</p> }
+        @empty { <p class="muted small">{{ filtro().trim() ? 'No hay ventas descargadas con ese comprobante.' : 'No hay ventas pagadas en esta sucursal dentro del plazo hasta la última descarga.' }}</p> }
       </section>
     } @else {
       <section class="card pad stack">

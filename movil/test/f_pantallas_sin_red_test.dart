@@ -5,6 +5,8 @@ import 'package:fashionstore_movil/core/network/api_client.dart';
 import 'package:fashionstore_movil/features/auth/data/auth_repository.dart';
 import 'package:fashionstore_movil/features/auth/data/sesion.dart';
 import 'package:fashionstore_movil/features/offline/data/offline_repository.dart';
+import 'package:fashionstore_movil/features/offline/presentation/caja_en_linea_screen.dart';
+import 'package:fashionstore_movil/features/offline/presentation/caja_screen.dart';
 import 'package:fashionstore_movil/features/offline/presentation/conflictos_screen.dart';
 import 'package:fashionstore_movil/features/offline/presentation/offline_controller.dart';
 import 'package:fashionstore_movil/features/offline/presentation/registro_sync_screen.dart';
@@ -13,6 +15,7 @@ import 'package:fashionstore_movil/features/offline/presentation/tareas_sucursal
 import 'package:fashionstore_movil/primer_parcial/catalogo/presentation/catalogo_screen.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/reserva_borrador.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/presentation/carrito_screen.dart';
+import 'package:fashionstore_movil/primer_parcial/reservas/presentation/mi_reserva_screen.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/presentation/reservas_screen.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/presentation/tarjetas_screen.dart';
 import 'package:fashionstore_movil/primer_parcial/ventas/presentation/pedidos_screen.dart';
@@ -44,6 +47,9 @@ void main() {
     'Resumen del turno': (rol: 'Cajero', crear: () => const ResumenTurnoScreen()),
     'Devoluciones': (rol: 'Cajero', crear: () => const DevolucionesScreen()),
     'Tareas de la sucursal': (rol: 'Encargado', crear: () => const TareasSucursalScreen()),
+    'Caja (con y sin conexión)': (rol: 'Cajero', crear: () => const CajaScreen()),
+    'Caja en línea (plan sin modo sin conexión)': (rol: 'Cajero', crear: () => const CajaEnLineaScreen()),
+    'Mi reserva': (rol: 'Cliente', crear: () => const MiReservaScreen()),
   };
 
   for (final e in pantallas.entries) {

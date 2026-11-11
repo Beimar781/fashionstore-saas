@@ -55,6 +55,13 @@ class DevolucionesScreen extends StatelessWidget {
   }
 }
 
+/// Distingue «no hay copia descargada» de «hay copia y no hay ventas/reservas en el plazo» (y del filtro que no encuentra nada).
+String textoSinFilas(OfflineController c, String que, bool conFiltro) {
+  if (!c.hayCatalogo) return 'Todavía no se descargó el catálogo con las $que de esta sucursal: se descarga solo cuando hay conexión.';
+  if (conFiltro) return 'No hay $que descargadas con ese texto.';
+  return 'No hay $que de esta sucursal dentro del plazo hasta la última descarga (${fechaCorta(c.catalogoGeneradoEn)}).';
+}
+
 void _avisar(BuildContext c, String texto) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(texto)));
 
 // ---------------- B3: devolución sin conexión ----------------
@@ -154,9 +161,9 @@ class _DevolucionTabState extends State<DevolucionTab> {
       ]);
     }
     return ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, margen), children: [
-      const Text('Ventas recientes de la sucursal, dentro del plazo de devolución, descargadas con el catálogo.'),
+      Text('Solo ventas pagadas en esta sucursal (de caja o compras digitales) dentro del plazo de devolución, hasta la última descarga (${fechaCorta(context.read<OfflineController>().catalogoGeneradoEn)}). Las ventas posteriores aparecen al volver la conexión.'),
       TextField(controller: _buscar, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Buscar por número de comprobante', prefixIcon: Icon(Icons.search))),
-      if (visibles.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('No hay ventas descargadas. Descargue el catálogo con conexión.')),
+      if (visibles.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(textoSinFilas(context.read<OfflineController>(), 'ventas', _buscar.text.trim().isNotEmpty))),
       for (final v in visibles)
         Card(child: ListTile(title: Text('${v['comprobante']} · Bs ${v['total']}'), subtitle: Text('${(v['items'] as List).length} línea(s) · ${fechaCorta('${v['pagado_en']}')}'), trailing: const Icon(Icons.chevron_right), onTap: () => setState(() => _venta = v))),
     ]);
@@ -356,7 +363,7 @@ class _ReservasTabState extends State<ReservasTab> {
     final visibles = _reservas.where((r) => q.isEmpty || '${r['codigo']}'.toLowerCase().contains(q)).toList();
     return ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
       TextField(controller: _codigo, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Validar el código de la reserva', prefixIcon: Icon(Icons.qr_code))),
-      if (visibles.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('No hay reservas descargadas con ese código. Descargue el catálogo con conexión.')),
+      if (visibles.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(textoSinFilas(context.read<OfflineController>(), 'reservas', _codigo.text.trim().isNotEmpty))),
       for (final r in visibles)
         Card(
           child: Padding(

@@ -371,7 +371,7 @@ void main() {
     final r = await repo.sincronizar(5, 1);
     expect(r.enConflicto, 1);
     expect(r.avisos, [
-      'Su compra no se pudo realizar porque la prenda se agotó. No se le cobró nada.'
+      'Su compra no se pudo realizar: no había stock de la prenda. No se le cobró nada.'
     ]);
   });
 

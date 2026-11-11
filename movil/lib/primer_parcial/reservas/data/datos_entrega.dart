@@ -1,5 +1,5 @@
 /// Mismos mensajes que el servidor (CU-11): el formulario los muestra antes de enviar.
-const msgNit = 'Ingrese su NIT o CI para la facturación.';
+const msgNit = 'Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).';
 const msgDireccion = 'Ingrese la dirección de entrega.';
 
 /// Entrega y facturación de la compra digital (CU-11): retiro en la sucursal o entrega a domicilio, y NIT o CI con razón social opcional.

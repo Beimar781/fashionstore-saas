@@ -19,6 +19,8 @@ p { margin: 0; }
 .btn:hover:not(:disabled) { border-color: #cfc9c0; background: #faf8f5; }
 .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn:disabled, .btn.sin-internet { opacity: .5; cursor: not-allowed; }
+/* botones que necesitan Internet (cualquier botón, también los que se dibujan después): se ven apagados sin conexión */
+.sin-internet, button[aria-disabled=true] { opacity: .55; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary:hover:not(:disabled) { background: #641832; border-color: #641832; }
 .btn.danger { color: var(--danger); } .btn.danger:hover:not(:disabled) { background: var(--danger-soft); border-color: #efc1bd; }
@@ -51,7 +53,7 @@ td.actions { white-space: nowrap; text-align: right; }
 label { display: grid; gap: .3rem; font-size: .85rem; font-weight: 600; color: #3a3540; }
 label .hint { font-weight: 400; color: var(--muted); font-size: .8rem; }
 input, select, textarea { font: inherit; padding: .55rem .7rem; border: 1px solid #d6d1c9; border-radius: 9px; background: #fff; color: var(--ink); width: 100%; }
-input[type=checkbox] { width: auto; }
+input[type=checkbox], input[type=radio] { width: auto; }  /* el círculo del radio va pegado a su texto */
 input:disabled, select:disabled { background: #f1eee9; color: var(--muted); }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .9rem; }
 .form-grid .full { grid-column: 1 / -1; }

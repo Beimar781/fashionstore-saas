@@ -34,9 +34,9 @@ void main() {
     expect(d.aCuerpo()['direccion_entrega'], 'Av. Banzer #123');
   });
 
-  test('NIT vacío o de menos de 3 caracteres: «Ingrese su NIT o CI para la facturación.»', () {
-    expect(const DatosEntrega().validar(), 'Ingrese su NIT o CI para la facturación.');
-    expect(const DatosEntrega(nitCi: '12').validar(), 'Ingrese su NIT o CI para la facturación.');
+  test('NIT vacío o de menos de 3 caracteres: «Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).»', () {
+    expect(const DatosEntrega().validar(), 'Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).');
+    expect(const DatosEntrega(nitCi: '12').validar(), 'Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).');
   });
 
   test('El checkout envía al servidor los datos del formulario y no los de siempre', () async {

@@ -363,6 +363,22 @@ python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.ra
 
 **Antes de la defensa (los datos de Railway):** `python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.railway.app` (ver §21) y `python scripts/humo_produccion.py <url>`.
 
+## 23. Cierre H: pruebas a mano
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 23.1 | Web (Chrome) | Cliente | Pagar con tarjeta nueva marcando «Guardar esta tarjeta» (Stripe de prueba), y SIN reabrir el checkout activar «Simular sin conexión» y volver a «Pagar mi compra». | La tarjeta recién guardada aparece como «Pagar con … terminada en …». Eliminarla con red y repetir: ya no aparece sin conexión. | ☐ |
+| 23.2 | Web | Cliente | Sin conexión: elegir tarjeta, autorizar y «Guardar compra para sincronizar». | Los radios se ven con el círculo junto al texto; solo queda el aviso verde de compra guardada (sin «necesita Internet» debajo); en Mis compras: «Pendiente de enviar · se cobrará a la Visa 4242 al reconectar», con Deshacer y Línea de tiempo. | ☐ |
+| 23.3 | Web y móvil | Cliente | Volver la red. | Aviso con el resultado: «Su compra PED-… fue pagada con la Visa 4242», «quedó por pagar: el banco rechazó la tarjeta» o «no había stock: no se cobró nada». | ☐ |
+| 23.4 | Web y móvil | Cliente | NIT con 1 o 2 caracteres. | «Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI)»; el error desaparece al corregir. | ☐ |
+| 23.5 | Web y móvil | Encargado | Hacer una compra digital con pago y, con red, abrir Devoluciones; luego sin conexión. | La compra (CMP-…) aparece en la lista de ventas descargadas (si se pagó antes de la descarga; si no, al reconectar). Inventario muestra «—» en Reservadas, Vendidas y Próximas. | ☐ |
+| 23.6 | Web | Proveedor | Guardar una propuesta sin conexión. | Aparece en la lista como «Pendiente de enviar» con Deshacer; «Nuevo aviso de remisión» y «Cancelar» atenuados. | ☐ |
+| 23.7 | Web | Administrador | Bitácora, Reportes, Indicadores sin conexión. | Bitácora: «necesita Internet» (sin «No hay registros»); Reportes: aviso «necesitan Internet» y botones atenuados; Indicadores: «Datos al…» y sin «(Bs N/D)». | ☐ |
+| 23.8 | Web y móvil | Cajero | Vender sin conexión. | El panel derecho dice «Venta local» (no «Venta Venta local»); IVA correcto. | ☐ |
+| 23.9 | Móvil | Cliente, Cajero, Encargado | Recorrer todas las pantallas con modo avión. | Ninguna queda girando; los textos distinguen «sin copia» de «sin datos en el plazo». | ☐ |
+
+**Propuesta de prueba «Prueba sin conexion» (Hilos Andinos, Bs 100) en Railway:** la aplicación no permite borrar propuestas. Desde el Administrador: Abastecimiento → Propuestas → Revisar → Rechazar la deja como «Rechazada» (no se borra). Para eliminarla del todo habría que borrar la fila en la base de datos; no se hizo nada en Railway sin su autorización.
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

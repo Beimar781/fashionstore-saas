@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { TarjetasGuardadasService } from '../../../core/pagos/tarjetas-guardadas.service';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComprasApi } from '../../../core/api/compras.api';
@@ -19,6 +20,7 @@ describe('Pago con tarjeta nueva en Stripe', () => {
       providers: [
         { provide: ComprasApi, useValue: { configPago: () => of(cfg), tarjetas: () => of([]), iniciarPago: () => of(inicio), confirmarPago } },
         { provide: StripeJsService, useValue: { cargar: async () => () => stripe } },
+        { provide: TarjetasGuardadasService, useValue: { guardarCopia: async () => undefined, quitar: async () => undefined, refrescar: async () => null } },
       ],
     });
     const fixture = TestBed.createComponent(PagoTarjetaComponent);

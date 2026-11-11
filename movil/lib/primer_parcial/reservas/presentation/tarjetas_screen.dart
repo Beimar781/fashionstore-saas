@@ -56,6 +56,7 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
     if (_copiaDel != null) return setState(() => _error = 'Esta función necesita Internet.');
     try {
       await _repo.eliminarTarjeta(tarjeta.id);
+      await context.read<OfflineController>().repo.quitarTarjetaLocal(tarjeta.id);
       if (mounted) {
         setState(() => _tarjetas.removeWhere((t) => t.id == tarjeta.id));
       }

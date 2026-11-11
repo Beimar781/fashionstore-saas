@@ -163,9 +163,15 @@ export class ColaOperacionesService {
     if (o.tipo === 'VENTA_CONTADO') return;
     if (o.tipo === 'CANCELAR_RESERVA' && o.estado === 'CONFIRMADA') { this.toast.ok(`Reserva ${o.referencia ?? ''} cancelada.`); return; }
     const nombre = o.tipo === 'COMPRA' ? 'compra' : 'reserva';
-    if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar: la prenda se agotó mientras estaba sin conexión. No se le cobró nada.`);
+    if (o.estado === 'EN_CONFLICTO') this.toast.aviso(`Su ${nombre} no se pudo realizar: no había stock de la prenda mientras estaba sin conexión. No se le cobró nada.`);
     else if (o.estado === 'RECHAZADA') this.toast.error(`Su ${nombre} no se pudo realizar: ${o.mensaje}`);
-    else if (o.estado === 'CONFIRMADA' && o.tipo === 'COMPRA') this.toast.ok(`Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».`);
+    else if (o.estado === 'CONFIRMADA' && o.tipo === 'COMPRA') {
+      const tarjeta = /se cobrará a (.+?) terminada en (\d{4})/.exec(o.resumen ?? '');
+      const aCompras = { texto: 'Ver mi compra', ruta: '/tienda/compras' };
+      if (o.mensaje.startsWith('Compra cobrada')) this.toast.mostrarAviso('ok', `Su compra ${o.referencia} fue pagada con ${tarjeta ? `la ${tarjeta[1]} ${tarjeta[2]}` : 'su tarjeta'}${o.comprobante ? ` (comprobante ${o.comprobante})` : ''}.`, aCompras);
+      else if (o.mensaje.startsWith('No pudimos cobrar')) this.toast.mostrarAviso('warn', `Su compra ${o.referencia} quedó por pagar: el banco rechazó la tarjeta. Complete el pago desde Mis compras.`, aCompras);
+      else this.toast.mostrarAviso('ok', `Su compra ${o.referencia} está lista: págela con tarjeta en «Mis compras».`, aCompras);
+    }
   }
 
   /** CU-39: una operación que quedó en conflicto y el Encargado resolvió cambia de estado también en este dispositivo. */

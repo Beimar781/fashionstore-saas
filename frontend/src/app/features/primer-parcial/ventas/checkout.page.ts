@@ -1,4 +1,5 @@
 import { Component, OnInit, effect, inject, signal, untracked } from '@angular/core';
+import { TarjetasGuardadasService } from '../../../core/pagos/tarjetas-guardadas.service';
 import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -32,7 +33,8 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
       @if (compraPendiente()) { <div class="alert warn" role="status">@if (cobroAutorizado()) { Compra guardada en este dispositivo. Al recuperar la conexión se cobrará a su {{ cobroAutorizado() }}; si no se puede cobrar, quedará por pagar en Mis compras. } @else { Compra guardada en este dispositivo. Se pagará con tarjeta al recuperar la conexión, desde Mis compras. }<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
 
-      @if (!carrito() && sinCarrito()) { <div class="card pad empty" role="status">Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.</div> }
+      @if (!carrito() && compraPendiente()) { }  <!-- solo el aviso de compra guardada, nada más -->
+      @else if (!carrito() && sinCarrito()) { <div class="card pad empty" role="status">Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.</div> }
       @else if (!carrito()) { <app-cargando /> }
       @else if (!carrito()!.items.length && !pedido()) { <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }
       @else {
@@ -48,7 +50,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
                 </div>
                 @if (form.tipo_entrega === 'DELIVERY') { <label>Dirección de entrega<input name="d" [(ngModel)]="form.direccion_entrega" maxlength="300" placeholder="Calle, número, barrio y referencia" /></label> }
                 <div class="form-grid">
-                  <label>NIT o CI<input name="n" [(ngModel)]="form.nit_ci" maxlength="20" required /></label>
+                  <label>NIT o CI<input name="n" [(ngModel)]="form.nit_ci" (ngModelChange)="errorDatos.set('')" maxlength="20" required /></label>
                   <label>Razón social <span class="hint">(opcional)</span><input name="r" [(ngModel)]="form.razon_social" maxlength="120" /></label>
                 </div>
               </fieldset>
@@ -58,7 +60,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
                     <strong>Pago</strong>
                     @if (tarjetas().length) {
                       <label class="check"><input type="radio" name="pagoOffline" [value]="0" [(ngModel)]="tarjetaElegida" /> Dejar por pagar</label>
-                      @for (t of tarjetas(); track t.id) { <label class="check"><input type="radio" name="pagoOffline" [value]="t.id" [(ngModel)]="tarjetaElegida" /> Pagar con {{ t.marca }} terminada en {{ t.ultimos4 }} al volver la conexión</label> }
+                      @for (t of tarjetas(); track t.id) { <label class="check"><input type="radio" name="pagoOffline" [value]="t.id" [(ngModel)]="tarjetaElegida" /> Pagar con {{ t.marca }} terminada en {{ t.ultimos4 }} al volver la conexión@if (venceEsteMes(t)) { <span class="small muted"> · vence antes del {{ ultimoDiaDelMes() }}: si se envía después, quedará por pagar (puede elegir «Dejar por pagar»)</span> }</label> }
                       @if (tarjetaElegida) { <label class="check"><input type="checkbox" name="autorizo" [(ngModel)]="autorizo" /> Autorizo el cobro de {{ carrito()!.total | bs }} a esta tarjeta cuando se confirme mi compra.</label> }
                     }
                     <p class="small muted">{{ msgTarjetaNueva }}</p>
@@ -106,6 +108,7 @@ export class CheckoutPage implements OnInit {
   private estado = inject(CarritoEstadoService);
   readonly red = inject(ConnectivityService);
   private db = inject(LocalDbService);
+  private tarjetasGuardadas = inject(TarjetasGuardadasService);
   private auth = inject(AuthService);
 
   readonly carrito = signal<Carrito | null>(null);
@@ -130,7 +133,11 @@ export class CheckoutPage implements OnInit {
     effect(() => { const enLinea = this.red.online(); untracked(() => { if (this.iniciado && !this.pedido()) void this.cargar(enLinea); }); });
   }
 
-  async cargarTarjetasLocales() { this.tarjetas.set(tarjetasVigentes((await this.db.leerTarjetasLocal<TarjetaGuardada[]>(this.claveTarjetas)) ?? [])); }
+  /** Una tarjeta que vence este mes puede estar vencida cuando la compra se sincronice: se avisa al registrar. */
+  venceEsteMes(t: TarjetaGuardada, hoy = new Date()) { return t.exp_anio === hoy.getFullYear() && t.exp_mes === hoy.getMonth() + 1; }
+  ultimoDiaDelMes(hoy = new Date()) { const f = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0); return `${String(f.getDate()).padStart(2, '0')}/${String(f.getMonth() + 1).padStart(2, '0')}`; }
+
+  async cargarTarjetasLocales() { this.tarjetas.set(tarjetasVigentes(await this.tarjetasGuardadas.locales())); }
 
   private get claveTarjetas() { const s = this.auth.sesion(); return `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`; }
 
@@ -146,7 +153,7 @@ export class CheckoutPage implements OnInit {
     }
     this.sinCarrito.set(false);
     // con red se guarda la lista de tarjetas (marca, últimos 4 y vencimiento) para ofrecerlas si después se queda sin conexión
-    this.api.tarjetas().subscribe({ next: (t) => void this.db.guardarTarjetasLocal(this.claveTarjetas, t), error: () => undefined });
+    void this.tarjetasGuardadas.refrescar();
     await this.estado.cargarLocal();
     await this.estado.refrescar();
     if (this.estado.carritoLocal()?.items.length) this.carrito.set(this.estado.carritoLocal());
@@ -157,7 +164,7 @@ export class CheckoutPage implements OnInit {
   crearPedido() {
     if (!this.red.online()) {
       this.errorDatos.set('');
-      if (this.form.nit_ci.trim().length < 3) { this.errorDatos.set('Ingrese su NIT o CI para la facturación.'); return; }
+      if (this.form.nit_ci.trim().length < 3) { this.errorDatos.set('Ingrese su NIT o CI (al menos 3 caracteres; consumidor final: su CI).'); return; }
       if (this.form.tipo_entrega === 'DELIVERY' && !this.form.direccion_entrega.trim()) { this.errorDatos.set('Ingrese la dirección de entrega.'); return; }
       const tarjeta = this.tarjetas().find((t) => t.id === this.tarjetaElegida);
       if (tarjeta && !this.autorizo) { this.errorDatos.set(MSG_AUTORIZAR); return; }
@@ -168,7 +175,7 @@ export class CheckoutPage implements OnInit {
     this.creando.set(true); this.errorDatos.set('');
     this.api.checkout(this.form).subscribe({
       next: (p) => { this.creando.set(false); this.pedido.set(p); },
-      error: (e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); this.api.carrito().subscribe((c) => this.carrito.set(c)); },
+      error: (e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); this.api.carrito().subscribe({ next: (c) => this.carrito.set(c), error: () => undefined }); },
     });
   }
 

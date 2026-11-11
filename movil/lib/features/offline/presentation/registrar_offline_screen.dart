@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../primer_parcial/reservas/data/datos_entrega.dart' show msgNit;
 import 'package:provider/provider.dart';
 
 import '../data/modelos.dart';
@@ -209,7 +210,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     }
     if (c.esCliente && _modo == 'COMPRA' && _nitCi.text.trim().length < 3) {
       return setState(
-          () => _error = 'Ingrese su NIT o CI para la facturación.');
+          () => _error = msgNit);
     }
     if (c.esCliente && _modo == 'COMPRA' && _tarjetaOffline != null && !_autorizo) {
       return setState(() => _error = msgAutorizar);

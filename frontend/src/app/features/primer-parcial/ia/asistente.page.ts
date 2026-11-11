@@ -115,7 +115,7 @@ export class AsistentePage implements OnInit {
   sucursal: number | null = null;
 
   ngOnInit() {
-    this.catalogo.sucursales().subscribe((s) => this.sucursales.set(s));
+    this.catalogo.sucursales().subscribe({ next: (s) => this.sucursales.set(s), error: () => undefined });
     this.cargarRecomendaciones();
     this.api.privacidad().subscribe({ next: (p) => this.priv.set(p), error: () => undefined });
   }

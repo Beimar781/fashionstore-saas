@@ -104,7 +104,7 @@ export class CatalogoPage implements OnInit {
     this.lecturas.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
     this.lecturas.marcas().subscribe({ next: (r) => this.marcas.set(r), error: () => undefined });
     this.lecturas.colores().subscribe({ next: (r) => this.colores.set(r), error: () => undefined });
-    this.lecturas.grupos().subscribe((grupos) => this.tallas.set([...new Set(grupos.flatMap((g) => g.tallas.map((t) => t.codigo)))]));
+    this.lecturas.grupos().subscribe({ next: (grupos) => this.tallas.set([...new Set(grupos.flatMap((g) => g.tallas.map((t) => t.codigo)))]), error: () => undefined });
     this.catalogo.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
     this.local.cargar().then(() => this.sucursales.set(this.local.meta()?.sucursales ?? this.sucursales()));
     this.buscar();

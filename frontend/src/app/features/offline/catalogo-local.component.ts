@@ -19,7 +19,8 @@ import { BsPipe } from '../../core/formato-bs';
           <h2>Catálogo en este dispositivo</h2>
           @if (meta(); as m) {
             <p class="small muted">Descargado el {{ m.generado_en | date: 'dd/MM/yyyy HH:mm' }} · {{ productos().length }} producto(s) · {{ m.sucursales.length }} sucursal(es)@if (esPersonal) { · {{ m.clientes.length }} cliente(s) }</p>
-            @if (desactualizado()) { <div class="alert warn small" role="status">Esta información puede estar desactualizada: se descargó hace más de un día o no hay conexión para renovarla.</div> }
+            @if (motivoDesactualizado() === 'viejo') { <div class="alert warn small" role="status">Esta información puede estar desactualizada: se descargó hace más de un día.</div> }
+            @else if (motivoDesactualizado() === 'sin-conexion') { <div class="alert small" role="status">Sin conexión para renovarla: se muestra la última descarga.</div> }
           } @else { <p class="small muted">Todavía no descargó el catálogo. Descárguelo con conexión para poder consultar y vender sin Internet.</p> }
         </div>
         <button class="btn primary" (click)="descargar()" [disabled]="local.descargando() || !red.online()">{{ local.descargando() ? 'Descargando…' : meta() ? 'Actualizar catálogo' : 'Descargar catálogo' }}</button>
@@ -53,9 +54,12 @@ export class CatalogoLocalComponent {
   readonly error = signal('');
   readonly esPersonal = this.auth.rol() !== 'Cliente';
   readonly resultados = computed(() => this.local.buscar(this.texto()));
-  readonly desactualizado = computed(() => {
+  /** Distingue «tiene más de un día» de «no hay conexión para renovarla» (antes un aviso mezclaba ambos aunque la descarga fuera de hoy). */
+  readonly motivoDesactualizado = computed<'viejo' | 'sin-conexion' | null>(() => {
     const m = this.meta();
-    return !!m && (!this.red.online() || Date.now() - new Date(m.generado_en).getTime() > 24 * 3600 * 1000);
+    if (!m) return null;
+    if (Date.now() - new Date(m.generado_en).getTime() > 24 * 3600 * 1000) return 'viejo';
+    return this.red.online() ? null : 'sin-conexion';
   });
 
   detalleStock(v: { stock: Record<string, number> }) {

@@ -82,7 +82,7 @@ export class AnaliticaPage implements OnInit {
   sucursal: number | null = null;
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
-  ngOnInit() { this.admin.sucursales().subscribe((r) => this.sucursales.set(r.sucursales)); this.cargar(); }
+  ngOnInit() { this.admin.sucursales().subscribe({ next: (r) => this.sucursales.set(r.sucursales), error: () => undefined }); this.cargar(); }
 
   cargar() {
     this.error.set(''); this.a.set(null);

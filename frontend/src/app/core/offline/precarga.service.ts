@@ -1,4 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { TarjetasGuardadasService } from '../pagos/tarjetas-guardadas.service';
 import { Injectable, effect, inject, untracked } from '@angular/core';
 import { API_URL } from '../api.config';
 import { AuthService } from '../auth/auth.service';
@@ -17,7 +18,7 @@ export function hoyLocal(ahora = new Date()): string {
 export function rutasDePrecarga(rol: string): { ruta: string; params?: Record<string, string> }[] {
   switch (rol) {
     case ROL.CLIENTE: return [
-      { ruta: '/catalogo/sucursales' }, { ruta: '/carrito' }, { ruta: '/compras' }, { ruta: '/reservas' }, { ruta: '/pagos/tarjetas' },
+      { ruta: '/catalogo/sucursales' }, { ruta: '/carrito' }, { ruta: '/compras' }, { ruta: '/reservas' },
       { ruta: '/categorias' }, { ruta: '/marcas' }, { ruta: '/colores' }, { ruta: '/grupos-talla' },
       { ruta: '/catalogo/buscar', params: { orden: 'recientes', pagina: '1' } },
     ];
@@ -50,12 +51,13 @@ export class PrecargaService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
   private red = inject(ConnectivityService);
+  private tarjetas = inject(TarjetasGuardadasService);
   private ultima = 0;
 
   constructor() {
     effect(() => {
       const s = this.auth.sesion();
-      if (s && this.red.online()) untracked(() => this.precargar());
+      if (s && this.red.online()) untracked(() => { this.precargar(); if (s.usuario.rol === ROL.CLIENTE) void this.tarjetas.refrescar(); });  // la copia de tarjetas se renueva en cada inicio de sesión y al volver la red
     });
   }
 
