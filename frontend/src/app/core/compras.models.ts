@@ -34,6 +34,6 @@ export interface TarjetaSimulada { numero: string; mes: number; anio: number; cv
 export interface ResultadoPago { aprobado: boolean; pendiente: boolean; mensaje: string; pago: PagoResumen; pedido: Pedido; }
 
 export const TEXTO_ESTADO_PEDIDO: Record<EstadoPedido, string> = {
-  PENDIENTE_PAGO: 'Pendiente de pago', PENDIENTE_CONFIRMACION: 'Pendiente de confirmación', PAGADO: 'Pagado', CANCELADO: 'Cancelado',
+  PENDIENTE_PAGO: 'Por pagar', PENDIENTE_CONFIRMACION: 'Pendiente de confirmación', PAGADO: 'Pagado', CANCELADO: 'Cancelado',
 };
 export const CLASE_ESTADO_PEDIDO: Record<EstadoPedido, string> = { PENDIENTE_PAGO: 'warn', PENDIENTE_CONFIRMACION: 'warn', PAGADO: 'ok', CANCELADO: 'danger' };

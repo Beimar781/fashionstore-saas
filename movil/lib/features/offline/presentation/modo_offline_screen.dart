@@ -266,11 +266,11 @@ class _OperacionesTab extends StatelessWidget {
                 Text(
                     '• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay ${f['disponibles']}',
                     style: Theme.of(context).textTheme.bodySmall),
-              if (o.estado == Estado.registradaLocal && o.intentos > 0)
+              if (c.enLinea && o.estado == Estado.registradaLocal && o.intentos > 0)
                 Text('${o.intentos} intento(s) de envío',
                     style: Theme.of(context).textTheme.bodySmall),
               AccionesOperacion(o),
-              Text(o.id, style: Theme.of(context).textTheme.labelSmall),
+              if (c.enLinea) Text(o.id, style: Theme.of(context).textTheme.labelSmall),
             ]),
           ),
         ),

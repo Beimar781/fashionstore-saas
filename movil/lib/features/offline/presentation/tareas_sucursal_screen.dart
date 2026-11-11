@@ -381,8 +381,8 @@ class _ReservasTabState extends State<ReservasTab> {
                       ? TextButton(onPressed: () => _tarea(r, 'PRENDA_NO_ENCONTRADA', 'Prenda no encontrada de la reserva', {'item_id': i['id']}, itemNoEncontrado: i['id'] as int), child: const Text('No encontrada'))
                       : null,
                 ),
-              Wrap(spacing: 8, children: [
-                if (r['estado'] == 'PENDIENTE') FilledButton.tonal(onPressed: () => _tarea(r, 'PREPARAR_RESERVA', 'Preparación de la reserva', {}, estado: 'PREPARADA'), child: const Text('Preparar')),
+              Wrap(spacing: 12, runSpacing: 8, children: [
+                if (r['estado'] == 'PENDIENTE') OutlinedButton(onPressed: () => _tarea(r, 'PREPARAR_RESERVA', 'Preparación de la reserva', {}, estado: 'PREPARADA'), child: const Text('Preparar')),
                 if (r['estado'] == 'PENDIENTE' || r['estado'] == 'PREPARADA') FilledButton(onPressed: () => _atender(r), child: const Text('Atender')),
               ]),
             ]),

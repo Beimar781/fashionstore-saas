@@ -59,15 +59,18 @@ class FashionStoreApp extends StatelessWidget {
               conectividad: conectividadDelDispositivo(), descargaAutomatica: true)
             ..alNotificar = NotificacionLocal.mostrar
             ..alResumir = (texto) {
-              _mensajero.currentState?.showSnackBar(SnackBar(
+              _mensajero.currentState
+                ?..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(
                   content: Text(texto),
-                  duration: const Duration(seconds: 12),
+                  duration: const Duration(seconds: 5),
                   action: SnackBarAction(
                       label: 'Ver detalle',
                       onPressed: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => const ModoOfflineScreen(pestana: 2))))));
             }
             ..alAvisar = (texto) {
-              _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 8)));
+              _mensajero.currentState?.hideCurrentSnackBar();
+              _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 5)));
             },
           update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
         ),

@@ -328,7 +328,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Text(
           !c.esCliente
-              ? 'Venta de contado sin conexión'
+              ? (c.enLinea ? 'Venta de contado' : 'Venta de contado sin conexión')
               : (_modo == 'COMPRA'
                   ? 'Comprar sin conexión'
                   : 'Reservar sin conexión'),

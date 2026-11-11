@@ -1,3 +1,4 @@
+import { NEVER } from 'rxjs';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -32,7 +33,7 @@ describe('Inventario del Encargado sin conexión (D3)', () => {
       providers: [
         provideRouter([]),
         { provide: InventarioApi, useValue: {} },  // sin red no se llama a la API
-        { provide: CatalogoAdminApi, useValue: {} },
+        { provide: CatalogoAdminApi, useValue: { categorias: () => NEVER, temporadas: () => NEVER } },
         { provide: CatalogoApi, useValue: {} },
         { provide: ConnectivityService, useValue: { online } },
         { provide: AuthService, useValue: { rol: () => 'Encargado', sesion: () => ({ usuario: { sucursal_id: 1 } }) } },

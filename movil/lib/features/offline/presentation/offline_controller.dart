@@ -104,7 +104,9 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
         await recargar();
         await sincronizar();
         await _renovarTarjetas();
-        if (descargaAutomatica) await actualizarSiVencido(); // al iniciar sesión: baja la copia si falta o venció (solo en la app)
+        if (descargaAutomatica && enLinea && !descargando) {
+          await descargarCatalogo(); // RN21: en cada inicio de sesión la copia se renueva, sin esperar los 15 minutos (puede venir de otro usuario o rol)
+        }
       });
     } else {
       notifyListeners();

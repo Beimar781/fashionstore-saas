@@ -84,6 +84,13 @@ class HomeScreen extends StatelessWidget {
                 subtitle: const Text('Solo puede consultar su plan.'),
               ),
             ),
+          if ((s.rol == 'Cajero' || s.rol == 'Encargado') && !offline.habilitado && !s.restringido)
+            // el plan de la empresa no incluye el modo sin conexión: la Caja sigue disponible, pero solo con Internet
+            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado en efectivo (su plan no incluye el modo sin conexión: necesita Internet)', const CajaEnLineaScreen()),
+          if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
+            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
+            _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const DevolucionesScreen()),
+          ],
           for (final aviso in push.avisos)
             Card(
               color: esquema.primaryContainer,
@@ -182,12 +189,7 @@ class HomeScreen extends StatelessWidget {
                   'Pida prendas en lenguaje natural (plan Profesional)',
                   const AsistenteScreen()),
           ],
-          if ((s.rol == 'Cajero' || s.rol == 'Encargado') && !offline.habilitado && !s.restringido)
-            // el plan de la empresa no incluye el modo sin conexión: la Caja sigue disponible, pero solo con Internet
-            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado en efectivo (su plan no incluye el modo sin conexión: necesita Internet)', const CajaEnLineaScreen()),
           if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
-            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
-            _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const DevolucionesScreen()),
             if (s.rol == 'Encargado') _acceso(context, Icons.assignment_outlined, 'Tareas de la sucursal', 'Recepción, ajuste de inventario y reservas, con o sin conexión', const TareasSucursalScreen()),
             if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, 'Conflictos de sincronización', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
           ],

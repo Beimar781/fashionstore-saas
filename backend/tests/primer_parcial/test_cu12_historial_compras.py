@@ -29,13 +29,13 @@ def test_02_se_listan_las_compras_digitales_y_las_que_esperan_confirmacion(inv, 
     assert len(pagado) == 1 and pagado[0]["estado"] == "PAGADO"
 
 
-def test_03_los_pedidos_sin_pagar_no_son_compras(inv, mundo, client):
+def test_03_el_pedido_por_pagar_se_ve_en_el_historial_para_poder_pagarlo(inv, mundo, client):
     stock_listo(inv, mundo)
     agregar_ok(client, inv.h_cliente, inv.v_sm_rojo, inv.centro)
-    p = checkout_ok(client, inv.h_cliente)  # pedido por pagar
-    pagar(client, inv.h_cliente, p["id"], SIN_FONDOS)  # intento rechazado
-    r = client.get("/api/compras", headers=inv.h_cliente).json()
-    assert r["compras"] == [] and r["mensaje"] == MSG_SIN_COMPRAS
+    p = checkout_ok(client, inv.h_cliente)  # pedido por pagar (p. ej. el que se dejó así desde el móvil sin conexión)
+    pagar(client, inv.h_cliente, p["id"], SIN_FONDOS)  # intento rechazado: sigue por pagar
+    compras = client.get("/api/compras", headers=inv.h_cliente).json()["compras"]
+    assert [(c["id"], c["estado"], c["comprobante_numero"]) for c in compras] == [(p["id"], "PENDIENTE_PAGO", None)]
 
 
 def test_04_el_detalle_del_pedido(inv, mundo, client):
@@ -100,3 +100,13 @@ def test_09_el_comprobante_muestra_el_dinero_en_bolivianos_con_formato_unico(inv
     p = comprar(client, inv.h_cliente, inv, inv.v_sm_rojo, 1)
     r = client.get(f"/api/compras/{p['id']}/comprobante", headers=inv.h_cliente)
     assert r.status_code == 200 and r.content.startswith(b"%PDF")  # el PDF se arma con la misma función de formato
+
+
+def test_11_el_pedido_por_pagar_no_se_ve_a_otro_cliente_ni_a_otra_empresa(inv, mundo, tienda_b, datos, client):
+    stock_listo(inv, mundo)
+    agregar_ok(client, inv.h_cliente, inv.v_sm_rojo, inv.centro)
+    p = checkout_ok(client, inv.h_cliente)
+    datos.usuario(mundo.a, "Cliente", email="otro@a.com")
+    for h in (entrar(client, mundo.a, "otro@a.com"), cabecera_cliente(datos, mundo.b)):
+        assert client.get("/api/compras", headers=h).json() == {"compras": [], "mensaje": MSG_SIN_COMPRAS}
+        assert client.get(f"/api/compras/{p['id']}", headers=h).status_code == 404

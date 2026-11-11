@@ -910,3 +910,10 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Devoluciones sin conexión (CU-41):** el catálogo descargado trae las ventas pagadas en la sucursal (de caja o compras digitales) dentro del plazo, hasta 60; las ventas posteriores a la descarga aparecen al volver la conexión (la descarga se renueva al conectar si tiene más de 15 minutos).
 - **Inventario del Encargado sin conexión:** «Reservadas», «Vendidas» y «Próximas a ingresar» muestran «—» porque solo las conoce el servidor.
 - **Pantallas del Administrador:** botones de escritura apagados con aspecto atenuado (clase común) también en filas y modales.
+
+## Prompts I y J (pulido web y móvil)
+
+**Reglas nuevas**
+- **Historial de compras (CU-12):** `GET /compras` incluye también los pedidos `PENDIENTE_PAGO` del cliente (los dejados «por pagar» desde el móvil sin conexión), para que pueda pagarlos desde Mis compras. Estado legible: «Por pagar».
+- **Renovación de la copia sin conexión (RN21):** en cada inicio de sesión con red la copia se descarga de nuevo, sin esperar los 15 minutos (puede venir de otro usuario o rol).
+- **Avisos de la app móvil:** duran 5 segundos y un aviso nuevo reemplaza al anterior.

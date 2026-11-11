@@ -17,6 +17,8 @@ import '../../../features/offline/presentation/operaciones_con_problema.dart';
 import '../../catalogo/presentation/catalogo_screen.dart';
 import 'boton_comprobante.dart';
 
+String _estadoCompra(Object? e) => const {'PENDIENTE_PAGO': 'Por pagar', 'PENDIENTE_CONFIRMACION': 'Pago por confirmar', 'PAGADO': 'Pagado'}['$e'] ?? '$e';
+
 /// Historial de compras del cliente (CU-12): compras digitales y de mostrador, con su estado y comprobante.
 class PedidosScreen extends StatefulWidget {
   const PedidosScreen({super.key, this.integrado = false});
@@ -288,7 +290,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                             pedidoId: c['id'] as int,
                             numero: '${c['comprobante_numero']}'),
                     subtitle: Text(
-                        '${c['pendiente_local'] == true ? c['leyenda'] : c['estado']} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
+                        '${c['pendiente_local'] == true ? c['leyenda'] : _estadoCompra(c['estado'])} · ${c['sucursal']} · ${fechaCorta(c['fecha'] as String?)}${c['comprobante_numero'] != null ? '\n${c['comprobante_numero']}' : ''}'),
                     isThreeLine: c['comprobante_numero'] != null,
                   ),
                 ),
