@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
-import { VacioComponent } from '../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OfflineApi } from '../../core/api/offline.api';
@@ -12,11 +12,11 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-40 · Conflictos de sincronización: operaciones hechas sin conexión que no se pudieron aplicar por falta de existencias. Nada se descontó (RN14): el Encargado reintenta o descarta. */
 @Component({
   selector: 'app-conflictos',
-  imports: [NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, DatePipe],
+  imports: [ErrorComponent, NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Conflictos de sincronización</h1><p>Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.</p></div><button class="btn" (click)="cargar()">Actualizar</button></div>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
       @for (c of conflictos(); track c.id) {
         <section class="card pad stack" style="margin-bottom:1rem">
           <div class="row between">

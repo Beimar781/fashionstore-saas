@@ -8,6 +8,12 @@ import { ConnectivityService } from './connectivity.service';
 const MINUTOS = 10;
 
 /** Lecturas de las pantallas normales de cada rol. Al iniciar sesión y al volver la red se piden en segundo plano: el interceptor de lecturas las guarda y quedan disponibles sin conexión. */
+/** Fecha de hoy como la usan las pantallas de ventas (aaaa-mm-dd, hora local). */
+export function hoyLocal(ahora = new Date()): string {
+  const d = (n: number) => String(n).padStart(2, '0');
+  return `${ahora.getFullYear()}-${d(ahora.getMonth() + 1)}-${d(ahora.getDate())}`;
+}
+
 export function rutasDePrecarga(rol: string): { ruta: string; params?: Record<string, string> }[] {
   switch (rol) {
     case ROL.CLIENTE: return [
@@ -17,10 +23,12 @@ export function rutasDePrecarga(rol: string): { ruta: string; params?: Record<st
     ];
     case ROL.CAJERO: return [
       { ruta: '/reservas-sucursal' }, { ruta: '/devoluciones/configuracion' }, { ruta: '/devoluciones' }, { ruta: '/caja/ventas/pendientes' },
+      { ruta: '/reportes/sucursal/resumen', params: { fecha: hoyLocal() } }, { ruta: '/reportes/sucursal/ventas', params: { desde: hoyLocal(), hasta: hoyLocal() } },
     ];
     case ROL.ENCARGADO: return [
       { ruta: '/reservas-sucursal' }, { ruta: '/inventario/sucursal', params: { pagina: '1' } }, { ruta: '/inventario/recepciones' },
       { ruta: '/offline/conflictos' }, { ruta: '/devoluciones/configuracion' }, { ruta: '/devoluciones' },
+      { ruta: '/reportes/sucursal/resumen', params: { fecha: hoyLocal() } }, { ruta: '/reportes/sucursal/ventas', params: { desde: hoyLocal(), hasta: hoyLocal() } },
     ];
     case ROL.PROVEEDOR: return [
       { ruta: '/abastecimiento/mi-proveedor' }, { ruta: '/abastecimiento/resumen' }, { ruta: '/abastecimiento/lotes' }, { ruta: '/abastecimiento/propuestas' },
@@ -29,6 +37,9 @@ export function rutasDePrecarga(rol: string): { ruta: string; params?: Record<st
     case ROL.ADMIN: return [
       { ruta: '/usuarios' }, { ruta: '/sucursales' }, { ruta: '/mi-plan' }, { ruta: '/productos', params: { pagina: '1' } }, { ruta: '/inventario/global', params: { pagina: '1' } },
       { ruta: '/proveedores' }, { ruta: '/ia/reportes' }, { ruta: '/categorias' }, { ruta: '/promociones' }, { ruta: '/offline/conflictos' },
+      { ruta: '/abastecimiento/resumen' }, { ruta: '/abastecimiento/lotes' }, { ruta: '/abastecimiento/propuestas' }, { ruta: '/abastecimiento/sucursales' },
+      { ruta: '/devoluciones/configuracion' }, { ruta: '/devoluciones' }, { ruta: '/reportes/indicadores', params: { dias: '30' } },
+      { ruta: '/temporadas' }, { ruta: '/colecciones' }, { ruta: '/marcas' }, { ruta: '/colores' }, { ruta: '/grupos-talla' },
     ];
     default: return [];
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../../../core/util/iva.dart';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -13,7 +14,7 @@ class ComprobanteProvisional {
       'LOC-${(sucursalId ?? 0).toString().padLeft(3, '0')}-${operacionId.replaceAll('-', '').substring(0, 6).toUpperCase()}';
 
   /// PDF con el detalle, el total, el efectivo recibido y el cambio. Devuelve la ruta del archivo en la carpeta indicada.
-  static Future<String> aPdf(OperacionLocal o, {required String carpeta, required String empresa, required String Function(int varianteId) nombreDe}) async {
+  static Future<String> aPdf(OperacionLocal o, {required String carpeta, required String empresa, required String Function(int varianteId) nombreDe, int ivaPorcentaje = 13}) async {
     final items = ((o.payload['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
     final recibido = double.tryParse('${o.payload['monto_recibido']}') ?? 0;
     var total = 0.0;
@@ -36,6 +37,7 @@ class ComprobanteProvisional {
         pw.TableHelper.fromTextArray(headers: ['Prenda', 'Cant.', 'Precio', 'Subtotal'], data: filas, cellStyle: const pw.TextStyle(fontSize: 9), headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         pw.Text('Total: Bs ${total.toStringAsFixed(2)}'),
+        pw.Text('IVA incluido: Bs ${ivaIncluido(total, ivaPorcentaje)}'),
         pw.Text('Efectivo recibido: Bs ${recibido.toStringAsFixed(2)}'),
         pw.Text('Cambio: Bs ${(recibido - total).toStringAsFixed(2)}'),
         pw.SizedBox(height: 12),

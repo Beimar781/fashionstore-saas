@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { VacioComponent } from '../../../core/ui/vacio.component';
+import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
+import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
@@ -18,13 +19,13 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
 /** CU-31 · Información de productos y abastecimiento. El Proveedor avisa remisiones y propone productos; el Administrador revisa. */
 @Component({
   selector: 'app-abastecimiento',
-  imports: [VacioComponent, BsPipe, FormsModule],
+  imports: [NecesitaInternetDirective, ErrorComponent, VacioComponent, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
         <div><h1>{{ esProveedor ? 'Mis envíos y propuestas' : 'Abastecimiento' }}</h1>
           <p>{{ esProveedor ? 'Avise la mercadería que despacha y proponga productos nuevos.' : 'Avisos de remisión de los proveedores y propuestas de producto por revisar.' }}</p></div>
-        @if (pestana() === 'avisos') { <button class="btn primary" (click)="abrirAviso()">+ Nuevo aviso de remisión</button> }
+        @if (pestana() === 'avisos') { <button necesitaInternet="Los avisos de remisión necesitan Internet (las propuestas sí se guardan sin conexión)." class="btn primary" (click)="abrirAviso()">+ Nuevo aviso de remisión</button> }
         @else if (esProveedor) { <button class="btn primary" (click)="abrirPropuesta()">+ Nueva propuesta</button> }
       </div>
 
@@ -53,7 +54,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
                     <td>{{ l.sucursal }}</td><td>{{ l.referencia || '—' }}</td><td class="right">{{ l.total_unidades }}</td>
                     <td><span class="badge" [class.warn]="l.estado === 'EN_TRANSITO'" [class.ok]="l.estado === 'RECIBIDO'" [class.danger]="l.estado === 'CANCELADO'">{{ textoEstado(l.estado) }}</span></td>
                     <td class="actions"><button class="btn sm" (click)="detalle.set(l)">Ver</button>
-                      @if (l.estado === 'EN_TRANSITO') { <button class="btn sm danger" (click)="cancelar(l)">Cancelar</button> }</td>
+                      @if (l.estado === 'EN_TRANSITO') { <button necesitaInternet class="btn sm danger" (click)="cancelar(l)">Cancelar</button> }</td>
                   </tr>
                 }
               </tbody>
@@ -113,7 +114,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
             </div>
             <fieldset>
               <legend>Productos del lote</legend>
-              <div class="row"><input name="bq" [(ngModel)]="busqueda" placeholder="Buscar producto ya registrado por nombre o SKU…" style="flex:1" (keydown.enter)="$event.preventDefault(); buscar()" /><button type="button" class="btn" (click)="buscar()">Buscar</button></div>
+              <div class="row"><input name="bq" [(ngModel)]="busqueda" placeholder="Buscar producto ya registrado por nombre o SKU…" style="flex:1" (keydown.enter)="$event.preventDefault(); buscar()" /><button necesitaInternet type="button" class="btn" (click)="buscar()">Buscar</button></div>
               @if (resultados().length) {
                 <div class="resultados">@for (v of resultados(); track v.sku) { <button type="button" class="chip" (click)="agregar(v)">+ {{ v.producto }} · {{ v.talla }} · {{ v.color }} <code>{{ v.sku }}</code></button> }</div>
               }
@@ -127,7 +128,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
                 </table></div>
               } @else { <p class="muted small" style="margin-top:.6rem">Busque y agregue al menos un producto.</p> }
             </fieldset>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modalAviso.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !lineas.length || !aviso.sucursal_id">Confirmar y enviar</button></footer>
         </form>
@@ -146,7 +147,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
             <label>Precio base (Bs)<input name="p" type="number" min="0" step="0.01" [(ngModel)]="propuesta.precio_base" required /></label>
             <label>Material<input name="m" [(ngModel)]="propuesta.material" /></label>
           </div>
-          @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }</div>
+          @if (error()) { <app-error [texto]="error()" /> }</div>
           <footer><button type="button" class="btn" (click)="modalPropuesta.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Enviar propuesta</button></footer>
         </form>
       </div>
@@ -160,7 +161,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
             <p><strong>{{ p.nombre }}</strong> · {{ p.proveedor }} · {{ p.coleccion }} · {{ p.precio_base | bs }}</p>
             <p class="small muted">{{ p.descripcion }}</p>
             <label>Notas de la revisión <span class="hint">(obligatorias para rechazar)</span><textarea rows="3" [(ngModel)]="notas" name="notas"></textarea></label>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button class="btn danger" (click)="resolver(p, false)">Rechazar</button><button class="btn primary" (click)="resolver(p, true)">Aprobar</button></footer>
         </div>
@@ -217,7 +218,7 @@ export class AbastecimientoPage implements OnInit {
     this.lineas = []; this.busqueda = ''; this.resultados.set([]); this.error.set(''); this.modalAviso.set(true);
     this.buscar();
   }
-  buscar() { this.api.variantes(this.busqueda.trim()).subscribe((r) => this.resultados.set(r)); }
+  buscar() { this.api.variantes(this.busqueda.trim()).subscribe({ next: (r) => this.resultados.set(r), error: () => undefined }); }
   agregar(v: VarianteHabilitada) {
     const existente = this.lineas.find((l) => l.sku === v.sku);
     if (existente) existente.cantidad++; else this.lineas.push({ ...v, cantidad: 1, costo: null });

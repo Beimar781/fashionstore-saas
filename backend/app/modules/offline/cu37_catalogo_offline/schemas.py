@@ -100,5 +100,6 @@ class CatalogoLocalOut(BaseModel):
     productos: list[ProductoLocalOut]
     clientes: list[ClienteLocalOut]  # solo para el personal (datos mínimos)
     plazo_devolucion_dias: int | None = None
+    iva_porcentaje: int = 13  # el cliente calcula el IVA incluido sin conexión con la misma tasa del servidor
     reservas_sucursal: list[ReservaSucursalLocalOut] = []
     ventas_recientes: list[VentaRecienteLocalOut] = []

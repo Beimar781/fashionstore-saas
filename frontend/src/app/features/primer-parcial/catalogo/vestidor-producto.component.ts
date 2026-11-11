@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { MEDIA_URL } from '../../../core/api.config';
 import { VestidorApi } from '../../../core/api/vestidor.api';
@@ -9,7 +10,7 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
  *  Solo camisas, polos y chaquetas. El cliente se la prueba desde la app móvil. */
 @Component({
   selector: 'app-vestidor-producto',
-  imports: [FormsModule],
+  imports: [ErrorComponent, FormsModule],
   template: `
     <section class="card pad stack">
       <h2>Vestidor virtual (móvil)</h2>
@@ -37,7 +38,7 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
               </div>
             </div>
           }
-          @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+          @if (error()) { <app-error [texto]="error()" /> }
         }
       } @else { <p class="muted small">Cargando…</p> }
     </section>`,

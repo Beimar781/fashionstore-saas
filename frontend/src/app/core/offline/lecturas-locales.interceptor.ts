@@ -23,7 +23,7 @@ export const lecturasLocalesInterceptor: HttpInterceptorFn = (req, next) => {
       if (!sinRed) return throwError(() => err);
       return from(lecturas.leer(req.urlWithParams)).pipe(
         switchMap((copia) => {
-          if (!copia) return throwError(() => err);
+          if (!copia) { lecturas.falloSinCopia.set(true); return throwError(() => err); }
           lecturas.datosLocalesDesde.set(copia.fecha);
           return of(new HttpResponse({ body: copia.cuerpo, status: 200, url: req.url, headers: new HttpHeaders({ 'X-Datos-Locales': copia.fecha }) }));
         }),

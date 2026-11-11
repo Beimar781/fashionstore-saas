@@ -349,6 +349,20 @@ python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.ra
 | 21.1 | Web (Chrome, build de producción) | Cajero de EMP-B | Después de correr `preparar_demo.py`, abrir Caja con red y con el modo avión. | Las prendas tienen existencias y las fotos se ven en ambos casos. | ☐ |
 | 21.2 | Móvil | Cajero o Encargado de una empresa con un plan SIN modo sin conexión | Abrir el inicio. | Aparece «Caja» (con el aviso del plan); buscar, registrar y cobrar en efectivo funciona con Internet; sin Internet dice «Esta función necesita Internet…». | ☐ |
 
+## 22. Tercera ronda (F): lo que hay que probar a mano
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 22.1 | Web | Cajero | Con «Simular sin conexión», vender una prenda (por ejemplo Bs 300). | El título dice «Cobrar la venta» (sin «Venta Venta local») y «IVA incluido: Bs 34,51»; el comprobante provisional LOC-… lo trae igual. Tras «Deshacer» la venta, desaparece el panel verde y la Caja vuelve al inicio. | ☐ |
+| 22.2 | Web | Cliente | Sin conexión abrir la ficha de una prenda que nunca abrió y «Mi carrito» / «Pagar mi compra». | La ficha sale del catálogo descargado (tallas, colores, precio, stock, fotos), también al recargar la página sin red; «Incluye IVA» muestra el valor real (Bs 34,51 por Bs 300), igual que con red. | ☐ |
+| 22.3 | Web | Encargado | Sin conexión abrir Conflictos, Inventario, Ventas de la sucursal y Movimientos. | Conflictos y Ventas muestran lo precargado; Inventario muestra la copia descargada con sus cifras (no ceros); Movimientos dice «necesita Internet» (sin error rojo). | ☐ |
+| 22.4 | Web | Proveedor | Sin conexión abrir avisos y propuestas. | Se ven los precargados; «Nuevo aviso de remisión», «Buscar» y «Cancelar» salen apagados («necesita Internet»); «Nueva propuesta» se guarda en la cola. | ☐ |
+| 22.5 | Web | Administrador | Recorrer `/empresa/**` sin conexión (Abastecimiento, Devoluciones, Indicadores, Reportes, Temporadas y colecciones, Usuarios, Sucursales, Productos, Categorías). | Datos guardados con «Datos al…» o «necesita Internet»; ningún «No hay…» engañoso ni error rojo; todos los botones Nuevo/Editar/Desactivar/Eliminar/Guardar apagados; Excel/PDF/CSV/Consultar apagados. | ☐ |
+| 22.6 | Web | Cajero o Cliente | Iniciar sesión con un catálogo descargado hace más de 15 minutos. | Se renueva solo al iniciar sesión (fecha «Descargado el…» nueva). | ☐ |
+| 22.7 | Móvil | Cliente | Sin conexión abrir «Tarjetas guardadas» y «Mi carrito» (con IVA). | Tarjetas de la última copia con «datos al…», sin poder quitarlas; el carrito muestra el IVA real. | ☐ |
+
+**Antes de la defensa (los datos de Railway):** `python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.railway.app` (ver §21) y `python scripts/humo_produccion.py <url>`.
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
-import { VacioComponent } from '../../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { Categoria, Coleccion, Promocion } from '../../../core/catalogo.models';
@@ -12,7 +12,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-19 · Gestionar promociones y descuentos. Se reflejan en el catálogo (CU-03) y, después, en el punto de venta. */
 @Component({
   selector: 'app-promociones',
-  imports: [NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule],
+  imports: [ErrorComponent, NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -66,7 +66,7 @@ import { BsPipe } from '../../../core/formato-bs';
               <p class="small" style="margin-top:.7rem"><strong>Colecciones</strong></p>
               <div class="chips">@for (c of colecciones(); track c.id) { <button type="button" class="chip" [class.sel]="form.colecciones_ids.includes(c.id)" (click)="alternar(form.colecciones_ids, c.id)">{{ c.nombre }}</button> }</div>
             </fieldset>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>
@@ -90,8 +90,8 @@ export class PromocionesPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.api.categorias().subscribe((r) => this.categorias.set(r));
-    this.api.colecciones().subscribe((r) => this.colecciones.set(r));
+    this.api.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.api.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: () => undefined });
     this.cargar();
   }
 

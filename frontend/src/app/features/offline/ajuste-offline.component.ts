@@ -1,4 +1,5 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoLocalService, PrendaLocal } from '../../core/offline/catalogo-local.service';
 import { MOTIVOS_AJUSTE, MotivoAjuste, OperacionesSucursalService } from '../../core/offline/operaciones-sucursal.service';
@@ -7,7 +8,7 @@ import { BuscadorPrendaComponent } from './buscador-prenda.component';
 /** B6 · Ajuste de inventario sin conexión (Encargado): conteo, merma o daño. Viaja como diferencia; si dejaría el stock negativo, el servidor lo deja en conflicto. */
 @Component({
   selector: 'app-ajuste-offline',
-  imports: [FormsModule, BuscadorPrendaComponent],
+  imports: [ErrorComponent, FormsModule, BuscadorPrendaComponent],
   template: `
     @if (!local.meta()) { <div class="alert warn" role="status">Todavía no hay una copia del catálogo en este dispositivo: se descarga sola cuando hay conexión.</div> }
     @else {
@@ -17,7 +18,7 @@ import { BuscadorPrendaComponent } from './buscador-prenda.component';
         <label>Diferencia (por ejemplo +3 o -2)<input type="number" name="df" [(ngModel)]="diferencia" /></label>
         <label>Motivo (obligatorio)<select name="mt" [(ngModel)]="motivo">@for (m of motivos; track m.valor) { <option [value]="m.valor">{{ m.texto }}</option> }</select></label>
         <label>Nota (opcional)<input name="nt" [(ngModel)]="nota" maxlength="150" /></label>
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
         <button class="btn primary" (click)="registrar()">Registrar ajuste</button>
       </section>
     }`,

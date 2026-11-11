@@ -1,6 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
-import { CargandoComponent } from '../../core/ui/vacio.component';
+import { CargandoComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
@@ -13,7 +13,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-22 · Indicadores empresariales: el panel del Administrador, con cada cifra comparada con el periodo anterior. */
 @Component({
   selector: 'app-indicadores',
-  imports: [CargandoComponent, BsPipe, FormsModule, DatePipe, DecimalPipe],
+  imports: [ErrorComponent, CargandoComponent, BsPipe, FormsModule, DatePipe, DecimalPipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Indicadores</h1><p>Panel de la empresa. Las ventas son netas de devoluciones y cambios.</p></div></div>
@@ -21,7 +21,7 @@ import { BsPipe } from '../../core/formato-bs';
         <label style="max-width:190px">Periodo<select name="p" [(ngModel)]="dias" (ngModelChange)="cargar()">@for (d of periodos; track d) { <option [ngValue]="d">Últimos {{ d }} días</option> }</select></label>
         <label style="max-width:220px">Sucursal<select name="s" [(ngModel)]="sucursal" (ngModelChange)="cargar()"><option [ngValue]="null">Todas</option>@for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }</select></label>
       </form>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       @if (i(); as x) {
         <div class="grid cols-3" style="margin-bottom:1rem">

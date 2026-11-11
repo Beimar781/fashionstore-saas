@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../../core/ui/vacio.component';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +15,7 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
 /** CU-27 · Ventas de la sucursal: resumen monetario y cierre de caja del día, y los tickets con su detalle. Solo la sucursal del Encargado. */
 @Component({
   selector: 'app-ventas-sucursal',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [VacioComponent, ErrorComponent, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Ventas de la sucursal</h1><p>Resumen del día, cierre de caja y detalle de cada ticket de {{ resumen()?.sucursal ?? 'su sucursal' }}.</p></div></div>
@@ -24,7 +26,7 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
         <label style="max-width:170px">Cobrado con<select name="m" [(ngModel)]="metodo"><option value="">Todos</option><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta</option></select></label>
         <div class="row" style="align-self:end"><button class="btn primary">Consultar</button><button type="button" class="btn ghost" (click)="hoyDia()">Hoy</button></div>
       </form>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       @if (resumen(); as r) {
         <div class="grid cols-3" style="margin-bottom:1rem">
@@ -53,7 +55,7 @@ const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.
       }
 
       <div class="card table-wrap">
-        @if (!tickets().length) { <div class="empty">No hay ventas con esos filtros.</div> } @else {
+        @if (!tickets().length) { <app-vacio>No hay ventas con esos filtros.</app-vacio> } @else {
           <table>
             <thead><tr><th>Hora</th><th>Comprobante</th><th>Canal</th><th>Cliente</th><th>Atendió</th><th>Cobro</th><th class="right">Prendas</th><th class="right">Total</th><th></th></tr></thead>
             <tbody>

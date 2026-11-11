@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
@@ -14,7 +15,7 @@ export const MSG_PLAZO_VENCIDO = 'El plazo de devolución de esta venta venció.
  *  Las ventas salen de la copia descargada, con su plazo y lo ya devuelto; el servidor vuelve a validar todo al sincronizar. */
 @Component({
   selector: 'app-devolucion-offline',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [ErrorComponent, BsPipe, FormsModule, DatePipe],
   template: `
     @if (!local.meta()) { <div class="alert warn" role="status">Todavía no hay una copia de las ventas en este dispositivo: se descarga sola cuando hay conexión.</div> }
     @else if (!venta()) {
@@ -36,7 +37,7 @@ export const MSG_PLAZO_VENCIDO = 'El plazo de devolución de esta venta venció.
         <label class="check"><input type="checkbox" name="sd" [(ngModel)]="condicion.sin_danos" /> Sin daños</label>
         <label class="check"><input type="checkbox" name="sg" [(ngModel)]="condicion.sin_desgaste" /> Sin desgaste</label>
         <label class="check"><input type="checkbox" name="ce" [(ngModel)]="condicion.con_etiquetas" /> Con sus etiquetas</label>
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
         <div class="row"><button class="btn" (click)="venta.set(null)">Volver</button><button class="btn primary" (click)="registrarDevolucion()">Registrar devolución</button></div>
       </section>
     }`,

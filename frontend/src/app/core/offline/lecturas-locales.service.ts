@@ -1,4 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { NavigationStart, Router } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { LocalDbService } from './local-db.service';
 
@@ -14,6 +16,12 @@ export class LecturasLocalesService {
   private guardadas = 0;
   /** Fecha de la última lectura entregada desde la copia (la pantalla puede mostrar «Datos al…»). */
   readonly datosLocalesDesde = signal<string | null>(null);
+  /** Una lectura de la pantalla actual no tenía copia guardada: la pantalla debe decir «necesita Internet» y no «No hay…». Se reinicia al cambiar de pantalla. */
+  readonly falloSinCopia = signal(false);
+
+  constructor() {
+    inject(Router).events.pipe(filter((e) => e instanceof NavigationStart)).subscribe(() => { this.falloSinCopia.set(false); this.datosLocalesDesde.set(null); });
+  }
 
   puedeGuardar(url: string): boolean { return !EXCLUIDAS.some((e) => url.includes(e)); }
 

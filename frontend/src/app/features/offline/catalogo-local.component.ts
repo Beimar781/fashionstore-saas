@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
@@ -10,7 +11,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-37 · Catálogo para uso offline: se descarga una vez con conexión y se consulta y busca sin ella. Siempre dice de cuándo es (RN16). */
 @Component({
   selector: 'app-catalogo-local',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [ErrorComponent, BsPipe, FormsModule, DatePipe],
   template: `
     <section class="card pad stack">
       <div class="row between">
@@ -24,7 +25,7 @@ import { BsPipe } from '../../core/formato-bs';
         <button class="btn primary" (click)="descargar()" [disabled]="local.descargando() || !red.online()">{{ local.descargando() ? 'Descargando…' : meta() ? 'Actualizar catálogo' : 'Descargar catálogo' }}</button>
       </div>
       @if (!red.online()) { <p class="small muted">Sin conexión: se muestra lo que ya está guardado.</p> }
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       @if (local.hayCatalogo()) {
         <label>Buscar en el catálogo guardado<input name="q" [ngModel]="texto()" (ngModelChange)="texto.set($event)" placeholder="Nombre, categoría, SKU o código de barras" autocomplete="off" /></label>

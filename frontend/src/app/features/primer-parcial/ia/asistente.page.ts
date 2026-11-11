@@ -1,4 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -17,7 +18,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-07 · Asistente y recomendador: el cliente pide prendas en lenguaje natural; el sistema aprende de lo que compra, busca y mira para recomendarle, armarle outfits y mostrarle ofertas que le convienen. */
 @Component({
   selector: 'app-asistente',
-  imports: [BsPipe, FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [ErrorComponent, BsPipe, FormsModule, RouterLink, NgTemplateOutlet],
   template: `
     <div class="page" style="max-width:1000px">
       <div class="page-head"><div><h1>Asistente de compras</h1><p>Cuénteme qué busca y le muestro prendas disponibles. Aprendo de lo que compra, busca y mira para recomendarle lo que le va a gustar.</p></div></div>
@@ -37,7 +38,7 @@ import { BsPipe } from '../../../core/formato-bs';
           }
           @if (pensando()) { <div class="msg"><div class="burbuja">Buscando…</div></div> }
         </div>
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
         <form class="row" (ngSubmit)="enviar(texto)">
           <input name="t" [(ngModel)]="texto" placeholder="Escriba su consulta…" maxlength="500" autocomplete="off" style="flex:1" [disabled]="pensando()" />
           <button class="btn primary" [disabled]="pensando() || !texto.trim()">Enviar</button>

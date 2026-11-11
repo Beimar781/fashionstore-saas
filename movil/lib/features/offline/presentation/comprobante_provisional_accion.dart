@@ -17,6 +17,7 @@ Future<void> verComprobanteProvisional(BuildContext context, OperacionLocal o) a
     carpeta: (await getTemporaryDirectory()).path,
     empresa: c.sesion?.empresaNombre ?? 'FashionStore',
     nombreDe: (id) => c.nombreDeVariante(id),
+    ivaPorcentaje: await c.repo.ivaPorcentaje(),
   );
   final abierto = await OpenFilex.open(ruta);
   if (abierto.type != ResultType.done) mensajes.showSnackBar(const SnackBar(content: Text('No hay una aplicación para abrir PDF en este teléfono.')));

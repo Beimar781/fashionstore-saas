@@ -30,15 +30,25 @@ export class CatalogoLocalService {
 
   /** Horas después de las cuales los datos descargados se consideran viejos y se actualizan solos con conexión (§5.3). */
   static readonly HORAS_VIGENCIA = 6;
+  static readonly MINUTOS_AL_CONECTAR = 15;
+  /** Se activa al iniciar sesión y cada vez que vuelve la red: la siguiente revisión renueva la copia si tiene más de 15 minutos. */
+  private renovarAlConectar = true;
+  edadMinutos(): number { const m = this.meta(); return m ? (Date.now() - new Date(m.generado_en).getTime()) / 60000 : 0; }
   readonly vencido = computed(() => {
     const m = this.meta();
     return !!m && Date.now() - new Date(m.generado_en).getTime() > CatalogoLocalService.HORAS_VIGENCIA * 3600 * 1000;
   });
 
+  private inicio: Promise<void>;
+
+  /** Se cumple cuando la copia guardada ya se leyó de IndexedDB: una pantalla que abre sin red justo al recargar debe esperarla antes de decidir que «no hay catálogo». */
+  listo(): Promise<void> { return this.inicio; }
+
   constructor() {
     const inicio = this.cargar();
+    this.inicio = inicio;
     void inicio.then(() => this.actualizarSiVencido());
-    window.addEventListener('online', () => void this.actualizarSiVencido());
+    window.addEventListener('online', () => { this.renovarAlConectar = true; void this.actualizarSiVencido(); });
     setInterval(() => void this.actualizarSiVencido(), 10 * 60 * 1000);  // y cada 10 minutos revisa si falta o venció
     // al iniciar sesión (y cada vez que vuelve la red) se descarga solo, en segundo plano, si todavía no hay copia
     effect(() => { if (this.auth.autenticado() && this.red.online()) untracked(() => void inicio.then(() => this.descargarSiFalta())); });
@@ -54,6 +64,11 @@ export class CatalogoLocalService {
 
   /** Con conexión, si el catálogo descargado tiene más de 6 horas se actualiza solo, en segundo plano. */
   async actualizarSiVencido(): Promise<void> {
+    // F · en el inicio de sesión y al volver la red se renueva si tiene más de 15 minutos (antes solo a las 6 horas): así no se vende sin conexión con existencias viejas
+    if (this.red.online() && this.auth.autenticado() && this.hayCatalogo() && !this.descargando() && this.edadMinutos() >= CatalogoLocalService.MINUTOS_AL_CONECTAR && this.renovarAlConectar) {
+      this.renovarAlConectar = false;
+      try { await this.descargar(); return; } catch { /* sin respuesta del servidor: se vuelve a intentar */ }
+    }
     if (!this.red.online() || !this.auth.autenticado() || !this.hayCatalogo() || !this.vencido() || this.descargando()) {
       return void this.descargarSiFalta();
     }
@@ -72,7 +87,7 @@ export class CatalogoLocalService {
       this.api.catalogo().subscribe({
         next: async (c) => {
           const productos: ProductoLocal[] = c.productos.map((p) => conRutasDeImagen({ ...p, empresa_id: c.empresa_id }));
-          const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes, plazo_devolucion_dias: c.plazo_devolucion_dias ?? null, ventas_recientes: c.ventas_recientes ?? [], reservas_sucursal: c.reservas_sucursal ?? [] };
+          const meta: MetaCatalogo = { iva_porcentaje: c.iva_porcentaje, generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes, plazo_devolucion_dias: c.plazo_devolucion_dias ?? null, ventas_recientes: c.ventas_recientes ?? [], reservas_sucursal: c.reservas_sucursal ?? [] };
           await this.db.guardarCatalogo(productos, meta);
           await this.guardarImagenesCatalogo(productos);
           if (this.auth.rol() === 'Cliente') await this.guardarImagenesVestidor(productos.map((p) => p.id));

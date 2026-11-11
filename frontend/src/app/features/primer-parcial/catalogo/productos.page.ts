@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
-import { VacioComponent } from '../../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -14,7 +14,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-18 · Gestionar productos: listado y alta con sus variantes (talla × color). Las fotos se suben en el detalle. */
 @Component({
   selector: 'app-productos',
-  imports: [NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, RouterLink],
+  imports: [ErrorComponent, NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head">
@@ -83,7 +83,7 @@ import { BsPipe } from '../../../core/formato-bs';
               <div class="chips">@for (c of colores(); track c.id) { <button type="button" class="chip" [class.sel]="form.colores_ids.includes(c.id)" (click)="alternar(form.colores_ids, c.id)"><span class="swatch" [style.background]="c.codigo_hex"></span>{{ c.nombre }}</button> }</div>
               <p class="muted small" style="margin-top:.7rem">Se crearán {{ form.tallas_ids.length * form.colores_ids.length }} variantes (un SKU por combinación).</p>
             </fieldset>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Crear producto</button></footer>
         </form>
@@ -113,11 +113,11 @@ export class ProductosPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(1));  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.api.categorias().subscribe((r) => this.categorias.set(r));
-    this.api.grupos().subscribe((r) => this.grupos.set(r));
-    this.api.colores().subscribe((r) => this.colores.set(r));
-    this.api.marcas().subscribe((r) => this.marcas.set(r));
-    this.api.colecciones().subscribe((r) => this.colecciones.set(r));
+    this.api.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.api.grupos().subscribe({ next: (r) => this.grupos.set(r), error: () => undefined });
+    this.api.colores().subscribe({ next: (r) => this.colores.set(r), error: () => undefined });
+    this.api.marcas().subscribe({ next: (r) => this.marcas.set(r), error: () => undefined });
+    this.api.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: () => undefined });
     this.irA(1);
   }
 

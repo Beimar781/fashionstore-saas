@@ -15,8 +15,8 @@ export interface VentaReciente { comprobante: string; pagado_en: string; total: 
 export interface ItemReservaLocal { id: number; variante_id: number; producto: string; talla: string; color: string; cantidad: number; estado: string; }
 export interface ReservaSucursalLocal { id: number; codigo: string; cliente?: string; estado: string; programada_para: string; items: ItemReservaLocal[]; }
 export interface ExtrasSucursal { plazo_devolucion_dias?: number | null; ventas_recientes?: VentaReciente[]; reservas_sucursal?: ReservaSucursalLocal[]; }
-export interface CatalogoDescargado extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }
-export interface MetaCatalogo extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }
+export interface CatalogoDescargado extends ExtrasSucursal { iva_porcentaje?: number; generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; productos: Omit<ProductoLocal, 'empresa_id'>[]; clientes: ClienteLocal[]; }
+export interface MetaCatalogo extends ExtrasSucursal { iva_porcentaje?: number; generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }
 
 export interface Faltante { variante_id: number; producto: string; talla: string; color: string; solicitadas: number; disponibles: number; }
 /** Lo que una operación cambió en la copia local, para devolverlo a como estaba si se deshace antes de sincronizar. */

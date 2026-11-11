@@ -35,7 +35,7 @@ describe('Carrito sin conexión (E2)', () => {
       { provide: AuthService, useValue: { rol: () => 'Administrador', sesion: () => ({ empresa: { id: 1 }, usuario: { id: 5 } }) } },
       { provide: LocalDbService, useValue: {
         guardarCarritoLocal: async (k: string, v: unknown) => { guardado.set(k, v); }, leerCarritoLocal: async (k: string) => guardado.get(k), borrarCarritoLocal: async (k: string) => { guardado.delete(k); } } },
-      { provide: CatalogoLocalService, useValue: {} }, { provide: ColaOperacionesService, useValue: {} }, { provide: ToastService, useValue: { error: vi.fn() } },
+      { provide: CatalogoLocalService, useValue: { meta: () => null } }, { provide: ColaOperacionesService, useValue: {} }, { provide: ToastService, useValue: { error: vi.fn() } },
       { provide: ConnectivityService, useValue: { online: signal(false) } },
     ] });
     estado = TestBed.inject(CarritoEstadoService);
@@ -49,6 +49,7 @@ describe('Carrito sin conexión (E2)', () => {
     const vista = await estado.vistaSinConexion();
     expect(vista!.items.map((i) => [i.id, i.cantidad])).toEqual([[11, 4]]);
     expect(vista!.total).toBe('400.00');
+    expect(vista!.iva_incluido).toBe('46.02');  // F · el IVA incluido sin conexión ya no es 0,00: 400 × 13 ÷ 113
     expect(llamadas).toEqual([]);
   });
 

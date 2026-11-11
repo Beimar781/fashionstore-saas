@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
-import { VacioComponent } from '../../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { ProveedoresApi } from '../../../core/api/proveedores.api';
@@ -15,7 +15,7 @@ type Pestana = 'proveedores' | 'colecciones';
 /** CU-15 · Gestionar proveedores, su acceso al portal y las colecciones que proveen. */
 @Component({
   selector: 'app-proveedores',
-  imports: [NecesitaInternetDirective, VacioComponent, FormsModule, PasswordFieldComponent],
+  imports: [ErrorComponent, NecesitaInternetDirective, VacioComponent, FormsModule, PasswordFieldComponent],
   template: `
     <div class="page">
       <div class="page-head">
@@ -55,7 +55,7 @@ type Pestana = 'proveedores' | 'colecciones';
         </div>
       } @else {
         <div class="card table-wrap">
-          @if (!colecciones().length) { <div class="empty">Aún no hay colecciones.</div> } @else {
+          @if (!colecciones().length) { <app-vacio>Aún no hay colecciones.</app-vacio> } @else {
             <table>
               <thead><tr><th>Colección</th><th>Temporada</th><th>Proveedor</th></tr></thead>
               <tbody>
@@ -85,7 +85,7 @@ type Pestana = 'proveedores' | 'colecciones';
               <label class="full">Dirección<input name="d" [(ngModel)]="form.direccion" /></label>
             </div>
             <p class="muted small">Obligatorios: razón social y al menos un dato de contacto (correo o teléfono).</p>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando()">Guardar</button></footer>
         </form>
@@ -99,7 +99,7 @@ type Pestana = 'proveedores' | 'colecciones';
             <p class="muted small">Cuenta para {{ seleccionado?.nombre_comercial || seleccionado?.razon_social }}. Inicia sesión con el código de su empresa.</p>
             <label>Correo<input name="ae" type="email" [(ngModel)]="acceso.email" required /></label>
             <label>Contraseña inicial <span class="hint">(mínimo 8 caracteres)</span><app-password-field [(valor)]="acceso.password" /></label>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !g.valid || acceso.password.length < 8">Crear acceso</button></footer>
         </form>
@@ -134,7 +134,7 @@ export class ProveedoresPage implements OnInit {
       next: (r) => { this.proveedores.set(r); this.cargando.set(false); },
       error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); },
     });
-    this.catalogo.colecciones().subscribe((r) => this.colecciones.set(r));
+    this.catalogo.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: () => undefined });
   }
 
   abrirNuevo() { this.editandoId = 0; this.form = this.vacio(); this.error.set(''); this.modal.set('datos'); }

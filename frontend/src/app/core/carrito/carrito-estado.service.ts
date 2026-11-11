@@ -1,4 +1,5 @@
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
+import { ivaIncluido } from '../iva';
 import { firstValueFrom } from 'rxjs';
 import { ComprasApi } from '../api/compras.api';
 import { AuthService } from '../auth/auth.service';
@@ -159,7 +160,7 @@ export class CarritoEstadoService {
     for (const i of items) i.subtotal = (Number(i.precio_final) * i.cantidad).toFixed(2);
     const subtotal = items.reduce((s, i) => s + Number(i.precio) * i.cantidad, 0);
     const total = items.reduce((s, i) => s + Number(i.precio_final) * i.cantidad, 0);
-    return { sucursal_id: sucursalId, sucursal, items, total_unidades: items.reduce((s, i) => s + i.cantidad, 0), subtotal: subtotal.toFixed(2), descuento: (subtotal - total).toFixed(2), iva_incluido: '0.00', total: total.toFixed(2), puede_pagar: true, avisos: [] };
+    return { sucursal_id: sucursalId, sucursal, items, total_unidades: items.reduce((s, i) => s + i.cantidad, 0), subtotal: subtotal.toFixed(2), descuento: (subtotal - total).toFixed(2), iva_incluido: ivaIncluido(total.toFixed(2), this.catalogoLocal.meta()?.iva_porcentaje), total: total.toFixed(2), puede_pagar: true, avisos: [] };
   }
 
   private async fusionarLocal(servidor: Carrito) {

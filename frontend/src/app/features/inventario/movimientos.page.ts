@@ -64,7 +64,7 @@ export class MovimientosPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(1));  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    if (!this.esEncargado) this.publico.sucursales().subscribe((r) => this.sucursales.set(r));
+    if (!this.esEncargado) this.publico.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
     this.irA(1);
   }
 

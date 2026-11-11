@@ -1,4 +1,5 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoLocalService, PrendaLocal } from '../../core/offline/catalogo-local.service';
 import { OperacionesSucursalService } from '../../core/offline/operaciones-sucursal.service';
@@ -7,7 +8,7 @@ import { BuscadorPrendaComponent } from './buscador-prenda.component';
 /** B5 · Recepción de mercadería sin conexión (Encargado): sube el inventario local de forma provisional y se envía sola al volver la red. */
 @Component({
   selector: 'app-recepcion-offline',
-  imports: [FormsModule, BuscadorPrendaComponent],
+  imports: [ErrorComponent, FormsModule, BuscadorPrendaComponent],
   template: `
     @if (!local.meta()) { <div class="alert warn" role="status">Todavía no hay una copia del catálogo en este dispositivo: se descarga sola cuando hay conexión.</div> }
     @else {
@@ -16,7 +17,7 @@ import { BuscadorPrendaComponent } from './buscador-prenda.component';
         <app-buscador-prenda (prenda)="prenda.set($event)" />
         <label>Cantidad recibida<input type="number" min="1" name="qr" [(ngModel)]="cantidad" /></label>
         <label>Referencia del envío o proveedor<input name="rf" [(ngModel)]="referencia" maxlength="100" /></label>
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
         <button class="btn primary" (click)="registrar()">Registrar recepción</button>
       </section>
     }`,

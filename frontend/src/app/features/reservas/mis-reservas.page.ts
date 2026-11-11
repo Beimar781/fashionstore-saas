@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { VacioComponent } from '../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -18,7 +18,7 @@ type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local
 /** CU-10 · Consultar el estado de las reservas y cancelarlas (RF12). */
 @Component({
   selector: 'app-mis-reservas',
-  imports: [VacioComponent, FormsModule, RouterLink, DatePipe, OperacionesConProblemaComponent],
+  imports: [ErrorComponent, VacioComponent, FormsModule, RouterLink, DatePipe, OperacionesConProblemaComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mis reservas</h1><p>Presente el código en el mostrador de la sucursal.</p></div><a class="btn primary" routerLink="/tienda/catalogo">+ Nueva reserva</a></div>
@@ -62,7 +62,7 @@ type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local
           <div class="body">
             <p>Las prendas volverán a estar disponibles para otros clientes.</p>
             <label>Motivo <span class="hint">(opcional)</span><input name="m" [(ngModel)]="motivo" maxlength="200" /></label>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="cancelando.set(null)">Volver</button><button class="btn danger" [disabled]="enviando()">Sí, cancelar</button></footer>
         </form>

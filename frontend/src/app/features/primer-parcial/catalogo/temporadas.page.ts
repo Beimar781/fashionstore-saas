@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { VacioComponent } from '../../../core/ui/vacio.component';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
@@ -10,7 +12,7 @@ type Pestana = 'temporadas' | 'colecciones';
 /** CU-17 · Gestionar temporadas y colecciones. Solo el Administrador escribe. */
 @Component({
   selector: 'app-temporadas',
-  imports: [FormsModule],
+  imports: [VacioComponent, ErrorComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Temporadas y colecciones</h1><p>Agrupan los productos por periodo comercial para ordenar el catálogo.</p></div></div>
@@ -23,7 +25,7 @@ type Pestana = 'temporadas' | 'colecciones';
       @if (pestana() === 'temporadas') {
         <div class="row between" style="margin-bottom:.8rem"><span class="muted small">{{ temporadas().length }} temporadas</span><button class="btn primary" (click)="nuevaTemporada()">+ Nueva temporada</button></div>
         <div class="card table-wrap">
-          @if (!temporadas().length) { <div class="empty">Aún no hay temporadas.</div> } @else {
+          @if (!temporadas().length) { <app-vacio>Aún no hay temporadas.</app-vacio> } @else {
             <table>
               <thead><tr><th>Temporada</th><th>Código</th><th>Tipo</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
               <tbody>
@@ -39,7 +41,7 @@ type Pestana = 'temporadas' | 'colecciones';
       } @else {
         <div class="row between" style="margin-bottom:.8rem"><span class="muted small">{{ colecciones().length }} colecciones</span><button class="btn primary" (click)="nuevaColeccion()" [disabled]="!temporadas().length" [title]="temporadas().length ? '' : 'Cree primero una temporada'">+ Nueva colección</button></div>
         <div class="card table-wrap">
-          @if (!colecciones().length) { <div class="empty">Aún no hay colecciones.</div> } @else {
+          @if (!colecciones().length) { <app-vacio>Aún no hay colecciones.</app-vacio> } @else {
             <table>
               <thead><tr><th>Colección</th><th>Temporada</th><th>Lanzamiento</th><th>Estado</th><th></th></tr></thead>
               <tbody>
@@ -75,7 +77,7 @@ type Pestana = 'temporadas' | 'colecciones';
                 <label class="check"><input name="a" type="checkbox" [(ngModel)]="form.activa" /> Activa</label>
               }
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>
@@ -101,8 +103,8 @@ export class TemporadasPage implements OnInit {
   ngOnInit() { this.cargar(); }
 
   cargar() {
-    this.api.temporadas().subscribe((r) => this.temporadas.set(r));
-    this.api.colecciones().subscribe((r) => this.colecciones.set(r));
+    this.api.temporadas().subscribe({ next: (r) => this.temporadas.set(r), error: () => undefined });
+    this.api.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: () => undefined });
   }
 
   tipoTexto(valor: string) { return this.tipos.find((t) => t.valor === valor)?.texto ?? valor; }

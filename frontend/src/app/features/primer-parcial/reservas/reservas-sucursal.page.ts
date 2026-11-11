@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { VacioComponent } from '../../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReservasApi } from '../../../core/api/reservas.api';
@@ -12,7 +12,7 @@ import { ReservasOfflineComponent } from '../../offline/reservas-offline.compone
 /** CU-24 · El Encargado revisa las reservas de su sucursal, prepara las prendas y reporta las que no encuentra. */
 @Component({
   selector: 'app-reservas-sucursal',
-  imports: [VacioComponent, ReservasOfflineComponent, FormsModule, DatePipe],
+  imports: [ErrorComponent, VacioComponent, ReservasOfflineComponent, FormsModule, DatePipe],
   template: `
     @if (!enLinea()) {
       <div class="page"><div class="page-head"><div><h1>Reservas de la sucursal</h1><p>Valide el código, prepare las prendas, marque las que no encuentra y atienda al cliente.</p></div></div>
@@ -70,7 +70,7 @@ import { ReservasOfflineComponent } from '../../offline/reservas-offline.compone
               </tbody>
             </table></div>
             <p class="small muted">«No encontrado» descuenta la prenda del inventario y avisa al cliente con una disculpa.</p>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer>
             <button class="btn" (click)="detalle.set(null)">Cerrar</button>

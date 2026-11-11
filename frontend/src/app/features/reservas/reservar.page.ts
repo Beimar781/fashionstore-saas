@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CatalogoApi } from '../../core/api/catalogo.api';
@@ -13,7 +14,7 @@ import { CatalogoLocalService } from '../../core/offline/catalogo-local.service'
 /** CU-09 · Reservar varias prendas en una sucursal con un horario aproximado de visita. */
 @Component({
   selector: 'app-reservar',
-  imports: [FormsModule, RouterLink],
+  imports: [ErrorComponent, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi reserva</h1><p>Elija la sucursal y el horario aproximado; allí podrá probarse las prendas y decidir cuáles comprar.</p></div></div>
@@ -48,7 +49,7 @@ import { CatalogoLocalService } from '../../core/offline/catalogo-local.service'
               <label class="full">Notas para la tienda <span class="hint">(opcional)</span><input name="n" [(ngModel)]="notas" maxlength="300" /></label>
             </div>
             @if (sucursalElegida(); as s) { <p class="small muted">{{ s.direccion ?? '' }}{{ s.horario ? ' · Atención: ' + s.horario : '' }}</p> }
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
             <div class="row between">
               <span class="muted small">{{ borrador.total() }} prenda(s) · el stock se aparta de inmediato y la reserva vence 24 horas después del horario elegido.</span>
               <div class="row"><button type="button" class="btn" (click)="borrador.vaciar()">Vaciar</button><button class="btn primary" [disabled]="enviando() || !f.valid">{{ enviando() ? 'Reservando…' : 'Confirmar reserva' }}</button></div>

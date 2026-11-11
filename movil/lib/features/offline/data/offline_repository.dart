@@ -132,6 +132,7 @@ class OfflineRepository {
           'email': cl['email']
         });
       }
+      await tx.insert('meta', {'clave': 'iva_porcentaje', 'valor': '${c['iva_porcentaje'] ?? 13}'}, conflictAlgorithm: ConflictAlgorithm.replace);
       await tx.insert(
           'meta',
           {
@@ -148,6 +149,9 @@ class OfflineRepository {
   }
 
   Future<String?> catalogoGeneradoEn() => _meta('catalogo_generado_en');
+
+  /// Tasa de IVA del servidor guardada con el catálogo (13 % si todavía no se descargó).
+  Future<int> ivaPorcentaje() async => int.tryParse(await _meta('iva_porcentaje') ?? '') ?? 13;
   Future<String?> ultimaSincronizacion() => _meta('ultima_sincronizacion');
 
   Future<String?> leerMeta(String clave) => _meta(clave);

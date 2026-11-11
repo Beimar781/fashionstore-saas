@@ -874,3 +874,20 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Plan sin modo sin conexión (CU-28 a CU-30):** el Cajero y el Encargado conservan la Caja en el móvil aunque el plan no incluya el modo sin conexión; trabaja solo con Internet (buscar, registrar y cobrar en efectivo contra el servidor). Las devoluciones, las tareas de la sucursal y la sincronización siguen requiriendo el plan con modo sin conexión.
 - **Datos de demostración:** `scripts/preparar_demo.py` (idempotente, por la API, sin claves en el código) deja existencias en cada sucursal, un Encargado por sucursal, dos Cajeros en la primera sucursal y una tarjeta de prueba guardada para el cliente de demostración.
 - **Auditoría:** `scripts/auditar_offline.py` revisa todas las pantallas por rol y falla si aparece un «Cargando…» sin salida, una carga solo con red o una lista vacía que engaña; el informe queda en `docs/AUDITORIA_OFFLINE.md`.
+
+## Tercera ronda sin conexión · F (todo en un solo pase)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Pantalla sin copia guardada y sin conexión (web) | «Esta pantalla necesita Internet: todavía no hay datos guardados de ella en este dispositivo. Ábrala una vez con conexión para tenerlos disponibles.» | — (solo en la app) | Pendiente |
+| Error de red en una pantalla (web) | Alerta ámbar «Esta función necesita Internet.» (ya no un error rojo «Sin conexión con el servidor.») | — (solo en la app) | Pendiente |
+| Botón de escritura del Administrador sin conexión | «Esta función necesita Internet.» | — (solo en la app) | Pendiente |
+| Aviso de remisión del Proveedor sin conexión | «Los avisos de remisión necesitan Internet (las propuestas sí se guardan sin conexión).» | — (solo en la app) | Pendiente |
+| Tarjetas guardadas sin conexión (móvil) | «Sin conexión · datos al …. Quitar una tarjeta necesita Internet.» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **IVA incluido sin conexión (RN de facturación):** el catálogo descargado trae la tasa de IVA del servidor (`iva_porcentaje`, 13 %). Sin conexión el IVA se calcula con la misma fórmula del servidor (total × tasa ÷ (100 + tasa), redondeo medio hacia arriba al céntimo) en el carrito, el checkout, la venta local de Caja y el comprobante provisional; la misma tabla de valores se prueba en backend, web y móvil.
+- **Copia del catálogo y de las existencias:** se renueva al iniciar sesión y cada vez que vuelve la red si tiene más de 15 minutos (antes solo a las 6 horas), para no vender sin conexión con existencias viejas.
+- **Pantallas sin datos guardados:** una lista vacía sin conexión distingue entre «vacío real guardado» (se muestra «No hay…») y «consulta que no tenía copia» (se muestra «necesita Internet»); nunca ambos.
+- **Solo lectura sin conexión para Administrador y SuperAdministrador:** una regla común del shell apaga todos sus botones de escritura (nuevo, editar, activar, desactivar, eliminar, guardar, subir, generar…) sin Internet; las pantallas nuevas quedan cubiertas sin tocarlas una por una.
+- **Deshacer una venta local** devuelve la Caja al estado inicial (desaparece el panel «Venta cobrada»).

@@ -1,4 +1,6 @@
 import { CatalogoLocalService } from '../core/offline/catalogo-local.service';
+import { SoloLecturaSinRedDirective } from '../core/ui/solo-lectura-sin-red.directive';
+import { LecturasLocalesService } from '../core/offline/lecturas-locales.service';
 import { EstadoConexionComponent } from '../core/ui/estado-conexion.component';
 import { InstalarAppComponent } from '../core/ui/instalar-app.component';
 import { DatePipe } from '@angular/common';
@@ -79,7 +81,7 @@ const porRol: Record<string, Item[]> = {
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
 @Component({
   selector: 'app-shell',
-  imports: [DatePipe, EstadoConexionComponent, RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent, InstalarAppComponent],
+  imports: [SoloLecturaSinRedDirective, DatePipe, EstadoConexionComponent, RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent, InstalarAppComponent],
   template: `
     <div class="layout">
       <aside class="side">
@@ -104,7 +106,7 @@ const porRol: Record<string, Item[]> = {
           <button class="btn sm ghost out" (click)="confirmarSalida.set(true)">Cerrar sesión</button>
         </div>
       </aside>
-      <div class="main">
+      <div class="main" [soloLecturaSinRed]="!net.online() && sinEscrituraSinRed()">
         @if (!net.online()) {
           <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (datosAl(); as d) { <span> Datos al {{ d | date: 'dd/MM HH:mm' }}.</span> }@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
         }
@@ -160,7 +162,10 @@ export class ShellComponent {
   readonly cola = inject(ColaOperacionesService);
   private readonly ultimaConsulta = inject(UltimaConsultaService);
   /** «Datos al…»: quien trabaja con la copia descargada (Cliente, Cajero, Encargado) ve su fecha; el resto, cuándo vio datos del servidor por última vez. */
-  readonly datosAl = computed(() => (this.auth.rol() && ['Cliente', 'Cajero', 'Encargado'].includes(this.auth.rol()!) ? this.catalogoLocal.meta()?.generado_en : null) ?? this.ultimaConsulta.momento());
+  readonly datosAl = computed(() => this.lecturas.datosLocalesDesde() ?? (this.auth.rol() && ['Cliente', 'Cajero', 'Encargado'].includes(this.auth.rol()!) ? this.catalogoLocal.meta()?.generado_en : null) ?? this.ultimaConsulta.momento());
+  readonly lecturas = inject(LecturasLocalesService);
+  /** El Administrador y el SuperAdministrador no tienen modo sin conexión: sus botones de escritura se apagan sin Internet. */
+  readonly sinEscrituraSinRed = computed(() => ['Administrador', 'SuperAdministrador'].includes(this.auth.rol() ?? ''));
   private readonly precarga = inject(PrecargaService);  // al crearse, guarda en segundo plano las lecturas de las pantallas del rol
   private readonly avisos = inject(AvisosConexionService);  // al crearse, avisa en cualquier pantalla al perder y recuperar la red  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;

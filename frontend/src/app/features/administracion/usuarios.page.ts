@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
@@ -10,7 +11,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-13 · Gestionar usuarios y roles de la empresa. */
 @Component({
   selector: 'app-usuarios',
-  imports: [NecesitaInternetDirective, FormsModule, DatePipe],
+  imports: [ErrorComponent, NecesitaInternetDirective, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head">
@@ -63,7 +64,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                   @for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}{{ s.activa ? '' : ' (inactiva)' }}</option> }
                 </select></label>
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>

@@ -16,6 +16,7 @@ import { ColaOperacionesService } from './cola-operaciones.service';
 import { ToastService } from '../ui/toast.service';
 import { Carrito } from '../compras.models';
 import { rutasDePrecarga } from './precarga.service';
+import { LecturasLocalesService } from './lecturas-locales.service';
 import { CargandoComponent, MSG_SIN_DATOS_SIN_RED, VacioComponent } from '../ui/vacio.component';
 
 describe('Lecturas guardadas (E1)', () => {
@@ -93,21 +94,24 @@ describe('Lecturas guardadas (E1)', () => {
 
 describe('Estados de pantalla sin conexión (E1)', () => {
   const online = signal(false);
+  const falloSinCopia = signal(false);
   beforeEach(() => {
-    online.set(false); TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [{ provide: ConnectivityService, useValue: { online } }] });
+    online.set(false); falloSinCopia.set(false); TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: ConnectivityService, useValue: { online } }, { provide: LecturasLocalesService, useValue: { falloSinCopia } }] });
   });
 
-  it('una lista vacía sin conexión no dice «No hay…» sino que faltan datos guardados', () => {
+  it('F · sin conexión: si la consulta no tenía copia guardada dice «necesita Internet»; si la lista vacía vino de la copia, dice lo real', () => {
     const f = TestBed.createComponent(VacioComponent); f.detectChanges();
+    expect((f.nativeElement as HTMLElement).textContent).not.toContain(MSG_SIN_DATOS_SIN_RED);  // vacío real guardado: no se afirma que falten datos
+    falloSinCopia.set(true); f.detectChanges();
     expect((f.nativeElement as HTMLElement).textContent).toContain(MSG_SIN_DATOS_SIN_RED);
     online.set(true); f.detectChanges();
-    expect((f.nativeElement as HTMLElement).textContent).not.toContain('Sin conexión');
+    expect((f.nativeElement as HTMLElement).textContent).not.toContain('Esta pantalla necesita Internet');
   });
 
   it('«Cargando…» sin conexión se explica y con red muestra Cargando', () => {
     const f = TestBed.createComponent(CargandoComponent); f.detectChanges();
-    expect((f.nativeElement as HTMLElement).textContent).toContain('Ábrala una vez con Internet');
+    expect((f.nativeElement as HTMLElement).textContent).toContain('Ábrala una vez con conexión');
     online.set(true); f.detectChanges();
     expect((f.nativeElement as HTMLElement).textContent).toContain('Cargando…');
   });

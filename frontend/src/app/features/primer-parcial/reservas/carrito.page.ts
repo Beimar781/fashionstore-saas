@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
-import { CargandoComponent } from '../../../core/ui/vacio.component';
+import { CargandoComponent, ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -16,7 +16,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-08 · Carrito de compras: cantidades, subtotal e IVA en tiempo real, con el stock de la sucursal elegida. */
 @Component({
   selector: 'app-carrito',
-  imports: [CargandoComponent, BsPipe, FormsModule, RouterLink],
+  imports: [ErrorComponent, CargandoComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi carrito</h1><p>Las prendas se descuentan del stock de la sucursal elegida recién cuando el pago se aprueba.</p></div></div>
@@ -39,7 +39,7 @@ import { BsPipe } from '../../../core/formato-bs';
             </section>
 
             @for (a of c.avisos; track a) { <div class="alert warn" role="alert">{{ a }}</div> }
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
 
             <section class="card table-wrap">
               <table>

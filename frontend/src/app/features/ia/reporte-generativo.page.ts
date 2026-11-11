@@ -1,4 +1,5 @@
 import { DatePipe, JsonPipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, NgZone, OnDestroy, OnInit, inject, signal } from '@angular/core';
@@ -15,7 +16,7 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
 /** CU-23 · Reportes generativos: el Administrador escribe o dicta (Web Speech API del navegador) lo que necesita y el sistema interpreta la petición y genera el reporte. */
 @Component({
   selector: 'app-reporte-generativo',
-  imports: [NecesitaInternetDirective, FormsModule, DatePipe, JsonPipe, BsPipe],
+  imports: [ErrorComponent, NecesitaInternetDirective, FormsModule, DatePipe, JsonPipe, BsPipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes con IA</h1><p>Escriba o dicte lo que necesita, por ejemplo «ventas del último mes» o «el producto menos vendido de la sucursal centro».</p></div></div>
@@ -36,7 +37,7 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
         @if (!hayVoz) { <p class="muted small">Este navegador no permite dictar por voz; escriba su petición.</p> }
         @if (conversando()) { <p class="small" role="status">🗣 Conversación activa: {{ voz.hablando() ? 'leyendo el reporte…' : generando() ? 'generando el reporte…' : escuchando() ? 'escuchando, diga su petición.' : 'preparando el micrófono…' }} Diga «terminar» para salir o «repite» para volver a escucharlo.</p> }
         @else if (escuchando()) { <p class="small" role="status">🎙 Escuchando… hable ahora.</p> }
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
       </form>
 
       <div class="layout">

@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
+import { ivaIncluido } from '../../../core/iva';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -21,7 +23,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
 /** Punto de venta: CU-28 (escanear o buscar prendas), CU-29 (armar la venta, también desde una reserva) y CU-30 (cobrar y emitir el comprobante). */
 @Component({
   selector: 'app-caja',
-  imports: [BsPipe, DatePipe, FormsModule, PagoTarjetaComponent, OperacionesConProblemaComponent, ResumenTurnoComponent],
+  imports: [ErrorComponent, BsPipe, DatePipe, FormsModule, PagoTarjetaComponent, OperacionesConProblemaComponent, ResumenTurnoComponent],
   template: `
     <div class="page" style="max-width:1180px">
       <div class="page-head"><div><h1>Caja</h1><p>Escanee las prendas, registre la venta y cóbrela. El stock se descuenta al cobrar.</p></div>
@@ -108,7 +110,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
             }
             <label>Correo del cliente <span class="hint">(opcional: la compra aparece en su historial)</span><input name="c" [(ngModel)]="clienteEmail" type="email" [disabled]="!!reserva()" /></label>
             <div class="form-grid"><label>NIT o CI<input name="n" [(ngModel)]="nit" maxlength="20" /></label><label>Razón social<input name="rz" [(ngModel)]="razon" maxlength="120" /></label></div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
             <button class="btn primary" (click)="registrar()" [disabled]="registrando() || (!reserva() && !lineas().length)">{{ registrando() ? 'Registrando…' : 'Registrar venta' }}</button>
           </aside>
         </div>
@@ -118,7 +120,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
       @if (venta(); as v) {
         <div class="layout">
           <section class="card pad stack">
-            <h2>Cobrar la venta {{ v.codigo }}</h2>
+            <h2>Cobrar la venta@if (v.id) { {{ v.codigo }} }</h2>
             @if (!cobro() && !resultadoTarjeta()?.aprobado) {
               @if (!esLocal(v)) {
                 <div class="tabs" role="tablist">
@@ -170,7 +172,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
             <button class="btn sm" (click)="verResumen.set(!verResumen())">{{ verResumen() ? 'Ocultar el resumen' : 'Resumen de mi turno' }}</button></span></div>
           @for (o of ventasTurno(); track o.id) {
             <div class="row between small"><span>{{ o.creada_en | date: 'HH:mm' }} · {{ o.resumen }}</span>
-              <span class="row"><strong>{{ o.comprobante ?? comprobanteLocal(o) }}</strong><span class="badge" [class.ok]="o.estado === 'CONFIRMADA'" [class.warn]="o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA' || o.estado === 'EN_CONFLICTO'" [class.danger]="o.estado === 'RECHAZADA'">{{ estadoTexto(o.estado) }}</span>@if (cola.puedeDeshacer(o)) { <button type="button" class="btn sm danger" (click)="cola.deshacer(o)">Deshacer</button> }</span></div>
+              <span class="row"><strong>{{ o.comprobante ?? comprobanteLocal(o) }}</strong><span class="badge" [class.ok]="o.estado === 'CONFIRMADA'" [class.warn]="o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA' || o.estado === 'EN_CONFLICTO'" [class.danger]="o.estado === 'RECHAZADA'">{{ estadoTexto(o.estado) }}</span>@if (cola.puedeDeshacer(o)) { <button type="button" class="btn sm danger" (click)="deshacerVenta(o)">Deshacer</button> }</span></div>
           }
           @if (verResumen()) { <app-resumen-turno /> }
         </section>
@@ -234,6 +236,11 @@ export class CajaPage implements OnInit {
   private get sucursalId() { return this.auth.sesion()?.usuario.sucursal_id ?? null; }
   esLocal(p: Pedido) { return p.id === 0; }
   comprobanteLocal(o: OperacionLocal) { return numeroLocal(o); }
+
+  /** Al deshacer la venta que se acaba de cobrar, el panel «Venta cobrada» desaparece y la pantalla vuelve al estado inicial. */
+  async deshacerVenta(o: OperacionLocal) {
+    if (await this.cola.deshacer(o) && this.operacionLocal?.id === o.id) this.nueva();
+  }
   estadoTexto(e: string) { return ({ REGISTRADA_LOCAL: 'Pendiente', ENVIADA: 'Enviando', CONFIRMADA: 'Confirmada', EN_CONFLICTO: 'En conflicto', RECHAZADA: 'Rechazada' } as Record<string, string>)[e] ?? e; }
 
   /** Una prenda de la copia local con la misma forma que la que devuelve el servidor (CU-28), con el stock de esta sucursal. */
@@ -344,7 +351,7 @@ export class CajaPage implements OnInit {
     const items = lineas.map((l, i) => ({ id: i, variante_id: l.variante_id, sku: l.sku, producto: l.producto, talla: l.talla, color: l.color, cantidad: l.cantidad, precio_unitario: l.precio_final.toFixed(2), precio_final: l.precio_final.toFixed(2), subtotal: (l.precio_final * l.cantidad).toFixed(2) }));
     this.abrirCobro({
       id: 0, codigo: 'Venta local', estado: 'PENDIENTE_PAGO', canal: 'PRESENCIAL', tipo_entrega: 'EN_TIENDA', direccion_entrega: '', nit_ci: this.nit || '0', razon_social: this.razon || 'Sin nombre',
-      sucursal_id: this.sucursalId, sucursal: '', subtotal: total, descuento: '0.00', iva_incluido: '0.00', total, moneda: 'BOB', total_unidades: items.reduce((s, i) => s + i.cantidad, 0),
+      sucursal_id: this.sucursalId, sucursal: '', subtotal: total, descuento: '0.00', iva_incluido: ivaIncluido(total, this.local.meta()?.iva_porcentaje), total, moneda: 'BOB', total_unidades: items.reduce((s, i) => s + i.cantidad, 0),
       comprobante_numero: null, comprobante_tipo: 'PROVISIONAL', cliente: r ? r.cliente : this.clienteEmail.trim() || null, reserva_id: r?.id ?? null, creado_en: new Date().toISOString(), pagado_en: null, items, pagos: [],
     });
   }

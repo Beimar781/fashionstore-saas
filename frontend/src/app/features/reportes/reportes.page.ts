@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../core/ui/vacio.component';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
@@ -15,7 +17,7 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 /** CU-21 · Reportes de ventas y reservas del Administrador: ventas netas de devoluciones, reservas con su conversión y vista de pagos (aprobados, rechazados y pendientes). */
 @Component({
   selector: 'app-reportes',
-  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
+  imports: [VacioComponent, ErrorComponent, NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes</h1><p>Ventas digitales y presenciales netas de devoluciones, reservas y pagos de su empresa.</p></div>
@@ -26,10 +28,10 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
         <label style="max-width:160px">Hasta<input name="h" type="date" [(ngModel)]="hasta" /></label>
         <label style="max-width:200px">Sucursal<select name="s" [(ngModel)]="sucursal"><option [ngValue]="null">Todas</option>@for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }</select></label>
         @if (pestana() === 'ventas') { <label style="max-width:170px">Canal<select name="c" [(ngModel)]="canal"><option value="">Todos</option><option value="PRESENCIAL">Caja (POS)</option><option value="DIGITAL">Online</option></select></label> }
-        <button class="btn primary" style="align-self:end">Consultar</button>
+        <button necesitaInternet="Consultar con otros filtros necesita Internet." class="btn primary" style="align-self:end">Consultar</button>
       </form>
       <p class="muted small">Si no elige fechas se muestran los últimos 30 días.</p>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       <div class="tabs" role="tablist">
         <button role="tab" [class.activa]="pestana() === 'ventas'" (click)="ir('ventas')">Ventas</button>
@@ -102,7 +104,7 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
         </div>
         <section class="card table-wrap">
           <h3 style="padding:1rem 1rem 0">Pagos con problemas</h3>
-          @if (!p.con_problemas.length) { <div class="empty">No hay pagos rechazados ni pendientes en el periodo.</div> } @else {
+          @if (!p.con_problemas.length) { <app-vacio>No hay pagos rechazados ni pendientes en el periodo.</app-vacio> } @else {
             <table><thead><tr><th>Fecha</th><th>Pedido</th><th>Sucursal</th><th>Medio</th><th>Estado</th><th>Motivo</th><th class="right">Monto</th></tr></thead>
               <tbody>@for (x of p.con_problemas; track x.id) {
                 <tr><td class="nowrap">{{ x.fecha | date: 'dd/MM HH:mm' }}</td><td>{{ x.pedido }}</td><td>{{ x.sucursal }}</td><td>{{ x.tarjeta || x.metodo }}</td>

@@ -101,11 +101,11 @@ export class CatalogoPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(this.datos()?.pagina ?? 1));  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.lecturas.categorias().subscribe((r) => this.categorias.set(r));
-    this.lecturas.marcas().subscribe((r) => this.marcas.set(r));
-    this.lecturas.colores().subscribe((r) => this.colores.set(r));
+    this.lecturas.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.lecturas.marcas().subscribe({ next: (r) => this.marcas.set(r), error: () => undefined });
+    this.lecturas.colores().subscribe({ next: (r) => this.colores.set(r), error: () => undefined });
     this.lecturas.grupos().subscribe((grupos) => this.tallas.set([...new Set(grupos.flatMap((g) => g.tallas.map((t) => t.codigo)))]));
-    this.catalogo.sucursales().subscribe((r) => this.sucursales.set(r));
+    this.catalogo.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
     this.local.cargar().then(() => this.sucursales.set(this.local.meta()?.sucursales ?? this.sucursales()));
     this.buscar();
   }
@@ -115,7 +115,8 @@ export class CatalogoPage implements OnInit {
     this.cargando.set(true);
     this.catalogo.buscar({ ...this.f, q: this.f.q?.trim(), pagina }).subscribe({
       next: (r) => { this.datos.set(r); this.cargando.set(false); },
-      error: (e) => {
+      error: async (e) => {
+        await this.local.listo();
         const m = this.local.meta();
         if (m && this.local.hayCatalogo()) {
           const q = (this.f.q ?? '').trim().toLowerCase();

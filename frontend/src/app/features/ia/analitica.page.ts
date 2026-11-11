@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../core/ui/vacio.component';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
@@ -12,14 +14,14 @@ import { mensajeError } from '../../core/ui/toast.service';
 /** CU-42 · Dashboard analítico con Machine Learning: rotación de productos (KMeans) y pronóstico de demanda a 4 semanas (regresión lineal) con recomendación de reposición. */
 @Component({
   selector: 'app-analitica',
-  imports: [NecesitaInternetDirective, FormsModule, DatePipe],
+  imports: [VacioComponent, ErrorComponent, NecesitaInternetDirective, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Analítica con ML</h1><p>Qué productos rotan más y cuánto se espera vender en las próximas semanas, con modelos de aprendizaje automático (scikit-learn).</p></div><button class="btn" necesitaInternet="Exportar a PDF necesita Internet." (click)="exportarPdf()">⬇ Exportar PDF</button></div>
       <form class="card pad row" style="margin-bottom:1rem">
         <label style="max-width:240px">Sucursal<select name="s" [(ngModel)]="sucursal" (ngModelChange)="cargar()"><option [ngValue]="null">Todas</option>@for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }</select></label>
       </form>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       @if (a(); as x) {
         @if (x.mensaje) { <div class="alert warn" role="status">{{ x.mensaje }}</div> }
@@ -39,7 +41,7 @@ import { mensajeError } from '../../core/ui/toast.service';
 
         <section class="card table-wrap" style="margin-bottom:1rem">
           <h3 style="padding:1rem 1rem 0">Rotación de productos (últimos 30 días)</h3>
-          @if (!x.rotacion.length) { <div class="empty">No hay productos con ventas ni stock.</div> } @else {
+          @if (!x.rotacion.length) { <app-vacio>No hay productos con ventas ni stock.</app-vacio> } @else {
             <table><thead><tr><th>Producto</th><th class="right">Vendidas</th><th class="right">Por día</th><th class="right">Stock</th><th>Rotación</th></tr></thead>
               <tbody>@for (r of x.rotacion; track r.producto) { <tr><td>{{ r.producto }}</td><td class="right">{{ r.unidades_30d }}</td><td class="right">{{ r.tasa_diaria }}</td><td class="right">{{ r.stock }}</td>
                 <td><span class="badge" [class.ok]="r.clase === 'ALTA'" [class.warn]="r.clase === 'MEDIA'" [class.danger]="r.clase === 'BAJA'">{{ r.clase }}</span></td></tr> }</tbody></table>
@@ -58,7 +60,7 @@ import { mensajeError } from '../../core/ui/toast.service';
               <p class="small muted">Próximas {{ x.semanas_proyeccion }} semanas: {{ p.proyeccion.join(' · ') }} u. · stock {{ p.stock }} u. · ajuste del modelo R² {{ p.r2 }}</p>
               <p class="small">{{ p.recomendacion }}</p>
             </section>
-          } @empty { <div class="card empty">Aún no hay productos con suficiente historia.</div> }
+          } @empty { <app-vacio>Aún no hay productos con suficiente historia.</app-vacio> }
         </div>
       } @else if (!error()) { <div class="empty">Calculando…</div> }
     </div>`,

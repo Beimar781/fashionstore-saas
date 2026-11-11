@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { VacioComponent } from '../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { InventarioApi } from '../../core/api/inventario.api';
 import { Lote } from '../../core/inventario.models';
@@ -11,7 +11,7 @@ import { RecepcionOfflineComponent } from '../offline/recepcion-offline.componen
 /** Recepción de lotes en tránsito (CU-31 → CU-26): al recibir se cuentan las unidades y se suman al inventario de la sucursal. */
 @Component({
   selector: 'app-recepciones',
-  imports: [VacioComponent, RecepcionOfflineComponent, FormsModule],
+  imports: [ErrorComponent, VacioComponent, RecepcionOfflineComponent, FormsModule],
   template: `
     @if (!enLinea()) {
       <div class="page"><div class="page-head"><div><h1>Recepción de mercadería</h1><p>Registre lo que llegó: sube el inventario de forma provisional hasta sincronizar.</p></div></div>
@@ -52,7 +52,7 @@ import { RecepcionOfflineComponent } from '../offline/recepcion-offline.componen
               <tbody>@for (i of l.items; track i.id) { <tr><td>{{ i.producto }} · {{ i.talla }} · {{ i.color }}</td><td class="right">{{ i.cantidad }}</td>
                 <td><input type="number" min="0" [max]="i.cantidad" [(ngModel)]="recibidas[i.id]" [name]="'r' + i.id" style="width:6rem;margin-left:auto;display:block" /></td></tr> }</tbody>
             </table></div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="lote.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando()">Confirmar recepción</button></footer>
         </form>

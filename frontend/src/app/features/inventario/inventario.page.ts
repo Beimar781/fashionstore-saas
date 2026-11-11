@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { VacioComponent } from '../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -19,7 +19,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-20 · Inventario global (Administrador) y CU-26 · Inventario de la sucursal (Encargado): la misma consulta, con ajustes solo en la sucursal. */
 @Component({
   selector: 'app-inventario',
-  imports: [VacioComponent, FormsModule, RouterLink, EscanerComponent],
+  imports: [ErrorComponent, VacioComponent, FormsModule, RouterLink, EscanerComponent],
   template: `
     <div class="page">
       <div class="page-head">
@@ -116,7 +116,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             } @else {
               <label>Avisar cuando queden este número de unidades o menos<input name="um" type="number" min="0" [(ngModel)]="umbral" required /></label>
             }
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !g.valid">Guardar</button></footer>
         </form>
@@ -198,7 +198,7 @@ export class InventarioPage implements OnInit {
   }
 
   irA(pagina: number) {
-    if (this.modoLocal()) { this.cargarLocal(pagina); return; }
+    if (this.modoLocal()) { this.cargando.set(true); void this.local.listo().then(() => this.cargarLocal(pagina)); return; }  // espera la copia guardada: al recargar sin red aún podía no haberse leído
     this.cargando.set(true);
     const consulta = this.esEncargado ? this.api.deMiSucursal({ ...this.f, q: this.f.q.trim(), pagina }) : this.api.global({ ...this.f, q: this.f.q.trim(), pagina });
     consulta.subscribe({

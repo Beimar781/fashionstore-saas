@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { VacioComponent } from '../../../core/ui/vacio.component';
+import { ErrorComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
@@ -11,7 +13,7 @@ type Modal = 'categoria' | 'grupo' | 'talla' | 'color' | 'marca' | null;
 /** CU-16 · Gestionar categorías, tallas y colores (más marcas). Solo el Administrador escribe. */
 @Component({
   selector: 'app-atributos',
-  imports: [FormsModule],
+  imports: [VacioComponent, ErrorComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Categorías, tallas y colores</h1><p>Atributos que se asignan a las prendas del catálogo.</p></div></div>
@@ -24,7 +26,7 @@ type Modal = 'categoria' | 'grupo' | 'talla' | 'color' | 'marca' | null;
         @case ('categorias') {
           <div class="row between" style="margin-bottom:.8rem"><span class="muted small">{{ categorias().length }} categorías</span><button class="btn primary" (click)="nuevaCategoria()">+ Nueva categoría</button></div>
           <div class="card table-wrap">
-            @if (!categorias().length) { <div class="empty">Aún no hay categorías.</div> } @else {
+            @if (!categorias().length) { <app-vacio>Aún no hay categorías.</app-vacio> } @else {
               <table>
                 <thead><tr><th>Categoría</th><th>Grupo de tallas</th><th>Orden</th><th>Estado</th><th></th></tr></thead>
                 <tbody>
@@ -53,13 +55,13 @@ type Modal = 'categoria' | 'grupo' | 'talla' | 'color' | 'marca' | null;
                   @empty { <span class="muted small">Sin tallas todavía.</span> }
                 </div>
               </section>
-            } @empty { <div class="card empty">Aún no hay grupos de tallas.</div> }
+            } @empty { <app-vacio>Aún no hay grupos de tallas.</app-vacio> }
           </div>
         }
         @case ('colores') {
           <div class="row between" style="margin-bottom:.8rem"><span class="muted small">El código corto se usa en el SKU y no cambia al renombrar el color.</span><button class="btn primary" (click)="nuevoColor()">+ Nuevo color</button></div>
           <div class="card table-wrap">
-            @if (!colores().length) { <div class="empty">Aún no hay colores.</div> } @else {
+            @if (!colores().length) { <app-vacio>Aún no hay colores.</app-vacio> } @else {
               <table>
                 <thead><tr><th>Color</th><th>Código SKU</th><th>Hexadecimal</th><th></th></tr></thead>
                 <tbody>
@@ -75,7 +77,7 @@ type Modal = 'categoria' | 'grupo' | 'talla' | 'color' | 'marca' | null;
         @case ('marcas') {
           <div class="row between" style="margin-bottom:.8rem"><span class="muted small">{{ marcas().length }} marcas</span><button class="btn primary" (click)="nuevaMarca()">+ Nueva marca</button></div>
           <div class="card table-wrap">
-            @if (!marcas().length) { <div class="empty">Aún no hay marcas.</div> } @else {
+            @if (!marcas().length) { <app-vacio>Aún no hay marcas.</app-vacio> } @else {
               <table><thead><tr><th>Marca</th><th></th></tr></thead><tbody>
                 @for (m of marcas(); track m.id) { <tr><td><strong>{{ m.nombre }}</strong></td><td class="actions"><button class="btn sm danger" (click)="eliminar('marca', api.eliminarMarca(m.id))">Eliminar</button></td></tr> }
               </tbody></table>
@@ -121,7 +123,7 @@ type Modal = 'categoria' | 'grupo' | 'talla' | 'color' | 'marca' | null;
                 }
               }
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>
@@ -171,10 +173,10 @@ export class AtributosPage implements OnInit {
   ngOnInit() { this.cargar(); }
 
   cargar() {
-    this.api.categorias().subscribe((r) => this.categorias.set(r));
-    this.api.grupos().subscribe((r) => this.grupos.set(r));
-    this.api.colores().subscribe((r) => this.colores.set(r));
-    this.api.marcas().subscribe((r) => this.marcas.set(r));
+    this.api.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.api.grupos().subscribe({ next: (r) => this.grupos.set(r), error: () => undefined });
+    this.api.colores().subscribe({ next: (r) => this.colores.set(r), error: () => undefined });
+    this.api.marcas().subscribe({ next: (r) => this.marcas.set(r), error: () => undefined });
   }
 
   nombreGrupo(id: number | null) { return id === null ? 'Heredado / ninguno' : (this.grupos().find((g) => g.id === id)?.nombre ?? '—'); }

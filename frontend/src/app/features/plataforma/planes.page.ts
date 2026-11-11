@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +11,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-34 · Gestionar planes de suscripción. */
 @Component({
   selector: 'app-planes',
-  imports: [NecesitaInternetDirective, BsPipe, FormsModule],
+  imports: [ErrorComponent, NecesitaInternetDirective, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -62,7 +63,7 @@ import { BsPipe } from '../../core/formato-bs';
                 <label class="check"><input type="checkbox" name="ia" [(ngModel)]="form.reportes_ia" /> Reportes generativos con IA y analítica ML</label>
               </div>
             </fieldset>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>

@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
-import { VacioComponent } from '../../core/ui/vacio.component';
+import { VacioComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
 import { Ciudad, Sucursal, UsoPlan } from '../../core/models';
@@ -10,7 +10,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-14 · Gestionar ciudades y sucursales dentro del límite del plan (RN06). */
 @Component({
   selector: 'app-sucursales',
-  imports: [NecesitaInternetDirective, VacioComponent, FormsModule],
+  imports: [ErrorComponent, NecesitaInternetDirective, VacioComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -72,7 +72,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
               <label>Teléfono<input name="t" [(ngModel)]="form.telefono" /></label>
               <label>Horario<input name="h" [(ngModel)]="form.horario" placeholder="Lun-Sáb 9:00-20:00" /></label>
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>

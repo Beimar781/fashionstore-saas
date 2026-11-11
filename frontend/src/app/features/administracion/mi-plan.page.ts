@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
-import { CargandoComponent } from '../../core/ui/vacio.component';
+import { CargandoComponent, ErrorComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ReportesApi } from '../../core/api/reportes.api';
@@ -12,7 +12,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-36 · Plan, límites y uso de la empresa. Es lo único habilitado cuando la suscripción no está vigente (RN05); entonces solo se muestra el plan y la vigencia. */
 @Component({
   selector: 'app-mi-plan',
-  imports: [CargandoComponent, BsPipe, DatePipe, RouterLink],
+  imports: [ErrorComponent, CargandoComponent, BsPipe, DatePipe, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi plan</h1><p>Plan contratado, vigencia, límites con su uso y funcionalidades habilitadas para su empresa.</p></div></div>
@@ -22,7 +22,7 @@ import { BsPipe } from '../../core/formato-bs';
           <strong>La suscripción de su empresa no está vigente.</strong> Solo puede consultar su plan hasta que el administrador de la plataforma la renueve.
         </div>
       }
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
       @if (p(); as m) {
         @for (a of m.alertas; track a) { @if (!auth.restringido()) { <div class="alert warn" role="status" style="margin-bottom:.6rem">{{ a }}</div> } }
         @if (m.plan && m.vigencia) {

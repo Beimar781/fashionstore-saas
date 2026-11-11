@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/util/iva.dart';
 import '../../../core/util/uuid.dart';
 import '../../../primer_parcial/reservas/data/reservas_repository.dart';
 import 'modelos.dart';
@@ -68,10 +69,10 @@ class CarritoSinConexion {
     }
     final sucursalId = (servidor?['sucursal_id'] ?? local?['sucursal_id']) as int?;
     final sucursales = await repo.sucursales();
-    return _calcular(items, sucursalId, servidor?['sucursal'] as String? ?? sucursales.where((s) => s.id == sucursalId).firstOrNull?.nombre);
+    return _calcular(items, sucursalId, servidor?['sucursal'] as String? ?? sucursales.where((s) => s.id == sucursalId).firstOrNull?.nombre, await repo.ivaPorcentaje());
   }
 
-  Map<String, dynamic> _calcular(List<Map<String, dynamic>> items, int? sucursalId, String? sucursal) {
+  Map<String, dynamic> _calcular(List<Map<String, dynamic>> items, int? sucursalId, String? sucursal, int ivaPorcentaje) {
     var subtotal = 0.0, total = 0.0;
     var unidades = 0;
     for (final i in items) {
@@ -90,7 +91,7 @@ class CarritoSinConexion {
       'total_unidades': unidades,
       'subtotal': subtotal.toStringAsFixed(2),
       'descuento': (subtotal - total).toStringAsFixed(2),
-      'iva_incluido': '0.00',
+      'iva_incluido': ivaIncluido(total, ivaPorcentaje),
       'total': total.toStringAsFixed(2),
       'puede_pagar': items.isNotEmpty && items.every((i) => (i['disponible'] as int? ?? 0) >= (i['cantidad'] as int)),
       'avisos': <String>[],

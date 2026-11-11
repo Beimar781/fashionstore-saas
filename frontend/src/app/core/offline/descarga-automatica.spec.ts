@@ -17,9 +17,11 @@ describe('Descarga automática del catálogo (D2)', () => {
   const rol = signal('Cajero');
   const descargar = vi.fn();
   let guardado: unknown[] = [];
+  let meta: { generado_en: string; empresa_id: number; sucursales: unknown[]; clientes: unknown[] } | undefined;
 
-  async function arrancar(copiaPrevia: unknown[] = []) {
+  async function arrancar(copiaPrevia: unknown[] = [], minutosDeAntiguedad?: number) {
     guardado = copiaPrevia;
+    meta = minutosDeAntiguedad === undefined ? undefined : { generado_en: new Date(Date.now() - minutosDeAntiguedad * 60000).toISOString(), empresa_id: 1, sucursales: [], clientes: [] };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -27,7 +29,7 @@ describe('Descarga automática del catálogo (D2)', () => {
         { provide: VestidorApi, useValue: {} },
         { provide: ConnectivityService, useValue: { online } },
         { provide: AuthService, useValue: { autenticado, sesion: () => ({ usuario: { rol: rol() }, suscripcion: { plan: { offline: true } } }), rol: () => rol() } },
-        { provide: LocalDbService, useValue: { leerCatalogo: async () => guardado, metaCatalogo: async () => undefined, guardarCatalogo: async (p: unknown[]) => { guardado = p; }, marcarSincronizacion: async () => undefined } },
+        { provide: LocalDbService, useValue: { leerCatalogo: async () => guardado, metaCatalogo: async () => meta, guardarCatalogo: async (p: unknown[]) => { guardado = p; }, marcarSincronizacion: async () => undefined } },
       ],
     });
     TestBed.inject(CatalogoLocalService);
@@ -45,6 +47,14 @@ describe('Descarga automática del catálogo (D2)', () => {
 
   it('si ya hay copia no vuelve a descargarla (solo se actualiza cuando vence)', async () => {
     await arrancar([{ id: 1 }]);
+    expect(descargar).not.toHaveBeenCalled();
+  });
+
+  it('F · al iniciar sesión renueva la copia si tiene más de 15 minutos (no vende con existencias viejas), y si es reciente no', async () => {
+    await arrancar([{ id: 1 }], 40);
+    expect(descargar).toHaveBeenCalledTimes(1);
+    descargar.mockReset();
+    await arrancar([{ id: 1 }], 5);
     expect(descargar).not.toHaveBeenCalled();
   });
 

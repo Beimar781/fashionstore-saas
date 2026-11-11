@@ -129,11 +129,11 @@ export class ProductoDetallePage implements OnInit {
 
   ngOnInit() {
     this.id = Number(this.ruta.snapshot.paramMap.get('id'));
-    this.api.categorias().subscribe((r) => this.categorias.set(r));
-    this.api.grupos().subscribe((r) => this.grupos.set(r));
-    this.api.colores().subscribe((r) => this.colores.set(r));
-    this.api.marcas().subscribe((r) => this.marcas.set(r));
-    this.api.colecciones().subscribe((r) => this.colecciones.set(r));
+    this.api.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.api.grupos().subscribe({ next: (r) => this.grupos.set(r), error: () => undefined });
+    this.api.colores().subscribe({ next: (r) => this.colores.set(r), error: () => undefined });
+    this.api.marcas().subscribe({ next: (r) => this.marcas.set(r), error: () => undefined });
+    this.api.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: () => undefined });
     this.cargar();
   }
 

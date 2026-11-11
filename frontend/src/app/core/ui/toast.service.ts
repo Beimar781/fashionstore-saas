@@ -1,5 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
+export const MSG_SIN_CONEXION = 'Sin conexión con el servidor.';
+
 export interface AccionToast { texto: string; ruta: string; }
 export interface Toast { id: number; tipo: 'ok' | 'danger' | 'warn'; texto: string; accion?: AccionToast; }
 
@@ -9,7 +11,8 @@ export class ToastService {
   private n = 0;
 
   ok(texto: string) { this.mostrar('ok', texto); }
-  error(texto: string) { this.mostrar('danger', texto, 6000); }
+  /** «Sin conexión» no es un fallo del sistema: se muestra como aviso (ámbar) y no como error rojo duplicado con el mensaje de la pantalla. */
+  error(texto: string) { this.mostrar(texto === MSG_SIN_CONEXION ? 'warn' : 'danger', texto, 6000); }
   aviso(texto: string) { this.mostrar('warn', texto, 7000); }
 
   /** Aviso con un botón que lleva a otra pantalla (por ejemplo «Ver detalle» de la sincronización). */
@@ -26,7 +29,7 @@ export class ToastService {
 /** Extrae el mensaje controlado del backend ({"detail": "..."}). */
 export function mensajeError(err: unknown): string {
   const e = err as { status?: number; error?: { detail?: unknown } };
-  if (e?.status === 0) return 'Sin conexión con el servidor.';
+  if (e?.status === 0) return MSG_SIN_CONEXION;
   const d = e?.error?.detail;
   return typeof d === 'string' ? d : 'No se pudo completar la operación.';
 }

@@ -70,6 +70,9 @@ def revisar_web(archivo: Path) -> list[tuple[str, str]]:
             hallazgos.append(("FALLA", "«cargando» sin ruta de error"))
     if re.search(r"@else if \(![^\n]*length\)[^\n]*<div class=\"(?:card )?empty\">(?:No hay|Aún no)", t):
         hallazgos.append(("FALLA", "lista vacía que afirma «No hay…» sin distinguir la falta de conexión (usar <app-vacio>)"))
+    # error rojo + «No hay…»: una lista vacía que no pasa por <app-vacio> afirma que no hay nada aunque no se haya podido consultar
+    if re.search(r'<div class="(?:card )?empty">(?:No hay|Aún no|No tiene)', t) and ("error()" in t or ".subscribe(" in t):
+        hallazgos.append(("FALLA", "error + «No hay…» engañoso: usar <app-vacio>"))
     llama = re.search(r"\.(?:post|put|patch|delete)\(|(?:api|this\.api)\.\w+\(.*\)\.subscribe", t) is not None
     escribe = re.search(r"\b(crear|guardar|eliminar|desactivar|activar|suspender|asignar|anular|cobrar|registrar|reintentar|descartar)\w*\(", t) is not None
     if llama and escribe and "necesitaInternet" not in t and "cola" not in t.lower() and "registrar(" not in t and "Local(" not in t:
@@ -77,6 +80,24 @@ def revisar_web(archivo: Path) -> list[tuple[str, str]]:
     if re.search(r"ngOnInit", t) and "alRefrescar" not in t and ".subscribe(" in t and "effect(" not in t:
         hallazgos.append(("AVISO", "no se recarga sola al volver la red"))
     return hallazgos
+
+
+# mismo criterio que BOTON_DE_ESCRITURA de frontend/src/app/core/ui/solo-lectura-sin-red.directive.ts (las pantallas del Administrador apagan estos botones sin Internet)
+ESCRITURA = re.compile(r"^\s*(\+\s*)?(nuev[oa]s?|crear|editar|guardar|desactivar|activar|eliminar|quitar|suspender|reactivar|asignar|anular|subir|generar|hacer principal|inactivar|retirar|volver a|cancelar (el )?(lote|aviso)|aplicar|restablecer|enviar|confirmar|cambiar (de )?(plan|estado))", re.I)
+VERBOS_DE_ESCRITURA = re.compile(r"\((?:click|ngSubmit)\)=\"(?:crear|guardar|eliminar|desactivar|activar|suspender|reactivar|asignar|anular|subir|generar|hacerPrincipal|quitar|inactivar|abrirNuev|cambiarEstado|enviar)\w*\(", re.I)
+
+
+def revisar_empresa(archivo: Path, hallazgos: list[tuple[str, str]]) -> None:
+    """Pantallas del Administrador (/empresa/**): sus botones de escritura deben apagarse sin Internet (directiva global del shell o `necesitaInternet`)."""
+    shell = (WEB / "layout" / "shell.component.ts").read_text(encoding="utf-8")
+    if "[soloLecturaSinRed]" not in shell or "'Administrador'" not in shell:
+        hallazgos.append(("FALLA", "el shell ya no apaga los botones de escritura del Administrador sin Internet"))
+        return
+    t = archivo.read_text(encoding="utf-8")
+    for m in re.finditer(r"<button([^>]*)>([^<]*(?:<[^/][^>]*>[^<]*)*?)</button>", t):
+        atributos, texto = m.group(1), re.sub(r"<[^>]+>|\{\{[^}]*\}\}|@\w+[^{]*\{|[{}]", " ", m.group(2)).strip()
+        if VERBOS_DE_ESCRITURA.search(atributos) and not ESCRITURA.search(texto) and "necesitaInternet" not in atributos and "permiteSinRed" not in atributos and texto:
+            hallazgos.append(("AVISO", f"botón de escritura «{texto[:30]}» no queda cubierto por la regla del shell"))
 
 
 def auditar_web() -> list[tuple[str, str, str, str]]:
@@ -87,6 +108,8 @@ def auditar_web() -> list[tuple[str, str, str, str]]:
             if destino.stem in SOLO_CON_INTERNET:
                 continue
             h = revisar_web(destino)
+            if raiz in ("empresa", "plataforma"):
+                revisar_empresa(destino, h)
             if destino.stem in ACEPTADOS_WEB:
                 h = [(n, m) for n, m in h if n == "FALLA"]
             nivel = "FALLA" if any(n == "FALLA" for n, _ in h) else "AVISO" if h else "OK"

@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../core/ui/vacio.component';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
@@ -11,7 +13,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-41 · Administrador: plazo de devolución de la empresa y consulta de todas las notas de devolución y cambio. */
 @Component({
   selector: 'app-devoluciones-admin',
-  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
+  imports: [VacioComponent, ErrorComponent, NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Plazo de devolución de la empresa y notas registradas en todas las sucursales.</p></div></div>
@@ -26,10 +28,10 @@ import { BsPipe } from '../../core/formato-bs';
         <label style="max-width:170px">Hasta<input name="h" type="date" [(ngModel)]="hasta" /></label>
         <button class="btn" style="align-self:end">Consultar</button>
       </form>
-      @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+      @if (error()) { <app-error [texto]="error()" /> }
 
       <div class="card table-wrap">
-        @if (!notas().length) { <div class="empty">No hay devoluciones ni cambios en ese periodo.</div> } @else {
+        @if (!notas().length) { <app-vacio>No hay devoluciones ni cambios en ese periodo.</app-vacio> } @else {
           <table>
             <thead><tr><th>Nota</th><th>Fecha</th><th>Sucursal</th><th>Tipo</th><th>Comprobante</th><th>Motivo</th><th class="right">Devuelto</th><th class="right">Reembolso</th><th class="right">Cobrado</th><th></th></tr></thead>
             <tbody>

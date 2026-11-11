@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from datetime import timedelta
 
 from app.core.almacenamiento import url_media
+from app.core.config import get_settings
 from app.core.constantes import CAJERO, CLIENTE, ENCARGADO
 from app.core.tiempo import ahora
 from app.modules.acceso.dependencias import Contexto
@@ -64,7 +65,7 @@ class CatalogoOfflineService:
                 ))
         clientes = [] if self.ctx.rol == CLIENTE else [schemas.ClienteLocalOut(id=i, nombre=n, email=e) for i, n, e in nombres_y_correos_de_clientes(self.db, self.empresa_id)]
         extra = self._para_el_personal() if self.ctx.rol in (CAJERO, ENCARGADO) and self.ctx.sucursal_id is not None else {}
-        return schemas.CatalogoLocalOut(generado_en=ahora(), empresa_id=self.empresa_id, sucursales=[schemas.SucursalLocalOut(**s) for s in sucursales], productos=salida, clientes=clientes, **extra)
+        return schemas.CatalogoLocalOut(generado_en=ahora(), iva_porcentaje=get_settings().iva_porcentaje, empresa_id=self.empresa_id, sucursales=[schemas.SucursalLocalOut(**s) for s in sucursales], productos=salida, clientes=clientes, **extra)
 
     def _para_el_personal(self) -> dict:
         """Lo que el personal necesita para atender sin conexión: las ventas recientes de su sucursal con el plazo de devolución (B3) y, el Encargado, las reservas activas (B4)."""

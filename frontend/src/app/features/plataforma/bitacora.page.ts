@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { mensajeError } from '../../core/ui/toast.service';
 /** Bitácora del sistema. El Administrador ve las operaciones de su empresa; el SuperAdministrador, las de todas las empresas (con filtro y columna Empresa) y las de la plataforma. Solo lectura. */
 @Component({
   selector: 'app-bitacora',
-  imports: [FormsModule, DatePipe],
+  imports: [ErrorComponent, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head">
@@ -28,7 +29,7 @@ import { mensajeError } from '../../core/ui/toast.service';
           <label>Buscar en el detalle o la IP<input name="q" type="search" [(ngModel)]="f.q" maxlength="100" placeholder="Ej.: reserva o 203.0.113" /></label>
           <div class="botones"><button class="btn primary">Filtrar</button><button type="button" class="btn ghost" (click)="limpiar()">Limpiar</button></div>
         </form>
-        @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+        @if (error()) { <app-error [texto]="error()" /> }
 
         <div class="table-wrap">
           <table class="bitacora">

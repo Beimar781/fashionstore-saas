@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogoLocalService, PrendaLocal } from '../../core/offline/catalogo-local.service';
@@ -12,7 +13,7 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
 /** RF19 · Registrar sin conexión: el personal registra ventas de contado (RN13) y el cliente reserva. Todo usa el catálogo guardado y queda en la cola para sincronizar. */
 @Component({
   selector: 'app-registrar-offline',
-  imports: [BsPipe, FormsModule],
+  imports: [ErrorComponent, BsPipe, FormsModule],
   template: `
     <section class="card pad stack">
       <h2>{{ !esCliente ? 'Venta de contado sin conexión' : modo === 'COMPRA' ? 'Comprar sin conexión' : 'Reservar sin conexión' }}</h2>
@@ -49,7 +50,7 @@ interface Linea { variante_id: number; texto: string; precio: number; cantidad: 
               <label style="min-width:240px">Cliente (opcional)<select name="cl" [(ngModel)]="clienteEmail"><option [ngValue]="null">Consumidor final</option>@for (c of local.meta()?.clientes ?? []; track c.id) { <option [ngValue]="c.email">{{ c.nombre }} · {{ c.email }}</option> }</select></label>
             </div>
           }
-          @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+          @if (error()) { <app-error [texto]="error()" /> }
           <div><button class="btn primary" (click)="registrar()" [disabled]="guardando()">{{ !esCliente ? 'Registrar venta en el dispositivo' : modo === 'COMPRA' ? 'Registrar compra en el dispositivo' : 'Registrar reserva en el dispositivo' }}</button></div>
         }
       }

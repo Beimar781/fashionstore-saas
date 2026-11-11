@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../core/ui/vacio.component';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -18,7 +20,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-41 · Devoluciones y cambios: se busca la venta por su comprobante (RN15), se eligen las prendas y se emite la nota. Cajero y Encargado, solo su sucursal. */
 @Component({
   selector: 'app-devoluciones',
-  imports: [BsPipe, FormsModule, DatePipe, PagoTarjetaComponent, DevolucionOfflineComponent],
+  imports: [VacioComponent, ErrorComponent, BsPipe, FormsModule, DatePipe, PagoTarjetaComponent, DevolucionOfflineComponent],
   template: `
     <div class="page" style="max-width:1100px">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Ingrese el comprobante de la venta. La prenda devuelta vuelve al inventario de la sucursal.</p></div>
@@ -37,7 +39,7 @@ import { BsPipe } from '../../core/formato-bs';
         @if (errorBusqueda()) { <div class="alert danger" role="alert" style="margin-top:1rem">{{ errorBusqueda() }}</div> }
         <h3 style="margin:1.5rem 0 .5rem">Devoluciones recientes</h3>
         <div class="card table-wrap">
-          @if (!recientes().length) { <div class="empty">Todavía no hay devoluciones.</div> } @else {
+          @if (!recientes().length) { <app-vacio>Todavía no hay devoluciones.</app-vacio> } @else {
             <table>
               <thead><tr><th>Nota</th><th>Fecha</th><th>Tipo</th><th>Comprobante</th><th class="right">Devuelto</th><th class="right">Reembolso</th><th></th></tr></thead>
               <tbody>
@@ -117,7 +119,7 @@ import { BsPipe } from '../../core/formato-bs';
                 <div class="alert ok">Se reembolsan {{ reembolso().toFixed(2) | bs }} con {{ nombreMedio(v.medio_pago) }}{{ v.medio_pago === 'TARJETA' ? ' (a la misma tarjeta)' : '' }}.</div>
               }
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
             @if (diferencia() > 0 && metodoCobro() === 'TARJETA') {
               @if (v.dentro_del_plazo && hayPrendas()) {
                 <app-pago-tarjeta [total]="diferencia().toFixed(2)" [permitirGuardar]="false" [iniciarFn]="iniciarDiferencia" [confirmarFn]="confirmarDiferencia" (sinStock)="error.set($event)" />

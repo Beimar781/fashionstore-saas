@@ -159,7 +159,7 @@ export class PrendaPage implements OnInit {
 
   private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.api.sucursales().subscribe((r) => this.sucursales.set(r));
+    this.api.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
     this.ruta.paramMap.subscribe((pm) => {
       // Solo al cambiar de producto se reinicia la selección; actualizar los datos la conserva.
       this.id = Number(pm.get('id'));
@@ -173,14 +173,16 @@ export class PrendaPage implements OnInit {
   }
 
   cargar() {
-    this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: (e) => {
+    this.api.prenda(this.id, this.sucursalId()).subscribe({ next: (p) => this.prenda.set(p), error: async (e) => {
+      await this.catalogoLocal.listo();  // al recargar sin red, la copia guardada puede no haberse leído todavía
       const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
       if (p) this.prenda.set(this.detalleLocal(p)); else this.toast.error(mensajeError(e));
     } });
     this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.toast.error(mensajeError(e)) });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
-      error: (e) => {
+      error: async (e) => {
+        await this.catalogoLocal.listo();
         const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
         if (p) {
           const variantes = p.variantes.map((v) => { const cantidad = this.sucursalId() === null ? Object.values(v.stock).reduce((a, b) => a + b, 0) : (v.stock[String(this.sucursalId())] ?? 0); return { variante_id: v.id, sku: v.sku, talla_id: v.talla_id ?? 0, talla: v.talla, color_id: v.color_id ?? 0, color: v.color, precio: v.precio, precio_final: v.precio_final, disponible: cantidad > 0, cantidad, orden: 0 }; });

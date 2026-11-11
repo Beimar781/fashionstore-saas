@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ErrorComponent } from '../../core/ui/vacio.component';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
@@ -12,7 +13,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-35 · Gestionar suscripciones de empresas. La ruta entrega el id de la empresa como input. */
 @Component({
   selector: 'app-suscripcion',
-  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe, RouterLink],
+  imports: [ErrorComponent, NecesitaInternetDirective, BsPipe, FormsModule, DatePipe, RouterLink],
   template: `
     <div class="page">
       <p class="small"><a routerLink="/plataforma/empresas">← Empresas</a></p>
@@ -77,7 +78,7 @@ import { BsPipe } from '../../core/formato-bs';
               <label class="full">Forma de pago <span class="hint">Registro simulado, sin cobro real</span>
                 <select name="fp" [(ngModel)]="form.forma_pago"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="QR">QR</option></select></label>
             </div>
-            @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
+            @if (error()) { <app-error [texto]="error()" /> }
           </div>
           <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Confirmar</button></footer>
         </form>
