@@ -17,7 +17,9 @@ String textoReconexion(int pendientes) => pendientes > 0 ? 'Conexión restableci
 
 String textoVolvioLaConexion(int enviadas) => 'Volvió la conexión: se enviaron $enviadas ${enviadas == 1 ? 'operación' : 'operaciones'}.';
 
-String textoResumen(ResumenSync r) => 'Sincronización completa: ${r.confirmadas} confirmadas, ${r.enConflicto} en conflicto, ${r.rechazadas} rechazadas';
+String textoResumen(ResumenSync r) => r.enConflicto > 0
+    ? 'Sincronización completa: ${r.confirmadas} confirmadas, ${r.enConflicto} en conflicto (revíselas), ${r.rechazadas} rechazadas'
+    : 'Sincronización completa: ${r.confirmadas} confirmadas, ${r.enConflicto} en conflicto, ${r.rechazadas} rechazadas';
 
 class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
@@ -75,6 +77,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   List<OperacionLocal> get enConflicto =>
       operaciones.where((o) => o.estado == Estado.enConflicto).toList();
   bool get esCliente => _sesion?.rol == 'Cliente';
+  bool get esEncargado => _sesion?.rol == 'Encargado';
   bool get habilitado =>
       _sesion != null &&
       _sesion!.offlineHabilitado &&
@@ -83,8 +86,13 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// Lo llama el proveedor cada vez que cambia la sesión (inicio y cierre de sesión).
   void usarSesion(Sesion? s) {
     final cambio = s?.usuarioId != _sesion?.usuarioId;
+    final anterior = _sesion;
     _sesion = s;
     if (!cambio) return;
+    _nombres.clear();
+    hayCatalogo = false;
+    catalogoGeneradoEn = null;
+    if (anterior != null) _limpieza = _repo.limpiarDatosDeUsuario(anterior.usuarioId, anterior.empresaId); // cierre de sesión o cambio de usuario
     _reintento?.cancel();
     _red?.cancel();
     operaciones = [];
@@ -101,6 +109,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
         actualizarSiVencido();
       });
       Future.microtask(() async {
+        await _descartarCopiaAjena();
         await recargar();
         await sincronizar();
         await _renovarTarjetas();
@@ -110,6 +119,23 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       });
     } else {
       notifyListeners();
+    }
+  }
+
+  /// Si la copia guardada la descargó otro usuario o rol, se borra antes de mostrar nada (así nadie ve datos del anterior).
+  Future<void> _limpieza = Future.value();
+
+  Future<void> _descartarCopiaAjena() async {
+    await _limpieza;
+    final s = _sesion;
+    if (s == null) return;
+    final dueno = await _repo.duenoDeLaCopia();
+    final mia = OfflineRepository.claveDueno(s.usuarioId, s.rol, s.empresaId);
+    if (dueno == null && await _repo.empresaDeLaCopia() == s.empresaId) {
+      await _repo.anotarDueno(mia); // copia de una versión anterior de la app: se adopta y el inicio de sesión la renueva enseguida
+    } else if (dueno != mia) {
+      await _repo.limpiarCopia();
+      _nombres.clear();
     }
   }
 
@@ -239,7 +265,8 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
           // sin la lista el cliente igual puede dejar su compra por pagar
         }
       }
-      await _repo.descargarCatalogo();
+      final s = _sesion;
+      await _repo.descargarCatalogo(dueno: s == null ? null : OfflineRepository.claveDueno(s.usuarioId, s.rol, s.empresaId));
       enLinea = true;
     } catch (e) {
       error = e.toString();
@@ -284,6 +311,15 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// Mientras se sincroniza no se deshace: el envío en curso podría volver a guardar la operación.
   bool puedeDeshacer(OperacionLocal o) => !sincronizando && _repo.puedeDeshacer(o);
 
+  /// El cliente cancela una compra o reserva que terminó en conflicto o rechazada: sale de su lista (el servidor no cobró nada).
+  Future<void> descartarProblema(OperacionLocal o) async {
+    if (o.estado != Estado.enConflicto && o.estado != Estado.rechazada) return;
+    await _repo.borrarOperacionLocal(o.id);
+    await recargar();
+    refresco++;
+    notifyListeners();
+  }
+
   /// D5: quita una operación que aún no salió del dispositivo y devuelve el inventario local a como estaba.
   Future<bool> deshacer(OperacionLocal o) async {
     if (sincronizando) return false;
@@ -307,7 +343,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   bool _esperaResumen = false;
 
   /// Quién muestra el resumen de la sincronización con su botón «Ver detalle» (lo conecta la app); si nadie lo conecta, se usa el aviso común.
-  void Function(String)? alResumir;
+  void Function(String texto, {bool conflicto})? alResumir;
 
   /// Aviso global (SnackBar en cualquier pantalla) y, con la app en segundo plano, además notificación del sistema.
   void _avisar(String texto) {
@@ -315,15 +351,43 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     if (_enSegundoPlano) alNotificar?.call(texto);
   }
 
-  void _avisarResumen(String texto, {bool notificar = true}) {
-    (alResumir ?? alAvisar)?.call(texto);
+  void _avisarResumen(String texto, {bool notificar = true, bool conflicto = false}) {
+    if (alResumir != null) {
+      alResumir!(texto, conflicto: conflicto);
+    } else {
+      alAvisar?.call(texto);
+    }
     if (notificar && _enSegundoPlano) alNotificar?.call(texto);
+  }
+
+  /// Versión de la app que se escribe en el diagnóstico (la misma de pubspec.yaml).
+  static const versionApp = '0.1.0+1';
+
+  /// Diagnóstico para soporte: quién es, de cuándo es su copia, cuántas operaciones esperan y el registro de envíos (sin contraseñas ni datos de tarjeta).
+  Future<String> diagnosticoCompleto() async {
+    final s = _sesion;
+    final cabecera = [
+      'Usuario: ${s?.email ?? '—'} · Rol: ${s?.rol ?? '—'} · Empresa: ${s?.empresaCodigo ?? s?.empresaId ?? '—'}',
+      'Copia local: ${catalogoGeneradoEn ?? 'sin descargar'} · Versión de la app: $versionApp',
+      'Operaciones pendientes: ${pendientes.length} · En conflicto: ${enConflicto.length} · ${enLinea ? 'En línea' : 'Sin conexión'}',
+      '',
+    ];
+    return cabecera.join('\n') + await _repo.diagnostico();
   }
 
   /// Al perder la red y al recuperarla (real o con «Simular sin conexión»), sin reiniciar la app ni salir de la pantalla.
   void _anunciarRed(bool hayRed) {
     _esperaResumen = hayRed && pendientes.isNotEmpty;
     _avisar(hayRed ? textoReconexion(pendientes.length) : msgSinRed);
+  }
+
+  /// Los conteos del aviso salen del estado final de las operaciones de esta sincronización (ya con lo que el servidor resolvió después).
+  void _contarEstadosFinales(ResumenSync r) {
+    if (r.ids.isEmpty) return;
+    final finales = operaciones.where((o) => r.ids.contains(o.id));
+    r.confirmadas = finales.where((o) => o.estado == Estado.confirmada).length;
+    r.enConflicto = finales.where((o) => o.estado == Estado.enConflicto).length;
+    r.rechazadas = finales.where((o) => o.estado == Estado.rechazada).length;
   }
 
   Future<ResumenSync?> sincronizar() async {
@@ -341,6 +405,8 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     error = resumen.error;
     sincronizando = false;
     await recargar();
+    if (_sesion?.usuarioId != s.usuarioId) return resumen; // se cerró la sesión mientras se enviaba: no se avisa a nadie
+    _contarEstadosFinales(resumen);
     refresco++;
     notifyListeners();
     for (final aviso in resumen.avisos) {
@@ -351,7 +417,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       final traseReconexion = _esperaResumen;
       _esperaResumen = false;
       final conAviso = traseReconexion && total > 0;
-      _avisarResumen(textoResumen(resumen), notificar: !conAviso); // tras una reconexión, o cuando algo quedó en conflicto o se enviaron varias operaciones juntas
+      _avisarResumen(textoResumen(resumen), notificar: !conAviso, conflicto: resumen.enConflicto > 0 && esEncargado); // tras una reconexión, o cuando algo quedó en conflicto o se enviaron varias operaciones juntas
       if (conAviso && _enSegundoPlano) alNotificar?.call(textoVolvioLaConexion(total)); // notificación local (no push del servidor) con la app en segundo plano
     }
     if (_repetir) {

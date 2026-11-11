@@ -14,6 +14,7 @@ import 'features/notificaciones/data/proveedor_push.dart';
 import 'features/notificaciones/data/push_repository.dart';
 import 'core/notificacion_local.dart';
 import 'features/notificaciones/presentation/push_controller.dart';
+import 'features/offline/presentation/conflictos_screen.dart';
 import 'features/offline/presentation/modo_offline_screen.dart';
 import 'features/offline/presentation/offline_controller.dart';
 import 'primer_parcial/reservas/data/reserva_borrador.dart';
@@ -58,7 +59,7 @@ class FashionStoreApp extends StatelessWidget {
           create: (_) => OfflineController(OfflineRepository(authRepo.api),
               conectividad: conectividadDelDispositivo(), descargaAutomatica: true)
             ..alNotificar = NotificacionLocal.mostrar
-            ..alResumir = (texto) {
+            ..alResumir = (texto, {bool conflicto = false}) {
               _mensajero.currentState
                 ?..hideCurrentSnackBar()
                 ..showSnackBar(SnackBar(
@@ -66,13 +67,16 @@ class FashionStoreApp extends StatelessWidget {
                   duration: const Duration(seconds: 5),
                   action: SnackBarAction(
                       label: 'Ver detalle',
-                      onPressed: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => const ModoOfflineScreen(pestana: 2))))));
+                      onPressed: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => conflicto ? const ConflictosScreen() : const ModoOfflineScreen(pestana: 2))))));
             }
             ..alAvisar = (texto) {
               _mensajero.currentState?.hideCurrentSnackBar();
               _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 5)));
             },
-          update: (_, auth, offline) => offline!..usarSesion(auth.sesion),
+          update: (_, auth, offline) {
+            if (auth.sesion == null) _mensajero.currentState?.clearSnackBars(); // al cerrar sesión no queda ningún aviso (ni en el Login)
+            return offline!..usarSesion(auth.sesion);
+          },
         ),
         // las prendas elegidas para reservar se guardan por usuario
         ChangeNotifierProxyProvider<AuthController, ReservaBorrador>(

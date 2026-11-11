@@ -92,7 +92,7 @@ void main() {
   test('El resumen con «Ver detalle» se anuncia tras reconectar, con conflictos o con varias operaciones juntas, pero no por una sola confirmada', () async {
     final (c, _, red) = await preparar();
     final resumenes = <String>[];
-    c.alResumir = resumenes.add;
+    c.alResumir = (t, {bool conflicto = false}) => resumenes.add(t);
     Future<void> registrar(int n) async {
       for (var i = 0; i < n; i++) {
         await c.repo.registrar(tipo: 'RESERVA', payload: {'items': []}, sucursalId: 1, resumen: 'R$i', usuarioId: 5, empresaId: 1);
@@ -105,7 +105,7 @@ void main() {
     expect(resumenes, isEmpty);
     await registrar(2); // dos juntas: la primera se confirma y la segunda queda en conflicto
     await c.sincronizar();
-    expect(resumenes, ['Sincronización completa: 1 confirmadas, 1 en conflicto, 0 rechazadas']);
+    expect(resumenes, ['Sincronización completa: 1 confirmadas, 1 en conflicto (revíselas), 0 rechazadas']);
     c.dispose();
     await red.close();
   });

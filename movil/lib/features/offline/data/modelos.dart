@@ -185,6 +185,9 @@ class ResumenSync {
   bool sinConexion;
   String? error;
 
+  /// Operaciones que entraron en ESTA sincronización: el aviso cuenta sus estados finales, no los de otras anteriores.
+  final List<String> ids = [];
+
   /// Mensajes emergentes para el cliente cuando el servidor resuelve su compra o su reserva.
   final List<String> avisos = [];
 }

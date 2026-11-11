@@ -73,7 +73,7 @@ void main() {
     red.add(true);
     await Future<void>.delayed(const Duration(milliseconds: 500));
     expect(avisos[1], 'Conexión restablecida. Sincronizando 2 operaciones…');
-    expect(avisos.last, 'Sincronización completa: 1 confirmadas, 1 en conflicto, 0 rechazadas');
+    expect(avisos.last, 'Sincronización completa: 1 confirmadas, 1 en conflicto (revíselas), 0 rechazadas');
     c.dispose();
     await red.close();
   });
@@ -124,7 +124,7 @@ void main() {
 
   test('Los textos de los avisos', () {
     expect(textoReconexion(0), 'Conexión restablecida.');
-    expect(textoResumen(ResumenSync(confirmadas: 2, enConflicto: 1, rechazadas: 3)), 'Sincronización completa: 2 confirmadas, 1 en conflicto, 3 rechazadas');
+    expect(textoResumen(ResumenSync(confirmadas: 2, enConflicto: 1, rechazadas: 3)), 'Sincronización completa: 2 confirmadas, 1 en conflicto (revíselas), 3 rechazadas');
     expect(motivoParaCliente(_operacion('COMPRA', Estado.enConflicto, 'Stock insuficiente')), msgAgotada);
     expect(devolucionDeEfectivo(_operacion('VENTA_CONTADO', Estado.rechazada, 'Se devolvieron Bs 100 en efectivo al cliente (nota ND-1).')), 'Efectivo devuelto al cliente.');
   });

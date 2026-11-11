@@ -36,9 +36,10 @@ class OfflineRepository {
   Future<Database> get _db => LocalDatabase.instance.database;
 
   // ---------------- CU-37: catálogo local ----------------
-  Future<void> descargarCatalogo() async {
+  Future<void> descargarCatalogo({String? dueno}) async {
     final c = await _api.get('/offline/catalogo');
     await guardarCatalogo(c);
+    if (dueno != null) await anotarDueno(dueno); // la copia queda ligada a quien la bajó, aunque falle lo que viene después
     final rutas = <String?>[];
     for (final producto
         in (c['productos'] as List).cast<Map<String, dynamic>>()) {
@@ -157,6 +158,42 @@ class OfflineRepository {
   Future<String?> leerMeta(String clave) => _meta(clave);
   Future<void> ponerMeta(String clave, String valor) => _poner(clave, valor);
   Future<void> borrarMeta(String clave) async => (await _db).delete('meta', where: 'clave = ?', whereArgs: [clave]);
+
+  /// Quién descargó la copia local (usuario, rol y empresa): otro usuario nunca la ve (RN21).
+  static String claveDueno(int usuarioId, String rol, int? empresaId) => '$usuarioId|$rol|$empresaId';
+  Future<String?> duenoDeLaCopia() => _meta('catalogo_dueno');
+  Future<void> anotarDueno(String clave) => _poner('catalogo_dueno', clave);
+
+  /// Empresa de la copia guardada (null si no hay copia).
+  Future<int?> empresaDeLaCopia() async {
+    final filas = await (await _db).rawQuery('SELECT empresa_id FROM productos_locales LIMIT 1');
+    return filas.isEmpty ? null : filas.first['empresa_id'] as int?;
+  }
+
+  /// Borra el catálogo descargado y todo lo que depende de él (ventas recientes, reservas de la sucursal, tarjetas). Las operaciones pendientes no se tocan.
+  Future<void> limpiarCopia() async {
+    final db = await _db;
+    await db.transaction((tx) async {
+      for (final t in ['productos_locales', 'sucursales_autorizadas', 'clientes_locales', 'vestidor_local']) {
+        await tx.delete(t);
+      }
+      await tx.delete('meta', where: 'clave IN (?, ?, ?, ?, ?, ?)', whereArgs: ['catalogo_generado_en', 'iva_porcentaje', 'ultima_sincronizacion', 'sucursal_extras', 'tarjetas_cliente', 'catalogo_dueno']);
+    });
+  }
+
+  /// Al cerrar sesión: la copia, el carrito local, lo último visto y los avisos en caché de esa cuenta. Las operaciones pendientes se conservan, cada una con su dueño.
+  Future<void> limpiarDatosDeUsuario(int usuarioId, int? empresaId) async {
+    await limpiarCopia();
+    final db = await _db;
+    await db.delete('meta', where: 'clave LIKE ? OR clave LIKE ? OR clave LIKE ? OR clave LIKE ? OR clave LIKE ? OR clave = ?', whereArgs: [
+      'carrito_cliente_${empresaId}_$usuarioId',
+      'carrito_ediciones_${empresaId}_$usuarioId',
+      'carrito_fusion_${empresaId}_$usuarioId',
+      'reservas_vistas_${empresaId}_$usuarioId',
+      'compras_vistas_${empresaId}_$usuarioId',
+      'avisos_usuario_$usuarioId',
+    ]);
+  }
 
   /// Las opciones color × talla de una prenda armadas con el catálogo descargado (misma forma que `/catalogo/productos/{id}/opciones`); null si la prenda no se descargó.
   Future<Map<String, dynamic>?> opcionesLocales(int productoId, int? sucursalId) async {
@@ -438,6 +475,7 @@ class OfflineRepository {
       await _guardar(o);
     }
     resumen.enviadas = lote.length;
+    resumen.ids.addAll(lote.map((o) => o.id));
     try {
       final r = await _api.post('/offline/sincronizar', {
         'operaciones': [
