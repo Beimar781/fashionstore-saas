@@ -12,7 +12,7 @@ class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
 
-  static const version = 6;
+  static const version = 7;
 
   Database? _db;
   String? _rutaPrueba;
@@ -45,6 +45,7 @@ class LocalDatabase {
         await _crearTablasOffline(db);
         await db.execute(
             'CREATE TABLE vestidor_local (producto_id INTEGER PRIMARY KEY, producto_json TEXT NOT NULL)');
+        await _crearLecturas(db);
       },
       onUpgrade: (db, anterior, nueva) async {
         if (anterior < 2) {
@@ -86,8 +87,14 @@ class LocalDatabase {
         } else if (anterior == 5) {
           await _rehacerOperacionesSinTipoFijo(db);
         }
+        if (anterior < 7) await _crearLecturas(db);
       },
     );
+  }
+
+  /// v7: copia de las lecturas (GET) hechas con red, para verlas cuando el servidor no responde.
+  Future<void> _crearLecturas(Database db) async {
+    await db.execute('CREATE TABLE IF NOT EXISTS lecturas (clave TEXT PRIMARY KEY, cuerpo TEXT NOT NULL, fecha TEXT NOT NULL)');
   }
 
   /// v5 → v6: quita el CHECK del tipo (devolución, recepción, ajuste y atención de reservas lo necesitan). Las tablas que cuelgan de la cola se respaldan,

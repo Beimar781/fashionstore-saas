@@ -11,6 +11,7 @@ import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
+import '../../../features/offline/data/carrito_sin_conexion.dart';
 import '../../../features/offline/presentation/offline_controller.dart';
 import '../../ia/vestidor/data/vestidor_repository.dart';
 import '../../ia/vestidor/presentation/vestidor_screen.dart';
@@ -147,18 +148,21 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
         if (mounted) {
           setState(() {
             _local = true;
-            _items = [
-              for (final p in prendas)
-                {
-                  'id': p.producto.id,
-                  'nombre': p.producto.nombre,
-                  'categoria': p.producto.categoria,
-                  'imagen': p.producto.imagen,
-                  'precio_final': p.variante.precioFinal,
-                  'tallas': [p.variante.talla],
-                  'local': true
-                },
-            ];
+            // una tarjeta por prenda (no por talla y color), para abrir su ficha con las variantes de la copia descargada
+            final porProducto = <int, Map<String, dynamic>>{};
+            for (final p in prendas) {
+              final t = porProducto.putIfAbsent(p.producto.id, () => {
+                'id': p.producto.id,
+                'nombre': p.producto.nombre,
+                'categoria': p.producto.categoria,
+                'imagen': p.producto.imagen,
+                'precio_final': p.variante.precioFinal,
+                'tallas': <String>[],
+                'local': true
+              });
+              if (!(t['tallas'] as List).contains(p.variante.talla)) (t['tallas'] as List).add(p.variante.talla);
+            }
+            _items = porProducto.values.toList();
             _total = _items.length;
           });
         }
@@ -223,7 +227,6 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   }
 
   Future<void> _detalle(Map<String, dynamic> prenda) async {
-    if (prenda['local'] == true) return;
     await mostrarDetallePrenda(context, _repo, prenda, _sucursales);
   }
 
@@ -691,6 +694,8 @@ class _DetallePrendaState extends State<_DetallePrenda> {
   Map<String, dynamic>? _detallePrenda;
   Map<String, dynamic>? _varianteElegida;
   String? _mensaje;
+  bool _cargandoOpciones = true;
+  String? _datosAl; // sin conexión: fecha de la copia descargada de donde salen las variantes
 
   @override
   void initState() {
@@ -709,11 +714,32 @@ class _DetallePrendaState extends State<_DetallePrenda> {
     ));
   }
 
+  /// Sin respuesta del servidor y sin copia de esta ficha: las variantes salen del catálogo descargado (SQLite), con su fecha.
+  Future<void> _cargarLocal() async {
+    final offline = context.read<OfflineController>();
+    final o = await offline.repo.opcionesLocales(widget.prenda['id'] as int, _sucursalId);
+    if (!mounted) return;
+    setState(() {
+      _opciones = o;
+      _datosAl = o == null ? null : offline.catalogoGeneradoEn;
+      _mensaje = o == null ? 'Sin conexión: esta prenda todavía no se descargó. Descargue el catálogo con conexión para verla sin Internet.' : null;
+    });
+  }
+
   Future<void> _cargar() async {
+    setState(() => _cargandoOpciones = true);
+    try {
+      await _cargarDelServidor();
+    } finally {
+      if (mounted) setState(() => _cargandoOpciones = false);
+    }
+  }
+
+  Future<void> _cargarDelServidor() async {
     try {
       final o =
           await widget.repo.opciones(widget.prenda['id'] as int, _sucursalId);
-      if (mounted) setState(() => _opciones = o);
+      if (mounted) setState(() { _opciones = o; _datosAl = ApiClient.lecturaLocalDesde; });
       try {
         final detalle = await widget.repo
             .detalle(widget.prenda['id'] as int, sucursalId: _sucursalId);
@@ -722,7 +748,12 @@ class _DetallePrendaState extends State<_DetallePrenda> {
         // La ficha conserva su imagen principal si no se puede cargar la galería.
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() => _mensaje = e.mensaje);
+      if (!mounted) return;
+      if (e.sinConexion) {
+        await _cargarLocal();
+      } else {
+        setState(() => _mensaje = e.mensaje);
+      }
     }
   }
 
@@ -739,7 +770,26 @@ class _DetallePrendaState extends State<_DetallePrenda> {
         '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada a su reserva. Confírmela en «Mis reservas».');
   }
 
+  /// Sin conexión la prenda se agrega al carrito guardado en el teléfono; al volver la red se suma al del servidor.
+  Future<void> _agregarSinConexion(Map<String, dynamic> v) async {
+    final offline = context.read<OfflineController>();
+    final sesion = offline.sesion;
+    final prenda = (await offline.repo.buscar('', limite: 100000)).where((p) => p.variante.id == v['variante_id']).firstOrNull;
+    final sucursal = _sucursalId ?? (await offline.repo.carritoClienteLocal(sesion!.empresaId!, sesion.usuarioId))?['sucursal_id'] as int? ?? (widget.sucursales.isEmpty ? (await offline.repo.sucursales()).firstOrNull?.id : widget.sucursales.first['id'] as int);
+    if (prenda == null || sucursal == null) {
+      if (mounted) setState(() => _mensaje = 'Descargue el catálogo con conexión antes de agregar prendas sin Internet.');
+      return;
+    }
+    try {
+      await CarritoSinConexion(offline.repo, empresaId: sesion!.empresaId!, usuarioId: sesion.usuarioId).agregar(prenda, sucursal);
+      if (mounted) setState(() => _mensaje = '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada a su carrito guardado en este teléfono; se enviará al volver la conexión.');
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _mensaje = e.mensaje);
+    }
+  }
+
   Future<void> _agregar(Map<String, dynamic> v) async {
+    if (!context.read<OfflineController>().enLinea) return _agregarSinConexion(v);
     try {
       await widget.repo
           .agregarAlCarrito(v['variante_id'] as int, 1, _sucursalId);
@@ -748,7 +798,12 @@ class _DetallePrendaState extends State<_DetallePrenda> {
             '${widget.prenda['nombre']} (${v['talla']}, ${v['color']}) agregada al carrito.');
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() => _mensaje = e.mensaje);
+      if (!mounted) return;
+      if (e.sinConexion) {
+        await _agregarSinConexion(v);
+      } else {
+        setState(() => _mensaje = e.mensaje);
+      }
     }
   }
 
@@ -830,7 +885,11 @@ class _DetallePrendaState extends State<_DetallePrenda> {
                 },
               ),
               const SizedBox(height: 8),
-              if (_opciones == null)
+              if (_datosAl != null)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('Sin conexión · datos al ${fechaCorta(_datosAl)}; pueden estar desactualizados.', style: const TextStyle(fontSize: 12, color: Color(0xFF8A5A00)))),
+              if (_opciones == null && _cargandoOpciones)
                 const Center(child: CircularProgressIndicator()),
               Flexible(
                 child: ListView(shrinkWrap: true, children: [

@@ -22,6 +22,15 @@ import 'modelos.dart';
 class OfflineRepository {
   OfflineRepository(this._api);
 
+  /// Una lectura mínima solo para saber si el servidor responde (el aviso de conexión lo da ApiClient).
+  Future<void> sondearServidor() async {
+    try {
+      await _api.getLista('/catalogo/sucursales');
+    } catch (_) {
+      // sigue sin respuesta: se vuelve a probar en el siguiente ciclo
+    }
+  }
+
   final ApiClient _api;
 
   Future<Database> get _db => LocalDatabase.instance.database;
@@ -140,6 +149,24 @@ class OfflineRepository {
 
   Future<String?> catalogoGeneradoEn() => _meta('catalogo_generado_en');
   Future<String?> ultimaSincronizacion() => _meta('ultima_sincronizacion');
+
+  Future<String?> leerMeta(String clave) => _meta(clave);
+  Future<void> ponerMeta(String clave, String valor) => _poner(clave, valor);
+  Future<void> borrarMeta(String clave) async => (await _db).delete('meta', where: 'clave = ?', whereArgs: [clave]);
+
+  /// Las opciones color × talla de una prenda armadas con el catálogo descargado (misma forma que `/catalogo/productos/{id}/opciones`); null si la prenda no se descargó.
+  Future<Map<String, dynamic>?> opcionesLocales(int productoId, int? sucursalId) async {
+    final p = (await _productos()).where((x) => x.id == productoId).firstOrNull;
+    if (p == null) return null;
+    return {
+      'producto_id': p.id,
+      'sucursal_id': sucursalId,
+      'variantes': [
+        for (final v in p.variantes)
+          {'variante_id': v.id, 'sku': v.sku, 'talla': v.talla, 'color': v.color, 'precio': v.precio, 'precio_final': v.precioFinal, 'cantidad': v.stockEn(sucursalId), 'disponible': v.stockEn(sucursalId) > 0}
+      ],
+    };
+  }
 
   Future<String?> _meta(String clave) async {
     final f =

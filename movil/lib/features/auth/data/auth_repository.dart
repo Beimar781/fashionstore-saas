@@ -5,13 +5,22 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../core/db/local_database.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/lecturas_locales.dart';
 import 'registro_cliente.dart';
 import 'sesion.dart';
 
 /// Acceso a datos del paquete Usuarios y acceso: API REST + sesión local en SQLite.
 class AuthRepository {
   AuthRepository({http.Client? cliente}) {
-    _api = ApiClient(obtenerToken: _accessToken, renovarToken: _renovar, cliente: cliente);
+    _api = ApiClient(obtenerToken: _accessToken, renovarToken: _renovar, cliente: cliente, lecturas: _lecturas, cuenta: _cuenta);
+  }
+
+  final LecturasLocales _lecturas = LecturasSqlite();
+
+  /// «empresa:usuario» de la sesión guardada: las lecturas guardadas son de esa cuenta y de nadie más.
+  Future<String?> _cuenta() async {
+    final s = await sesionLocal();
+    return s == null ? null : '${s.empresaId ?? 0}:${s.usuarioId}';
   }
 
   late final ApiClient _api;
@@ -75,6 +84,7 @@ class AuthRepository {
       await _api.post('/auth/logout', {}).timeout(const Duration(seconds: 3));
     } catch (_) {}
     await (await _db).delete('sesion');
+    await _lecturas.borrarTodo();  // lo guardado era de esta cuenta
   }
 
   // ---- internos ----

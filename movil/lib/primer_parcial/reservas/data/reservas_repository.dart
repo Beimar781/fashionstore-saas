@@ -12,6 +12,11 @@ class ReservasRepository {
   Future<Map<String, dynamic>> carrito() => _api.get('/carrito');
   Future<Map<String, dynamic>> cambiarCantidad(int itemId, int cantidad) => _api.put('/carrito/items/$itemId', {'cantidad': cantidad});
   Future<Map<String, dynamic>> quitar(int itemId) => _api.delete('/carrito/items/$itemId');
+  Future<Map<String, dynamic>> vaciarCarrito() => _api.delete('/carrito');
+
+  /// Las prendas agregadas sin conexión se suman al carrito del servidor una sola vez (el identificador evita duplicarlas si el envío se repite).
+  Future<Map<String, dynamic>> fusionarCarrito(String fusionId, int sucursalId, List<Map<String, dynamic>> items) =>
+      _api.put('/carrito/fusionar', {'fusion_id': fusionId, 'sucursal_id': sucursalId, 'items': items});
 
   // ---- compra digital: checkout y pago con tarjeta de prueba (CU-11, CU-32) ----
   Future<Map<String, dynamic>> checkout(DatosEntrega datos) => _api.post('/compras/checkout', datos.aCuerpo());

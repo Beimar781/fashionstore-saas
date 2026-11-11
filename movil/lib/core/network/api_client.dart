@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import 'lecturas_locales.dart';
 
 /// Error de comunicación o de negocio con mensaje listo para mostrar al usuario.
 class ApiException implements Exception {
@@ -37,7 +38,20 @@ class ApiClient {
   /// «Simular sin conexión» (§B11): con esto activo toda llamada falla como si no hubiera red. Sirve para demostrar el modo sin conexión sin apagar el WiFi.
   static bool simularSinConexion = false;
 
-  ApiClient({required this.obtenerToken, required this.renovarToken, http.Client? cliente}) : _cliente = cliente ?? http.Client();
+  /// Quién se entera de si el servidor respondió (true) o no (false): es la única fuente de verdad del indicador «En línea / Sin conexión».
+  static void Function(bool respondio)? alDetectarServidor;
+
+  /// Fecha de la última lectura entregada desde la copia local («Datos al…»); null si lo último que se leyó vino del servidor.
+  static String? lecturaLocalDesde;
+
+  /// Rutas que nunca se guardan: la sesión, lo que genera la IA, las notificaciones y la descarga del catálogo, que tiene su propio almacén.
+  static const _noGuardar = ['/auth/', '/asistente', '/vestidor', '/pagos/config', '/notificaciones', '/offline/catalogo', '/ia/'];
+
+  ApiClient({required this.obtenerToken, required this.renovarToken, http.Client? cliente, this.lecturas, this.cuenta}) : _cliente = cliente ?? http.Client();
+
+  /// Copia de las lecturas y la cuenta a la que pertenecen (empresa:usuario). Sin cuenta no se guarda ni se lee nada.
+  LecturasLocales? lecturas;
+  Future<String?> Function()? cuenta;
 
   final Future<String?> Function() obtenerToken;
   final Future<bool> Function() renovarToken;
@@ -81,7 +95,62 @@ class ApiClient {
 
   Map<String, dynamic> _mapa(dynamic datos) => datos is Map<String, dynamic> ? datos : <String, dynamic>{};
 
+  /// Una lectura (GET) con red se guarda; si el servidor no responde (sin Internet, caído o «Simular sin conexión») se entrega la última copia de esa cuenta.
   Future<dynamic> _enviar(String metodo, String ruta,
+      {Map<String, dynamic>? cuerpo, bool autenticado = true, bool reintento = false}) async {
+    final guardable = metodo == 'GET' && lecturas != null && autenticado && !_noGuardar.any(ruta.contains);
+    try {
+      final datos = await _enviarAlServidor(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: reintento);
+      if (guardable) {
+        lecturaLocalDesde = null;
+        unawaited(_guardarLectura(ruta, datos));
+      }
+      return datos;
+    } on ApiException catch (e) {
+      if (!e.sinConexion || !guardable) rethrow;
+      final copia = await _leerLectura(ruta);
+      if (copia == null) rethrow;
+      lecturaLocalDesde = copia.fecha;
+      return copia.datos;
+    }
+  }
+
+  Future<String?> _clave(String ruta) async {
+    final c = await cuenta?.call();
+    return c == null ? null : '$c|$ruta';
+  }
+
+  Future<void> _guardarLectura(String ruta, dynamic datos) async {
+    try {
+      final clave = await _clave(ruta);
+      if (clave != null) await lecturas!.guardar(clave, datos);
+    } catch (_) {
+      // sin espacio o sin base: la pantalla funciona igual con red
+    }
+  }
+
+  Future<LecturaGuardada?> _leerLectura(String ruta) async {
+    try {
+      final clave = await _clave(ruta);
+      return clave == null ? null : await lecturas!.leer(clave);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<dynamic> _enviarAlServidor(String metodo, String ruta,
+      {Map<String, dynamic>? cuerpo, bool autenticado = true, bool reintento = false}) async {
+    try {
+      final datos = await _enviarSinAviso(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: reintento);
+      alDetectarServidor?.call(true);
+      return datos;
+    } on ApiException catch (e) {
+      alDetectarServidor?.call(!e.sinConexion); // un 4xx o 5xx también es una respuesta del servidor
+      rethrow;
+    }
+  }
+
+  Future<dynamic> _enviarSinAviso(String metodo, String ruta,
       {Map<String, dynamic>? cuerpo, bool autenticado = true, bool reintento = false}) async {
     if (simularSinConexion) throw ApiException('Sin conexión con el servidor.', sinConexion: true);
     final uri = Uri.parse('${ApiConfig.baseUrl}$ruta');
@@ -104,7 +173,7 @@ class ApiClient {
       }
 
       if (respuesta.statusCode == 401 && autenticado && !reintento && await renovarToken()) {
-        return await _enviar(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: true);
+        return await _enviarSinAviso(metodo, ruta, cuerpo: cuerpo, autenticado: autenticado, reintento: true);
       }
       final datos = respuesta.body.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(respuesta.bodyBytes));
       if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) return datos;

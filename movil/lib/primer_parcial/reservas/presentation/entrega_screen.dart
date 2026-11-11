@@ -14,10 +14,13 @@ typedef EleccionDeCompra = ({DatosEntrega datos, MedioDePago medio});
 
 /// CU-11 y CU-32 · Entrega, facturación y tarjeta, antes de pagar. Devuelve la elección con `Navigator.pop`; si el cliente vuelve atrás, devuelve null.
 class EntregaScreen extends StatefulWidget {
-  const EntregaScreen({super.key, required this.repo, this.sucursal});
+  const EntregaScreen({super.key, required this.repo, this.sucursal, this.total});
 
   final ReservasRepository repo;
   final String? sucursal;
+
+  /// Total del carrito: sin conexión se usa para pedir la autorización del cobro con la tarjeta guardada.
+  final String? total;
 
   @override
   State<EntregaScreen> createState() => _EntregaScreenState();
@@ -31,7 +34,9 @@ class _EntregaScreenState extends State<EntregaScreen> {
   List<TarjetaGuardada> _tarjetas = [];
   int? _tarjetaId; // null = tarjeta nueva
   bool _guardar = false;
+  bool _autorizo = false;
   String? _error;
+  bool get _sinConexion => !context.read<OfflineController>().enLinea;
 
   @override
   void initState() {
@@ -48,6 +53,12 @@ class _EntregaScreenState extends State<EntregaScreen> {
   }
 
   Future<void> _cargarTarjetas() async {
+    if (_sinConexion) {
+      // sin conexión solo se ofrecen las guardadas la última vez con red y no vencidas; una tarjeta nueva necesita Internet
+      final locales = [for (final j in await context.read<OfflineController>().repo.tarjetasLocales()) TarjetaGuardada.desdeJson(j)].where((t) => t.vigente(DateTime.now())).toList();
+      if (mounted) setState(() { _tarjetas = locales; _tarjetaId = null; });
+      return;
+    }
     try {
       final t = await widget.repo.tarjetasGuardadas();
       if (mounted) unawaited(context.read<OfflineController>().repo.guardarTarjetas([for (final x in t) x.aJson()])); // copia para comprar sin conexión
@@ -75,6 +86,10 @@ class _EntregaScreenState extends State<EntregaScreen> {
     final error = datos.validar();
     if (error != null) {
       setState(() => _error = error);
+      return;
+    }
+    if (_sinConexion && _tarjetaId != null && !_autorizo) {
+      setState(() => _error = 'Confirme la autorización del cobro para pagar con la tarjeta guardada.');
       return;
     }
     Navigator.pop<EleccionDeCompra>(context, (datos: datos, medio: MedioDePago(tarjetaGuardadaId: _tarjetaId, guardar: _guardar)));
@@ -116,10 +131,23 @@ class _EntregaScreenState extends State<EntregaScreen> {
                   title: Text(t.descripcion),
                   secondary: IconButton(tooltip: 'Eliminar tarjeta', icon: const Icon(Icons.delete_outline), onPressed: () => _eliminar(t)),
                 ),
-              const RadioListTile<int?>(value: null, contentPadding: EdgeInsets.zero, title: Text('Usar otra tarjeta')),
+              RadioListTile<int?>(value: null, contentPadding: EdgeInsets.zero, title: Text(_sinConexion ? 'Dejar la compra por pagar' : 'Usar otra tarjeta')),
             ]),
           ),
-          if (_tarjetaId == null)
+          if (_sinConexion)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('Para usar una tarjeta nueva necesita Internet. Puede pagar con una tarjeta guardada o dejar la compra por pagar.', style: TextStyle(fontSize: 12)),
+            ),
+          if (_sinConexion && _tarjetaId != null)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text('Autorizo el cobro de Bs ${widget.total ?? ''} a esta tarjeta cuando se confirme mi compra.'),
+              value: _autorizo,
+              onChanged: (v) => setState(() => _autorizo = v ?? false),
+            ),
+          if (!_sinConexion && _tarjetaId == null)
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
@@ -129,7 +157,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
             ),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
           const SizedBox(height: 16),
-          FilledButton(onPressed: _continuar, child: const Text('Continuar al pago')),
+          FilledButton(onPressed: _continuar, child: Text(_sinConexion ? 'Guardar compra para sincronizar' : 'Continuar al pago')),
         ]),
       );
 }

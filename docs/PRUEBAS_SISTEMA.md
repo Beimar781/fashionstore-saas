@@ -297,6 +297,18 @@ Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se desca
 | 18.7 | Web | Proveedor | Sin conexión abrir «Mis envíos y propuestas». | Ve los avisos y propuestas guardados; si nunca los abrió, el mensaje de datos sin guardar (no «Aún no hay…»); «Nueva propuesta» se guarda en la cola. | ☐ |
 | 18.8 | Web | Administrador | Sin conexión abrir Reportes con IA. | Se ve el último reporte visto; «Generar» queda apagado. | ☐ |
 
+## 19. Cliente en el teléfono con y sin conexión (segunda ronda · E3)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 19.1 | Móvil | Cliente | Con red abrir el catálogo, una ficha y «Mi carrito». Activar el modo avión (o apagar el servidor) y tocar cualquier pantalla que llame al servidor. | El chip de la barra pasa a «Sin conexión» aunque el WiFi siga conectado; al volver el servidor, vuelve a «En línea» y aparece el aviso de reconexión. | ☐ |
+| 19.2 | Móvil | Cliente | Sin conexión abrir la ficha de una prenda (la misma que vio antes, y otra que nunca abrió). | Ninguna queda con el círculo girando: se ven las variantes, el stock y los precios (de lo visto o del catálogo descargado) con «Sin conexión · datos al…». «Reservar» y «Agregar» están habilitados si hay stock. | ☐ |
+| 19.3 | Móvil | Cliente | Sin conexión «Agregar» una prenda y abrir «Mi carrito». Cambiar una cantidad, quitar otra prenda. | El carrito se ve con lo cambiado y el aviso «Sin conexión…»; «Pagar» dice «Guardar compra para sincronizar». | ☐ |
+| 19.4 | Móvil | Cliente | Volver la conexión y abrir «Mi carrito». | Los cambios se aplican al carrito del servidor y las prendas nuevas se suman sin duplicarse. | ☐ |
+| 19.5 | Móvil | Cliente | Sin conexión «Guardar compra para sincronizar»: datos de entrega, tarjeta guardada, autorizar el cobro. Volver la conexión. | La compra se confirma y se cobra a la tarjeta; el carrito del servidor queda sin lo comprado. Con tarjeta nueva el botón explica que necesita Internet. | ☐ |
+| 19.6 | Móvil | Cliente | Sin conexión abrir «Mi carrito» en un teléfono que nunca lo abrió. | «Sin conexión: su carrito no está guardado en este teléfono. Ábralo con conexión una vez.» (sin spinner). | ☐ |
+| 19.7 | Móvil | Cliente | Con el catálogo descargado, buscar sin conexión y abrir una prenda. | Las fotos se ven (descargadas con el catálogo) y la ficha abre. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

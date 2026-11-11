@@ -20,7 +20,21 @@ String textoResumen(ResumenSync r) => 'Sincronización completa: ${r.confirmadas
 class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
   OfflineController(this._repo, {Stream<bool>? conectividad, this.descargaAutomatica = false})
-      : _conectividad = conectividad;
+      : _conectividad = conectividad {
+    ApiClient.alDetectarServidor = _alResponderElServidor;
+  }
+
+  /// El indicador sigue al servidor, no solo a la red del teléfono: si una llamada no obtiene respuesta pasa a «Sin conexión» y vuelve a «En línea» con la primera respuesta.
+  void _alResponderElServidor(bool respondio) {
+    if (simulado || respondio == enLinea || _sesion == null) return;
+    if (!respondio) {
+      _anunciarRed(false);
+      enLinea = false;
+      notifyListeners();
+    } else {
+      _alCambiarLaRed(true);
+    }
+  }
 
   /// Si es true (así la crea la app), el catálogo se descarga solo en segundo plano cuando todavía no hay copia: al iniciar sesión, al volver la red y cada cierto tiempo.
   final bool descargaAutomatica;
@@ -80,6 +94,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       }
       _red = _conectividad?.listen(_alCambiarLaRed);
       _reintento = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (!enLinea && !simulado) _repo.sondearServidor(); // si el servidor vuelve a responder, el indicador y la sincronización se ponen al día solos
         if (pendientes.isNotEmpty && !DateTime.now().isBefore(_proximoIntento)) sincronizar();
         actualizarSiVencido();
       });
@@ -330,6 +345,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   void dispose() {
     _reintento?.cancel();
     _red?.cancel();
+    if (ApiClient.alDetectarServidor == _alResponderElServidor) ApiClient.alDetectarServidor = null;
     try {
       WidgetsBinding.instance.removeObserver(this);
     } catch (_) {}

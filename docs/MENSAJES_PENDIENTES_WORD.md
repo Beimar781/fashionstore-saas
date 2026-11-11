@@ -824,3 +824,23 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Compra sin conexión y carrito del servidor (CU-11/CU-38):** al confirmarse una compra hecha sin conexión, lo comprado se descuenta del carrito del servidor (si compró 2 de 3 unidades quedan 1), para que no se pueda comprar dos veces.
 - **Fotos del catálogo descargado (CU-37):** el catálogo descargado trae las fotos con la misma ruta `/media/…` que el catálogo en línea (antes traía la ruta de la base y las fotos salían rotas en Caja y sin conexión).
 - **Botones de escritura del Administrador y del Proveedor** (crear, editar, activar, desactivar, eliminar, subir fotos, generar variantes) quedan apagados sin conexión con «Esta función necesita Internet.»
+
+## Segunda ronda sin conexión · E3 (móvil, Cliente)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Ficha de prenda sin conexión y sin copia descargada | «Sin conexión: esta prenda todavía no se descargó. Descargue el catálogo con conexión para verla sin Internet.» | — (solo en la app) | Pendiente |
+| Ficha de prenda con datos descargados | «Sin conexión · datos al dd/mm/aaaa hh:mm; pueden estar desactualizados.» | — (solo en la app) | Pendiente |
+| Agregar al carrito sin conexión | «<Prenda> agregada a su carrito guardado en este teléfono; se enviará al volver la conexión.» | — (solo en la app) | Pendiente |
+| Agregar sin catálogo descargado | «Descargue el catálogo con conexión antes de agregar prendas sin Internet.» | — (solo en la app) | Pendiente |
+| Mi carrito sin conexión | «Sin conexión · datos al …; los cambios de su carrito se guardan en este teléfono y se aplicarán al volver Internet.» | — (solo en la app) | Pendiente |
+| Mi carrito sin conexión y sin carrito guardado | «Sin conexión: su carrito no está guardado en este teléfono. Ábralo con conexión una vez.» | — (solo en la app) | Pendiente |
+| Compra sin conexión guardada | «Compra guardada en este teléfono. Al recuperar la conexión se cobrará a su <marca> terminada en <últimos 4>…» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Indicador de conexión (RNF06):** «En línea / Sin conexión» sigue al servidor, no solo a la red del teléfono: si una llamada no obtiene respuesta pasa a «Sin conexión» y vuelve a «En línea» con la primera respuesta; mientras está sin conexión se prueba el servidor cada 30 segundos.
+- **Lecturas guardadas (RNF03):** cada consulta que la app hace con red se guarda en el teléfono por cuenta; si el servidor no responde (o con «Simular sin conexión») se entrega la última copia. Se excluyen la sesión, la IA y las notificaciones; máximo 300 lecturas; se borran al cerrar sesión.
+- **Ficha de prenda sin conexión (CU-03/CU-05):** si no hay copia de la ficha, las variantes, el stock por sucursal y los precios salen del catálogo descargado (CU-37). Reservar y Agregar quedan habilitados si la variante tiene stock en esa copia.
+- **Carrito sin conexión (CU-08):** igual que en la web: copia del carrito del servidor + cambios del teléfono (cantidad, quitar, vaciar) + prendas agregadas sin conexión. Al volver la red los cambios se repiten en orden y las prendas nuevas se fusionan con un identificador fijo (no se duplican aunque el envío se repita). Cambiar de sucursal necesita Internet.
+- **Pago sin conexión desde Mi carrito (CU-11/CU-32):** «Guardar compra para sincronizar» pide los datos de entrega y facturación, permite elegir una tarjeta guardada vigente (con autorización expresa del cobro) o dejar la compra por pagar; una tarjeta nueva necesita Internet.
+- **Fotos del catálogo descargado:** las rutas de imagen del catálogo descargado se completan con `/media/` (antes salían rotas sin conexión).
