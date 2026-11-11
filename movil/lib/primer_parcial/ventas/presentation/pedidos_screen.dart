@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/refrescar.dart';
+import '../../../features/offline/presentation/lista_vacia.dart';
 import '../../../features/offline/data/estado_legible.dart';
 import 'package:provider/provider.dart';
 
@@ -128,6 +130,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
       });
     }
     return resultado;
+  }
+
+  Widget? _botonDeshacer(Map<String, dynamic> c) {
+    final operacion = context.read<OfflineController>().operaciones.where((o) => o.id == c['id']).firstOrNull;
+    if (operacion == null || !context.read<OfflineController>().puedeDeshacer(operacion)) return null;
+    return TextButton(
+        style: TextButton.styleFrom(foregroundColor: Colors.red, minimumSize: const Size(48, 48)),
+        onPressed: () => deshacerConConfirmacion(context, operacion, alDeshacer: _cargar),
+        child: const Text('Deshacer'));
   }
 
   Future<void> _ver(Map<String, dynamic> c) async {
@@ -264,7 +275,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
       appBar:
           widget.integrado ? null : AppBar(title: const Text('Mis compras')),
       body: RefreshIndicator(
-        onRefresh: _cargar,
+        onRefresh: () => refrescarConAviso(context, _cargar),
         child: ListView(
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
@@ -275,15 +286,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
               if (_compras == null && _error == null)
                 const Center(child: CircularProgressIndicator()),
               if (_compras != null && _compras!.isEmpty)
-                const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text('Todavía no tiene compras.'))),
+                const ListaVacia(icono: Icons.receipt_long_outlined, texto: 'Todavía no tiene compras. Cuando compre, las verá aquí.'),
               for (final c in _compras ?? const <Map<String, dynamic>>[])
                 Card(
                   child: ListTile(
                     onTap: () => _ver(c),
                     title: Text('${c['codigo']} · Bs ${c['total']}'),
-                    trailing: c['comprobante_numero'] == null
+                    trailing: c['pendiente_local'] == true
+                        ? _botonDeshacer(c)
+                        : c['comprobante_numero'] == null
                         ? null
                         : BotonComprobante(
                             comprobante: _comprobante,

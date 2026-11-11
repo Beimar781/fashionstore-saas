@@ -20,6 +20,7 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
   List<TarjetaGuardada> _tarjetas = [];
   String? _error;
   bool _cargando = true;
+  Set<int> _guardadas = {}; // tarjetas que también están en la copia del teléfono (sirven para pagar sin conexión)
   String? _copiaDel; // sin conexión: fecha de la lista guardada (solo se pueden ver, no quitar)
   @override
   void initState() {
@@ -28,6 +29,8 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
   }
 
   Future<void> _cargar() async {
+    final locales = await context.read<OfflineController>().repo.tarjetasLocales();
+    _guardadas = {for (final j in locales) j['id'] as int};
     try {
       ApiClient.lecturaLocalDesde = null;
       final tarjetas = await _repo.tarjetasGuardadas();
@@ -90,6 +93,7 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
                       child: ListTile(
                           leading: const Icon(Icons.credit_card),
                           title: Text(tarjeta.descripcion),
+                          subtitle: _guardadas.contains(tarjeta.id) ? const Text('Disponible sin conexión') : null,
                           trailing: IconButton(
                               tooltip: 'Eliminar tarjeta',
                               icon: const Icon(Icons.delete_outline),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/refrescar.dart';
+import '../../../features/offline/presentation/lista_vacia.dart';
 import '../../../features/offline/data/estado_legible.dart';
 import 'package:provider/provider.dart';
 
@@ -214,7 +216,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
         label: Text('Mi reserva (${context.watch<ReservaBorrador>().total})'),
       ),
       body: RefreshIndicator(
-        onRefresh: _cargar,
+        onRefresh: () => refrescarConAviso(context, _cargar),
         child: ListView(
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
@@ -225,9 +227,7 @@ class _ReservasScreenState extends State<ReservasScreen> {
               if (_reservas == null && _error == null)
                 const Center(child: CircularProgressIndicator()),
               if (_reservas != null && _reservas!.isEmpty)
-                const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text('Todavía no tiene reservas.'))),
+                const ListaVacia(icono: Icons.event_outlined, texto: 'Todavía no tiene reservas. Use «Mi reserva» para apartar prendas.'),
               for (final r in _reservas ?? const <Map<String, dynamic>>[])
                 Card(
                   child: ListTile(

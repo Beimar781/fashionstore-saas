@@ -13,6 +13,7 @@ import '../../../primer_parcial/reservas/presentation/tarjetas_screen.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/sesion.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../notificaciones/data/push_repository.dart';
 import '../../notificaciones/presentation/push_controller.dart';
 import '../../offline/presentation/caja_en_linea_screen.dart';
 import '../../offline/presentation/caja_screen.dart';
@@ -41,7 +42,6 @@ class HomeScreen extends StatelessWidget {
     final auth = context.watch<AuthController>();
     final s = auth.sesion!;
     final offline = context.watch<OfflineController>();
-    final push = context.watch<PushController>();
     final esquema = Theme.of(context).colorScheme;
     if (s.rol == 'Cliente') {
       return _InicioCliente(sesion: s, restringido: s.restringido);
@@ -51,6 +51,7 @@ class HomeScreen extends StatelessWidget {
         title: Text(s.empresaNombre ?? 'FashionStore'),
         actions: [
           const EstadoConexionChip(),
+          if (!s.restringido) const _CampanaAvisos(),
           IconButton(
               tooltip: 'Actualizar',
               icon: const Icon(Icons.sync),
@@ -91,19 +92,6 @@ class HomeScreen extends StatelessWidget {
             _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
             _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const DevolucionesScreen()),
           ],
-          for (final aviso in push.avisos)
-            Card(
-              color: esquema.primaryContainer,
-              child: ListTile(
-                leading: const Icon(Icons.notifications_active),
-                title: Text(aviso.titulo),
-                subtitle: Text(aviso.mensaje),
-                trailing: IconButton(
-                    tooltip: 'Marcar como leído',
-                    icon: const Icon(Icons.check),
-                    onPressed: () => push.leer(aviso)),
-              ),
-            ),
           if (offline.habilitado && offline.pendientes.isNotEmpty)
             Card(
               color: const Color(0xFFFBEFD9),
@@ -191,7 +179,7 @@ class HomeScreen extends StatelessWidget {
           ],
           if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
             if (s.rol == 'Encargado') _acceso(context, Icons.assignment_outlined, 'Tareas de la sucursal', 'Recepción, ajuste de inventario y reservas, con o sin conexión', const TareasSucursalScreen()),
-            if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, 'Conflictos de sincronización', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
+            if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, offline.enConflicto.isEmpty ? 'Conflictos de sincronización' : 'Conflictos de sincronización (${offline.enConflicto.length})', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
           ],
           if (!const ['Cliente', 'Cajero', 'Encargado'].contains(s.rol))
             // Proveedor, Administrador y SuperAdministrador trabajan en la web; en la app solo ven su contexto guardado (nunca un spinner infinito)
@@ -304,7 +292,6 @@ class _InicioClienteState extends State<_InicioCliente> {
   @override
   Widget build(BuildContext context) {
     final s = widget.sesion;
-    final push = context.watch<PushController>();
     final offline = context.watch<OfflineController>();
     final soloPerfil = widget.restringido;
     final pantallas = <Widget>[
@@ -321,13 +308,7 @@ class _InicioClienteState extends State<_InicioCliente> {
       appBar: AppBar(title: Text(s.empresaNombre ?? 'FashionStore'), actions: [
         const EstadoConexionChip(),
         if (!soloPerfil) ...[
-          IconButton(
-              tooltip: 'Avisos',
-              onPressed: () => _abrir(context, const _AvisosScreen()),
-              icon: Badge(
-                  isLabelVisible: push.avisos.isNotEmpty,
-                  label: Text('${push.avisos.length}'),
-                  child: const Icon(Icons.notifications_outlined))),
+          const _CampanaAvisos(),
           IconButton(
               tooltip: 'Carrito',
               onPressed: () async {
@@ -340,26 +321,28 @@ class _InicioClienteState extends State<_InicioCliente> {
                   child: const Icon(Icons.shopping_cart_outlined))),
         ],
       ]),
-      body: Stack(children: [
-        IndexedStack(index: soloPerfil ? 4 : _pestana, children: pantallas),
-        if (!soloPerfil && _pestana == 0 && s.iaHabilitada)
-          Positioned(
-              right: 16,
-              bottom: 16,
-              child: FloatingActionButton.small(
-                  tooltip: 'Asistente de compras',
-                  onPressed: () => _abrir(context, const AsistenteScreen()),
-                  child: const Icon(Icons.auto_awesome))),
+      body: Column(children: [
+        // banda fija arriba: empuja la lista hacia abajo en vez de taparla
         if (!soloPerfil &&
             offline.habilitado &&
             (!offline.enLinea ||
                 offline.pendientes.isNotEmpty ||
                 offline.enConflicto.isNotEmpty))
-          Positioned(
-              left: 12,
-              right: 12,
-              top: 8,
+          Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
               child: _AvisosOffline(offline: offline)),
+        Expanded(
+            child: Stack(children: [
+          IndexedStack(index: soloPerfil ? 4 : _pestana, children: pantallas),
+          if (!soloPerfil && _pestana == 0 && s.iaHabilitada)
+            Positioned(
+                right: 16,
+                bottom: 16,
+                child: FloatingActionButton.small(
+                    tooltip: 'Asistente de compras',
+                    onPressed: () => _abrir(context, const AsistenteScreen()),
+                    child: const Icon(Icons.auto_awesome))),
+        ])),
       ]),
       bottomNavigationBar: soloPerfil
           ? null
@@ -482,39 +465,86 @@ class _AvisosOffline extends StatelessWidget {
               : 'Datos al ${fechaCorta(offline.catalogoGeneradoEn)}; pueden estar desactualizados. Se muestra el catálogo guardado hasta recuperar la red.')));
 }
 
-class _AvisosScreen extends StatelessWidget {
-  const _AvisosScreen();
+/// Campana de la barra superior con el contador de avisos sin leer; abre «Avisos». Funciona sin conexión con los avisos guardados.
+class _CampanaAvisos extends StatelessWidget {
+  const _CampanaAvisos();
   @override
   Widget build(BuildContext context) {
-    final push = context.watch<PushController>();
+    final cantidad = context.select<PushController, int>((c) => c.avisos.length);
+    return IconButton(
+        tooltip: 'Avisos',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AvisosScreen())),
+        icon: Semantics(
+            label: 'Avisos, $cantidad sin leer',
+            child: Badge(isLabelVisible: cantidad > 0, label: Text('$cantidad'), child: const Icon(Icons.notifications_outlined))));
+  }
+}
+
+/// Avisos del usuario. Al abrirla se marcan como leídos (el contador de la campana vuelve a cero) pero se siguen viendo mientras la pantalla está abierta.
+class AvisosScreen extends StatefulWidget {
+  const AvisosScreen({super.key});
+  @override
+  State<AvisosScreen> createState() => _AvisosScreenState();
+}
+
+class _AvisosScreenState extends State<AvisosScreen> {
+  List<AvisoPush>? _vistos;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _abrir());
+  }
+
+  Future<void> _abrir() async {
+    final push = context.read<PushController>();
+    final nuevos = [...push.avisos];
+    if (mounted) setState(() => _vistos = nuevos);
+    for (final a in nuevos) {
+      await push.leer(a);
+    }
+  }
+
+  Future<void> _refrescar() async {
+    final push = context.read<PushController>();
+    final offline = context.read<OfflineController>();
+    await push.refrescar();
+    final nuevos = [...push.avisos];
+    if (mounted) {
+      setState(() => _vistos = [...?_vistos, ...nuevos.where((n) => !(_vistos ?? []).any((v) => v.id == n.id))]);
+      if (!offline.enLinea) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sin conexión, mostrando copia local.')));
+    }
+    for (final a in nuevos) {
+      await push.leer(a);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vistos = _vistos ?? const <AvisoPush>[];
     return Scaffold(
-        appBar: AppBar(title: const Text('Avisos'), actions: [
-          TextButton(
-              onPressed: () async {
-                for (final a in [...push.avisos]) {
-                  await push.leer(a);
-                }
-              },
-              child: const Text('Marcar todos'))
-        ]),
-        body: push.avisos.isEmpty
-            ? const Center(child: Text('No hay avisos nuevos.'))
-            : ListView(
-                padding: EdgeInsets.fromLTRB(
-                    12, 12, 12, MediaQuery.viewPaddingOf(context).bottom + 16),
+        appBar: AppBar(title: const Text('Avisos')),
+        body: RefreshIndicator(
+            onRefresh: _refrescar,
+            child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.viewPaddingOf(context).bottom + 16),
                 children: [
-                    for (final a in push.avisos)
-                      Card(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          child: ListTile(
-                              leading: const Icon(Icons.notifications_active),
-                              title: Text(a.titulo),
-                              subtitle: Text(a.mensaje),
-                              trailing: IconButton(
-                                  tooltip: 'Marcar como leído',
-                                  icon: const Icon(Icons.check),
-                                  onPressed: () => push.leer(a))))
-                  ]));
+                  if (vistos.isEmpty)
+                    const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Column(children: [
+                          Icon(Icons.notifications_none, size: 56, color: Colors.black38),
+                          SizedBox(height: 8),
+                          Text('No hay avisos nuevos.', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text('Aquí verá las respuestas a sus compras, reservas y devoluciones.', textAlign: TextAlign.center),
+                        ])),
+                  for (final a in vistos)
+                    Card(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: ListTile(leading: const Icon(Icons.notifications_active), title: Text(a.titulo), subtitle: Text(a.mensaje))),
+                ])));
   }
 }
 

@@ -917,3 +917,21 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Historial de compras (CU-12):** `GET /compras` incluye también los pedidos `PENDIENTE_PAGO` del cliente (los dejados «por pagar» desde el móvil sin conexión), para que pueda pagarlos desde Mis compras. Estado legible: «Por pagar».
 - **Renovación de la copia sin conexión (RN21):** en cada inicio de sesión con red la copia se descarga de nuevo, sin esperar los 15 minutos (puede venir de otro usuario o rol).
 - **Avisos de la app móvil:** duran 5 segundos y un aviso nuevo reemplaza al anterior.
+
+## Prompt K (copia ligada al usuario, avisos, Caja y ventas de caja por pagar)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Pagar con tarjeta una venta de caja que el cajero ya cobró en efectivo | «El pedido ya no está pendiente de pago.» | 409 | Pendiente |
+| Resumen de la sincronización con conflicto | «Sincronización completa: N confirmadas, M en conflicto (revíselas), K rechazadas» | — (solo en la app) | Pendiente |
+| Pull-to-refresh sin red | «Sin conexión, mostrando copia local.» | — (solo en la app) | Pendiente |
+| Cancelar compra o reserva en conflicto (Cliente) | «¿Cancelar la compra? Se quitará de este teléfono. No se le cobró nada y no se puede deshacer.» | — (solo en la app) | Pendiente |
+| Deshacer una operación | «¿Deshacer esta operación? … el inventario local volverá a como estaba.» | — (solo en la app) | Pendiente |
+| Búsqueda de la Caja sin coincidencias | «Sin resultados en el catálogo guardado.» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Copia local ligada al usuario (RN21):** la copia descargada guarda quién la bajó (usuario, rol y empresa). Si al iniciar sesión no coincide, se borra y se descarga de nuevo. Al cerrar sesión se borran la copia, el carrito local, lo último visto, las tarjetas y los avisos en caché; las operaciones pendientes se conservan con su dueño y otro usuario no las ve ni las envía.
+- **Ventas de caja por pagar (CU-12 / CU-32):** si el cajero registra una venta a nombre de un cliente y no la cobra, el cliente la ve como «Por pagar» y puede pagarla con tarjeta. El stock se descuenta solo al pagar (una vez); si el cajero la cobra antes, el pago con tarjeta responde 409 y no se cobra.
+- **Avisos del inicio:** en Cajero, Encargado y Cliente van en la campana de la barra superior con el contador de no leídos; al abrirla se marcan como leídos. Los avisos de la app duran 5 s y flotan sobre los botones fijos.
+- **Aviso de sincronización:** cuenta el estado final de las operaciones de esa sincronización; si hay conflicto lo dice y «Ver detalle» abre Conflictos (Encargado). No aparece tras cerrar la sesión.
+- **Diagnóstico:** incluye usuario, rol, empresa, hora de la copia, versión de la app y cuántas operaciones están pendientes o en conflicto.

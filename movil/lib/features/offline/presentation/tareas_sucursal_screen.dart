@@ -5,6 +5,8 @@ import '../data/modelos.dart';
 import 'escaner_screen.dart';
 import 'modo_offline_screen.dart' show fechaCorta;
 import 'offline_controller.dart';
+import 'lista_vacia.dart';
+import '../../../core/ui/refrescar.dart';
 
 const msgPlazoVencido = 'El plazo de devolución de esta venta venció.';
 
@@ -160,14 +162,20 @@ class _DevolucionTabState extends State<DevolucionTab> {
         ]),
       ]);
     }
-    return ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, margen), children: [
+    return RefreshIndicator(onRefresh: () => _refrescar(context), child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(16, 16, 16, margen), children: [
       Text('Solo ventas pagadas en esta sucursal (de caja o compras digitales) dentro del plazo de devolución, hasta la última descarga (${fechaCorta(context.read<OfflineController>().catalogoGeneradoEn)}). Las ventas posteriores aparecen al volver la conexión.'),
       TextField(controller: _buscar, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Buscar por número de comprobante', prefixIcon: Icon(Icons.search))),
-      if (visibles.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(textoSinFilas(context.read<OfflineController>(), 'ventas', _buscar.text.trim().isNotEmpty))),
+      if (visibles.isEmpty) ListaVacia(conCopia: true, icono: Icons.receipt_long_outlined, texto: textoSinFilas(context.read<OfflineController>(), 'ventas', _buscar.text.trim().isNotEmpty)),
       for (final v in visibles)
         Card(child: ListTile(title: Text('${v['comprobante']} · Bs ${v['total']}'), subtitle: Text('${(v['items'] as List).length} línea(s) · ${fechaCorta('${v['pagado_en']}')}'), trailing: const Icon(Icons.chevron_right), onTap: () => setState(() => _venta = v))),
-    ]);
+    ]));
   }
+
+  Future<void> _refrescar(BuildContext context) => refrescarConAviso(context, () async {
+        final c = context.read<OfflineController>();
+        if (c.enLinea) await c.descargarCatalogo();
+        await _cargar();
+      });
 }
 
 // ---------------- B5 y B6: buscar una prenda del catálogo local ----------------
@@ -361,9 +369,9 @@ class _ReservasTabState extends State<ReservasTab> {
     _refrescoVisto = refresco;
     final q = _codigo.text.trim().toLowerCase();
     final visibles = _reservas.where((r) => q.isEmpty || '${r['codigo']}'.toLowerCase().contains(q)).toList();
-    return ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
+    return RefreshIndicator(onRefresh: () => _refrescar(context), child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
       TextField(controller: _codigo, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Validar el código de la reserva', prefixIcon: Icon(Icons.qr_code))),
-      if (visibles.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(textoSinFilas(context.read<OfflineController>(), 'reservas', _codigo.text.trim().isNotEmpty))),
+      if (visibles.isEmpty) ListaVacia(conCopia: true, icono: Icons.event_busy_outlined, texto: textoSinFilas(context.read<OfflineController>(), 'reservas', _codigo.text.trim().isNotEmpty)),
       for (final r in visibles)
         Card(
           child: Padding(
@@ -384,10 +392,17 @@ class _ReservasTabState extends State<ReservasTab> {
               Wrap(spacing: 12, runSpacing: 8, children: [
                 if (r['estado'] == 'PENDIENTE') OutlinedButton(onPressed: () => _tarea(r, 'PREPARAR_RESERVA', 'Preparación de la reserva', {}, estado: 'PREPARADA'), child: const Text('Preparar')),
                 if (r['estado'] == 'PENDIENTE' || r['estado'] == 'PREPARADA') FilledButton(onPressed: () => _atender(r), child: const Text('Atender')),
+                if (r['estado'] != 'PENDIENTE' && r['estado'] != 'PREPARADA') Text('Sin acciones: la reserva está ${'${r['estado']}'.toLowerCase()}.', style: Theme.of(context).textTheme.bodySmall),
               ]),
             ]),
           ),
         ),
-    ]);
+    ]));
   }
+
+  Future<void> _refrescar(BuildContext context) => refrescarConAviso(context, () async {
+        final c = context.read<OfflineController>();
+        if (c.enLinea) await c.descargarCatalogo();
+        await _cargar();
+      });
 }

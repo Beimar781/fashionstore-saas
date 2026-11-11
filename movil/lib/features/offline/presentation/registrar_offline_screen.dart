@@ -7,6 +7,7 @@ import '../../../primer_parcial/reservas/data/medio_de_pago.dart';
 import 'comprobante_provisional_accion.dart';
 import 'escaner_screen.dart';
 import 'offline_controller.dart';
+import '../../../core/util/iva.dart';
 
 const msgTarjetaNueva = 'Para usar una tarjeta nueva necesita Internet. Puede pagar con una tarjeta guardada o dejar la compra por pagar.';
 const msgAutorizar = 'Confirme la autorización del cobro para pagar con la tarjeta guardada.';
@@ -57,6 +58,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
 
   Future<void> _cargar() async {
     final c = context.read<OfflineController>();
+    final iva = await c.repo.ivaPorcentaje();
     final sucursales = await c.repo.sucursales();
     final clientes = await c.repo.clientes();
     final tarjetas = [for (final j in await c.repo.tarjetasLocales()) TarjetaGuardada.desdeJson(j)].where((t) => t.vigente(DateTime.now())).toList();
@@ -70,6 +72,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         : await c.repo.buscar('', limite: 1000);
     if (!mounted) return;
     setState(() {
+      _iva = iva;
       _sucursales = sucursales;
       _clientes = clientes;
       _tarjetas = tarjetas;
@@ -183,6 +186,8 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       ],
     }, empresaId, usuarioId);
   }
+
+  int _iva = ivaPorcentajePorDefecto;
 
   double get _total => _lineas.fold(0.0,
       (t, l) => t + double.parse(l.prenda.variante.precioFinal) * l.cantidad);
@@ -325,7 +330,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
     }
     final cambio =
         (double.tryParse(_recibido.text.replaceAll(',', '.')) ?? 0) - _total;
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    final lista = ListView(keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag, padding: const EdgeInsets.all(16), children: [
       Text(
           !c.esCliente
               ? (c.enLinea ? 'Venta de contado' : 'Venta de contado sin conexión')
@@ -402,7 +407,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
               controlAffinity: ListTileControlAffinity.leading,
               title: Text('Autorizo el cobro de Bs ${_total.toStringAsFixed(2)} a esta tarjeta cuando se confirme mi compra.'),
               value: _autorizo,
-              onChanged: (v) => setState(() => _autorizo = v ?? false),
+              onChanged: (v) => setState(() { _autorizo = v ?? false; if (_autorizo) _error = null; }),
             ),
           const Padding(padding: EdgeInsets.only(bottom: 4), child: Text(msgTarjetaNueva, style: TextStyle(fontSize: 12))),
           TextField(
@@ -460,11 +465,14 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           ),
       TextField(
           controller: _texto,
+          scrollPadding: const EdgeInsets.only(bottom: 280),
           onChanged: _buscar,
           decoration: InputDecoration(
               labelText: 'Buscar prenda (nombre, SKU o código de barras)',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: IconButton(tooltip: 'Escanear código', icon: const Icon(Icons.qr_code_scanner), onPressed: _escanear))),
+      if (_texto.text.trim().isNotEmpty && _resultados.isEmpty)
+        const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Sin resultados en el catálogo guardado.', style: TextStyle(color: Colors.black54))),
       Wrap(spacing: 6, children: [
         for (final r in _resultados)
           ActionChip(
@@ -512,6 +520,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
           Text('Bs ${_total.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.bold))
         ]),
+        Text('IVA incluido: Bs ${ivaIncluido(_total.toStringAsFixed(2), _iva)}', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         if (c.esCliente && _modo == 'COMPRA')
           const Text(
@@ -550,14 +559,24 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(_error!, style: const TextStyle(color: Colors.red))),
         const SizedBox(height: 12),
-        FilledButton(
-            onPressed: _registrar,
-            child: Text(!c.esCliente
-                ? 'Registrar venta en el dispositivo'
-                : (_modo == 'COMPRA'
-                    ? 'Registrar compra en el dispositivo'
-                    : 'Registrar reserva en el dispositivo'))),
       ],
+    ]);
+    // el botón queda fijo abajo: ni el teclado ni los avisos lo tapan
+    return Column(children: [
+      Expanded(child: lista),
+      if (_lineas.isNotEmpty)
+        Material(
+            elevation: 8,
+            color: Theme.of(context).colorScheme.surface,
+            child: SafeArea(
+                top: false,
+                child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: FilledButton(
+                        onPressed: _registrar,
+                        child: Text(!c.esCliente
+                            ? 'Registrar venta en el dispositivo'
+                            : (_modo == 'COMPRA' ? 'Registrar compra en el dispositivo' : 'Registrar reserva en el dispositivo')))))),
     ]);
   }
 }

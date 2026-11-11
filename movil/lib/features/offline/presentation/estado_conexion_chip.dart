@@ -19,14 +19,17 @@ class EstadoConexionChip extends StatelessWidget {
         : c.enLinea
             ? ('En línea', Colors.green)
             : ('Sin conexión', Colors.orange);
-    return Tooltip(
+    return Semantics(
+        label: '$texto, $pendientes operaciones por sincronizar',
+        button: true,
+        child: Tooltip(
       message: '$texto${pendientes > 0 ? ' · $pendientes operación(es) por sincronizar' : ''}. Toque para ver el detalle.',
       child: ActionChip(
         visualDensity: VisualDensity.compact,
-        avatar: Icon(Icons.circle, size: 12, color: color),
+        avatar: c.enLinea || c.sincronizando ? Icon(Icons.circle, size: 12, color: color) : Icon(Icons.cloud_off, size: 16, color: color),
         label: Text(pendientes > 0 ? '$texto · $pendientes' : texto, style: const TextStyle(fontSize: 12)),
         onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ModoOfflineScreen(pestana: 2))),
       ),
-    );
+    ));
   }
 }

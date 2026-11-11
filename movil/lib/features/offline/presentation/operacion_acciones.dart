@@ -20,9 +20,7 @@ class AccionesOperacion extends StatelessWidget {
       if (c.puedeDeshacer(operacion))
         TextButton.icon(
           style: TextButton.styleFrom(foregroundColor: Colors.red),
-          onPressed: () async {
-            if (await c.deshacer(operacion)) alDeshacer?.call();
-          },
+          onPressed: () => deshacerConConfirmacion(context, operacion, alDeshacer: alDeshacer),
           icon: const Icon(Icons.undo, size: 18),
           label: const Text('Deshacer'),
         ),
@@ -54,4 +52,20 @@ Future<void> verLineaDeTiempo(BuildContext context, OperacionLocal o) async {
       actions: [TextButton(onPressed: () => Navigator.of(context, rootNavigator: true).pop(), child: const Text('Cerrar'))],
     ),
   );
+}
+
+/// Pregunta antes de deshacer y, si el usuario acepta, quita la operación y devuelve el inventario local a como estaba.
+Future<void> deshacerConConfirmacion(BuildContext context, OperacionLocal operacion, {VoidCallback? alDeshacer}) async {
+  final c = context.read<OfflineController>();
+  final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+            title: const Text('¿Deshacer esta operación?'),
+            content: Text('${operacion.resumen}\nSe quitará de este teléfono y el inventario local volverá a como estaba.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Volver')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, deshacer')),
+            ],
+          ));
+  if (seguir == true && await c.deshacer(operacion)) alDeshacer?.call();
 }

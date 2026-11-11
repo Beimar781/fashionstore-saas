@@ -198,4 +198,22 @@ void main() {
     expect(find.byTooltip('Asistente de compras'), findsNothing);
     await _cerrar(tester);
   });
+
+  testWidgets('Cajero: los avisos van en la campana con su contador (no en la lista del inicio) y al abrirla se siguen viendo', (tester) async {
+    final cajero = Sesion({
+      'usuario': {'id': 2, 'nombre': 'Caj', 'apellidos': 'Ero', 'email': 'c@b.com', 'rol': 'Cajero', 'sucursal_id': 1},
+      'empresa': {'id': 1, 'codigo': 'EMP-B', 'razon_social': 'Estilo Andino'},
+      'suscripcion': {'estado': 'ACTIVA', 'plan': {'nombre': 'Básico', 'max_sucursales': 2, 'reportes_ia': false, 'offline': false}},
+      'panel': 'punto_venta',
+    });
+    await _montar(tester, cajero, avisos: [
+      AvisoPush(id: 7, titulo: 'Devolución lista', mensaje: 'detalle del aviso', leido: false),
+    ]);
+    expect(find.text('Devolución lista'), findsNothing); // ya no están en la lista del inicio
+    expect(find.descendant(of: find.byTooltip('Avisos'), matching: find.text('1')), findsOneWidget);
+    await tester.tap(find.byTooltip('Avisos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Devolución lista'), findsOneWidget); // se sigue viendo mientras la pantalla está abierta
+    await _cerrar(tester);
+  });
 }

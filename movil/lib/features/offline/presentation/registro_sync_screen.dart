@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'lista_vacia.dart';
 import 'offline_controller.dart';
 
 /// RNF10 · Registro de sincronización: cada intento de enviar una operación, con su resultado, código y motivo técnico (sin datos personales).
@@ -28,7 +29,7 @@ class _RegistroSyncScreenState extends State<RegistroSyncScreen> {
   }
 
   Future<void> _copiar() async {
-    final texto = await context.read<OfflineController>().repo.diagnostico();
+    final texto = await context.read<OfflineController>().diagnosticoCompleto();
     await Clipboard.setData(ClipboardData(text: texto));
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Diagnóstico copiado.')));
   }
@@ -42,7 +43,7 @@ class _RegistroSyncScreenState extends State<RegistroSyncScreen> {
           onRefresh: _cargar,
           child: ListView(padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
             if (_filas == null) const Center(child: CircularProgressIndicator()),
-            if (_filas != null && _filas!.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Todavía no se intentó sincronizar nada.'))),
+            if (_filas != null && _filas!.isEmpty) const ListaVacia(icono: Icons.sync_disabled_outlined, texto: 'Todavía no se intentó sincronizar nada.'),
             for (final f in _filas ?? const <Map<String, Object?>>[])
               Card(
                 child: ListTile(

@@ -379,6 +379,19 @@ python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.ra
 
 **Propuesta de prueba «Prueba sin conexion» (Hilos Andinos, Bs 100) en Railway:** la aplicación no permite borrar propuestas. Desde el Administrador: Abastecimiento → Propuestas → Revisar → Rechazar la deja como «Rechazada» (no se borra). Para eliminarla del todo habría que borrar la fila en la base de datos; no se hizo nada en Railway sin su autorización.
 
+## 24. Prompt K: pruebas a mano
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 24.1 | Móvil | Cliente → Cajero → Encargado | Iniciar y cerrar sesión con los tres en el mismo teléfono. | Cada uno ve su propia copia; al entrar el siguiente no aparece nada del anterior. | ☐ |
+| 24.2 | Móvil | Encargado | Reconectar con operaciones en conflicto. | Un solo aviso «Sincronización completa… (revíselas)»; «Ver detalle» abre Conflictos; dura 5 s; no sale en el Login tras cerrar sesión. | ☐ |
+| 24.3 | Móvil | Cajero, Encargado, Cliente | Mirar el inicio y la barra superior. | Accesos primero; avisos en la campana con contador; al abrirla se ponen en cero. | ☐ |
+| 24.4 | Móvil | Cajero | Armar una venta y escribir en el buscador. | «IVA incluido: Bs X» debajo del Total; el botón «Registrar venta» queda fijo abajo; «Sin resultados» si no hay coincidencias. | ☐ |
+| 24.5 | Móvil | Cliente | Compra pendiente sin conexión; Deshacer; compra en conflicto. | «Deshacer» pide confirmación; en conflicto salen «Elegir otra talla o sucursal» y «Cancelar compra»; la banda «Sin conexión» no tapa la lista. | ☐ |
+| 24.6 | Móvil | Encargado | Reservas y Devoluciones con la lista vacía. | «Copia local de …» y botón «Actualizar ahora» (con red); contador en «Conflictos». | ☐ |
+| 24.7 | Móvil | Todos | Deslizar hacia abajo en Compras, Reservas, Tareas, Conflictos y Avisos sin red. | «Sin conexión, mostrando copia local.» | ☐ |
+| 24.8 | Web y móvil | Cajero y Cliente | Cajero registra una venta a nombre del cliente y no la cobra; el cliente la paga con tarjeta. | Aparece «Por pagar» en su historial; al pagar queda con comprobante CMP-… y el stock baja una sola vez. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

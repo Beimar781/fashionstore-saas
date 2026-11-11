@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'lista_vacia.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/imagen_prenda.dart';
@@ -229,11 +230,7 @@ class _OperacionesTab extends StatelessWidget {
             child: Text(c.error!, style: const TextStyle(color: Colors.red))),
       const SizedBox(height: 8),
       if (c.operaciones.isEmpty)
-        const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(
-                child: Text(
-                    'No hay operaciones registradas en este dispositivo.'))),
+        const ListaVacia(icono: Icons.cloud_done_outlined, texto: 'No hay operaciones registradas en este dispositivo.'),
       for (final o in c.operaciones)
         Card(
           child: Padding(

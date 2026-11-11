@@ -27,6 +27,21 @@ String devolucionDeEfectivo(OperacionLocal o) {
   return o.mensaje.toLowerCase().contains('devolv') ? 'Efectivo devuelto al cliente.' : 'Sin devolución registrada.';
 }
 
+Future<void> _cancelar(BuildContext context, OperacionLocal o) async {
+  final nombre = o.tipo == 'COMPRA' ? 'compra' : 'reserva';
+  final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+            title: Text('¿Cancelar la $nombre?'),
+            content: Text('Se quitará de este teléfono. No se le cobró nada y no se puede deshacer.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Volver')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Sí, cancelar $nombre')),
+            ],
+          ));
+  if (seguir == true && context.mounted) await context.read<OfflineController>().descartarProblema(o);
+}
+
 /// Operaciones sin conexión que terminaron EN_CONFLICTO o RECHAZADA, visibles para quien las sufre en su pantalla normal:
 /// el Cliente en «Mis compras» y «Mis reservas» (con el botón para elegir otra talla o sucursal) y el Cajero en su inicio («Ventas con problema»).
 class OperacionesConProblema extends StatelessWidget {
@@ -58,7 +73,14 @@ class OperacionesConProblema extends StatelessWidget {
             Text(alElegirOtra != null ? motivoParaCliente(o) : o.mensaje),
             if (alElegirOtra == null) Text('Devolución del efectivo: ${devolucionDeEfectivo(o)}'),
             for (final f in o.faltantes) Text('• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay ${f['disponibles']}'),
-            if (alElegirOtra != null) Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => alElegirOtra!(nombreDePrenda(context, o)), child: const Text('Elegir otra talla o sucursal'))),
+            if (alElegirOtra != null)
+              Wrap(alignment: WrapAlignment.end, spacing: 8, children: [
+                TextButton(onPressed: () => alElegirOtra!(nombreDePrenda(context, o)), child: const Text('Elegir otra talla o sucursal')),
+                TextButton(
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    onPressed: () => _cancelar(context, o),
+                    child: Text(o.tipo == 'COMPRA' ? 'Cancelar compra' : 'Cancelar reserva')),
+              ]),
           ],
         ]),
       ),

@@ -12,6 +12,8 @@ class Tema {
       colorScheme: esquema,
       scaffoldBackgroundColor: fondo,
       appBarTheme: const AppBarTheme(backgroundColor: tinta, foregroundColor: Colors.white),
+      // los avisos flotan por encima de los botones fijos de abajo (Registrar venta, Guardar…) y no los tapan
+      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating, insetPadding: EdgeInsets.fromLTRB(16, 0, 16, 96)),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
         filled: true,

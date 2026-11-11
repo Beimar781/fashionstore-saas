@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/refrescar.dart';
+import 'lista_vacia.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
@@ -121,14 +123,14 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
     _refrescoVisto = refresco;
     return Scaffold(
       appBar: AppBar(title: const Text('Conflictos de sincronización'), actions: [IconButton(tooltip: 'Actualizar', icon: const Icon(Icons.refresh), onPressed: _cargar)]),
-      body: ListView(padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
+      body: RefreshIndicator(onRefresh: () => refrescarConAviso(context, _cargar), child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16), children: [
         const Text('Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.'),
         const SizedBox(height: 8),
         if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
         if (_desdeCopia)
           Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Sin conexión · datos al ${fechaCorta(_fechaCopia)}. Reintentar y descartar necesitan Internet.', style: const TextStyle(fontSize: 12, color: Color(0xFF8A5A00)))),
         if (_conflictos == null && _error == null) const Center(child: CircularProgressIndicator()),
-        if (_conflictos != null && _conflictos!.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No hay operaciones en conflicto.'))),
+        if (_conflictos != null && _conflictos!.isEmpty) const ListaVacia(icono: Icons.check_circle_outline, texto: 'No hay operaciones en conflicto.'),
         for (final c in _conflictos ?? const <Map<String, dynamic>>[])
           Card(
             child: Padding(
@@ -157,7 +159,7 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
               ]),
             ),
           ),
-      ]),
+      ])),
     );
   }
 }

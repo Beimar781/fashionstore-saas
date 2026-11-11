@@ -147,7 +147,7 @@ class _EntregaScreenState extends State<EntregaScreen> {
               controlAffinity: ListTileControlAffinity.leading,
               title: Text('Autorizo el cobro de Bs ${widget.total ?? ''} a esta tarjeta cuando se confirme mi compra.'),
               value: _autorizo,
-              onChanged: (v) => setState(() => _autorizo = v ?? false),
+              onChanged: (v) => setState(() { _autorizo = v ?? false; if (_autorizo) _error = null; }),
             ),
           if (!_sinConexion && _tarjetaId == null)
             CheckboxListTile(
