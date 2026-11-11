@@ -3,20 +3,18 @@ import { ColaOperacionesService } from '../../core/offline/cola-operaciones.serv
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { MEDIA_URL } from '../../core/api.config';
 import { CatalogoAdminApi } from '../../core/api/catalogo-admin.api';
 import { CatalogoApi } from '../../core/api/catalogo.api';
 import { Categoria, ColorCatalogo, FiltrosCatalogo, GENEROS, Marca, Pagina, Prenda, SucursalCatalogo } from '../../core/catalogo.models';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
-import { BsPipe } from '../../core/formato-bs';
+import { ProductCardComponent } from '../../core/ui/product-card.component';
 
 /** CU-03 · Consultar catálogo de prendas y CU-04 · Buscar y filtrar. Todos los filtros viajan al backend. */
 @Component({
   selector: 'app-catalogo',
-  imports: [BsPipe, FormsModule, RouterLink, DatePipe],
+  imports: [FormsModule, DatePipe, ProductCardComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Catálogo</h1><p>Encuentre su próxima prenda y revise la disponibilidad por sucursal.</p></div></div>
@@ -43,26 +41,11 @@ import { BsPipe } from '../../core/formato-bs';
         </div>
       </form>
 
-      @if (cargando()) { <div class="empty">Cargando…</div> }
-      @else if (!datos()?.items?.length) { <div class="card empty">No encontramos prendas con esos filtros.</div> }
+      @if (cargando()) { <div class="grid-productos" aria-busy="true" aria-label="Cargando prendas">@for (n of esqueleto; track n) { <div class="card pc-esqueleto"><div class="pc-esq-foto"></div><div class="pc-esq-linea"></div><div class="pc-esq-linea corta"></div></div> }</div> }
+      @else if (!datos()?.items?.length) { <div class="card empty" style="text-align:center">Sin resultados: no encontramos prendas con esos filtros.</div> }
       @else {
-        <div class="prendas">
-          @for (p of datos()!.items; track p.id) {
-            <a class="prenda card" [routerLink]="['/tienda/catalogo', p.id]" [queryParams]="f.sucursal ? { sucursal: f.sucursal } : {}">
-              <div class="foto">
-                @if (p.imagen) { <img [src]="media + p.imagen" [alt]="p.nombre" loading="lazy" /> } @else { <span>👕</span> }
-                @if (p.promocion) { <span class="badge danger oferta">Oferta</span> }
-                @if (!p.disponible) { <span class="badge agotada">{{ f.sucursal ? 'Sin stock aquí' : 'Agotada' }}</span> }
-              </div>
-              <div class="info">
-                <strong>{{ p.nombre }}</strong>
-                <span class="muted small">{{ p.categoria }}{{ p.marca ? ' · ' + p.marca : '' }}</span>
-                <span class="precio">@if (p.precio_final !== p.precio) { <s class="muted small">{{ p.precio | bs }}</s> } <b>{{ p.precio_final | bs }}</b></span>
-                <span class="row" style="gap:.3rem">@for (c of p.colores; track c.id) { <span class="swatch" [style.background]="c.codigo_hex" [title]="c.nombre"></span> }</span>
-                <span class="muted small">Tallas: {{ p.tallas.join(' · ') }}</span>
-              </div>
-            </a>
-          }
+        <div class="grid-productos">
+          @for (p of datos()!.items; track p.id) { <app-product-card [prenda]="p" [sucursal]="f.sucursal ?? null" /> }
         </div>
         <div class="row between" style="margin-top:1.1rem">
           <span class="muted small">{{ datos()!.total }} prendas · página {{ datos()!.pagina }} de {{ paginas() }}</span>
@@ -70,14 +53,6 @@ import { BsPipe } from '../../core/formato-bs';
         </div>
       }
     </div>`,
-  styles: `
-    .prendas { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
-    .prenda { display: grid; text-decoration: none; color: inherit; overflow: hidden; transition: transform .15s, box-shadow .15s; }
-    .prenda:hover { transform: translateY(-2px); text-decoration: none; }
-    .foto { position: relative; aspect-ratio: 3/4; background: #ece8e1; display: grid; place-items: center; font-size: 2.5rem; }
-    .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .oferta { position: absolute; top: .6rem; left: .6rem; } .agotada { position: absolute; bottom: .6rem; left: .6rem; background: #1d1a22; color: #fff; }
-    .info { display: grid; gap: .25rem; padding: .8rem .9rem 1rem; } .precio b { font-size: 1.05rem; }`,
 })
 export class CatalogoPage implements OnInit {
   private catalogo = inject(CatalogoApi);
@@ -87,7 +62,7 @@ export class CatalogoPage implements OnInit {
   readonly local = inject(CatalogoLocalService);
   readonly red = inject(ConnectivityService);
 
-  readonly media = MEDIA_URL;
+  readonly esqueleto = [1, 2, 3, 4, 5, 6, 7, 8];
   readonly generos = GENEROS;
   readonly categorias = signal<Categoria[]>([]);
   readonly marcas = signal<Marca[]>([]);

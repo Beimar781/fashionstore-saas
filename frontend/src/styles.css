@@ -94,3 +94,14 @@ fieldset { border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1r
 
 @media (max-width: 640px) { .page { padding: 1.1rem 1rem 2.5rem; } h1 { font-size: 1.4rem; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Cuadrícula de tarjetas de prenda (ver core/ui/product-card.component.ts): 4 columnas en pantalla ancha, 3 en laptop, 2 en tablet y en móvil */
+.grid-productos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
+@media (max-width: 1199px) { .grid-productos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 899px) { .grid-productos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
+@media (max-width: 600px) { .grid-productos { gap: 12px; } }
+.pc-esqueleto { border-radius: 14px; padding: 0 0 1rem; overflow: hidden; display: grid; gap: .6rem; align-content: start; }
+.pc-esq-foto { aspect-ratio: 4 / 5; background: linear-gradient(90deg, #ece8e1 25%, #f5f2ed 50%, #ece8e1 75%); background-size: 200% 100%; animation: pc-brillo 1.2s infinite linear; }
+.pc-esq-linea { height: .8rem; margin: 0 .9rem; border-radius: 6px; background: #ece8e1; } .pc-esq-linea.corta { width: 45%; }
+@keyframes pc-brillo { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .pc-esq-foto { animation: none; } }
