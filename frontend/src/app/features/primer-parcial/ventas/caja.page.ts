@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -5,20 +6,34 @@ import { CajaApi } from '../../../core/api/caja.api';
 import { CobroCaja, LineaVenta, MetodoCaja, ProductoCaja } from '../../../core/caja.models';
 import { Pedido, ResultadoPago } from '../../../core/compras.models';
 import { Reserva } from '../../../core/reservas.models';
+import { AuthService } from '../../../core/auth/auth.service';
+import { CatalogoLocalService, PrendaLocal } from '../../../core/offline/catalogo-local.service';
+import { comprobanteProvisional, numeroLocal } from '../../../core/offline/comprobante-provisional';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
+import { OperacionLocal } from '../../../core/offline.models';
+import { ResumenTurnoComponent } from '../../offline/resumen-turno.component';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
 import { PagoTarjetaComponent } from './pago-tarjeta.component';
-import { BsPipe } from '../../../core/formato-bs';
+import { BsPipe, formatoBs } from '../../../core/formato-bs';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-problema.component';
 
 /** Punto de venta: CU-28 (escanear o buscar prendas), CU-29 (armar la venta, también desde una reserva) y CU-30 (cobrar y emitir el comprobante). */
 @Component({
   selector: 'app-caja',
-  imports: [BsPipe, FormsModule, PagoTarjetaComponent, OperacionesConProblemaComponent],
+  imports: [BsPipe, DatePipe, FormsModule, PagoTarjetaComponent, OperacionesConProblemaComponent, ResumenTurnoComponent],
   template: `
     <div class="page" style="max-width:1180px">
       <div class="page-head"><div><h1>Caja</h1><p>Escanee las prendas, registre la venta y cóbrela. El stock se descuenta al cobrar.</p></div>
-        @if (venta() || cobro() || resultadoTarjeta()) { <button class="btn" (click)="nueva()">+ Nueva venta</button> }</div>
+        <span class="row">
+          @if (pendientesDeSync().length) { <span class="badge warn" title="Ventas guardadas en este dispositivo que todavía no se enviaron">{{ pendientesDeSync().length }} venta(s) por sincronizar</span> }
+          @if (venta() || cobro() || resultadoTarjeta()) { <button class="btn" (click)="nueva()">+ Nueva venta</button> }
+        </span></div>
+
+      @if (!enLinea()) {
+        <div class="alert warn" role="status">Sin conexión: la venta se guarda en este dispositivo con un comprobante provisional y se envía sola al volver la red.
+          @if (!local.hayCatalogo()) { <strong> Todavía no hay una copia del catálogo en este dispositivo: se descarga sola cuando hay conexión.</strong> }</div>
+      }
 
       <app-operaciones-con-problema [tipos]="['VENTA_CONTADO']" titulo="Ventas con problema" />
 
@@ -105,9 +120,11 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
           <section class="card pad stack">
             <h2>Cobrar la venta {{ v.codigo }}</h2>
             @if (!cobro() && !resultadoTarjeta()?.aprobado) {
-              <div class="tabs" role="tablist">
-                @for (m of metodos; track m.id) { <button role="tab" [class.activa]="metodo() === m.id" (click)="metodo.set(m.id)">{{ m.texto }}</button> }
-              </div>
+              @if (!esLocal(v)) {
+                <div class="tabs" role="tablist">
+                  @for (m of metodos; track m.id) { <button role="tab" [class.activa]="metodo() === m.id" (click)="metodo.set(m.id)">{{ m.texto }}</button> }
+                </div>
+              } @else { <p class="small muted">Sin conexión solo se cobra en efectivo; la venta se enviará sola al volver la red.</p> }
               @if (metodo() === 'EFECTIVO') {
                 <div class="form-grid">
                   <label>Monto recibido (Bs)<input name="mr" type="number" min="0" step="0.01" [(ngModel)]="recibido" autofocus /></label>
@@ -119,11 +136,11 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
                 <app-pago-tarjeta [pedidoId]="v.id" [total]="v.total" [permitirGuardar]="false" (listo)="alTarjeta($event)" (sinStock)="avisoSinStock()" />
               }
               @if (errorCobro()) { <div class="alert danger" role="alert">{{ errorCobro() }}</div> }
-              <div><button class="btn danger sm" (click)="anular(v)">Anular esta venta</button></div>
+              <div>@if (esLocal(v)) { <button class="btn sm" (click)="nueva()">Cancelar esta venta</button> } @else { <button class="btn danger sm" (click)="anular(v)">Anular esta venta</button> }</div>
             }
 
             @if (cobro(); as c) {
-              <div class="alert ok resultado" role="status"><strong>✔ Venta cobrada</strong><br />Comprobante N.° <strong>{{ c.pedido.comprobante_numero }}</strong> ({{ c.pedido.comprobante_tipo === 'FACTURA' ? 'factura' : 'comprobante interno temporal' }})
+              <div class="alert ok resultado" role="status"><strong>✔ Venta cobrada</strong><br />Comprobante N.° <strong>{{ c.pedido.comprobante_numero }}</strong> ({{ c.pedido.comprobante_tipo === 'FACTURA' ? 'factura' : c.pedido.comprobante_tipo === 'PROVISIONAL' ? 'comprobante provisional: se confirma al sincronizar' : 'comprobante interno temporal' }})
                 @if (c.pago.metodo === 'EFECTIVO') { <br />Recibido {{ c.pago.monto_recibido | bs }} · <strong>Cambio {{ c.cambio | bs }}</strong> }</div>
               @if (c.aviso) { <div class="alert warn" role="alert">{{ c.aviso }}</div> }
               <div class="row"><button class="btn primary" (click)="imprimir(c.pedido)">🖨 Imprimir comprobante</button><button class="btn" (click)="nueva()">Nueva venta</button></div>
@@ -146,6 +163,18 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
           </aside>
         </div>
       }
+
+      @if (ventasTurno().length) {
+        <section class="card pad stack" style="margin-top:1rem">
+          <div class="row between"><h2>Mi turno</h2><span class="row"><span class="badge" [class.warn]="pendientesDeSync().length">{{ pendientesDeSync().length }} por sincronizar</span>
+            <button class="btn sm" (click)="verResumen.set(!verResumen())">{{ verResumen() ? 'Ocultar el resumen' : 'Resumen de mi turno' }}</button></span></div>
+          @for (o of ventasTurno(); track o.id) {
+            <div class="row between small"><span>{{ o.creada_en | date: 'HH:mm' }} · {{ o.resumen }}</span>
+              <span class="row"><strong>{{ o.comprobante ?? comprobanteLocal(o) }}</strong><span class="badge" [class.ok]="o.estado === 'CONFIRMADA'" [class.warn]="o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA' || o.estado === 'EN_CONFLICTO'" [class.danger]="o.estado === 'RECHAZADA'">{{ estadoTexto(o.estado) }}</span></span></div>
+          }
+          @if (verResumen()) { <app-resumen-turno /> }
+        </section>
+      }
     </div>`,
   styles: `
     .layout { display: grid; grid-template-columns: 1fr 380px; gap: 1.2rem; align-items: start; }
@@ -162,6 +191,16 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
 export class CajaPage implements OnInit {
   private api = inject(CajaApi);
   private toast = inject(ToastService);
+  private auth = inject(AuthService);
+  private red = inject(ConnectivityService);
+  private cola = inject(ColaOperacionesService);
+  readonly local = inject(CatalogoLocalService);
+  readonly enLinea = this.red.online;
+  readonly verResumen = signal(false);
+  /** Operación de la venta que se cobró sin conexión (para imprimir su comprobante provisional). */
+  private operacionLocal: OperacionLocal | null = null;
+  readonly ventasTurno = computed(() => this.cola.operaciones().filter((o) => o.tipo === 'VENTA_CONTADO').slice(0, 10));
+  readonly pendientesDeSync = computed(() => this.cola.pendientes().filter((o) => o.tipo === 'VENTA_CONTADO'));
 
   readonly media = MEDIA_URL;
   readonly metodos: { id: MetodoCaja; texto: string }[] = [{ id: 'EFECTIVO', texto: '💵 Efectivo' }, { id: 'TARJETA', texto: '💳 Tarjeta' }];
@@ -184,32 +223,59 @@ export class CajaPage implements OnInit {
   codigo = ''; consulta = ''; codigoReserva = ''; clienteEmail = ''; nit = '0'; razon = 'Sin nombre';
   recibido: number | null = null;
 
-  constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargarPendientes()); }  // tras sincronizar o al volver la red
+  constructor() { this.cola.alRefrescar(() => this.cargarPendientes()); }  // tras sincronizar o al volver la red
 
   ngOnInit() { this.cargarPendientes(); }
 
   cambioNum() { return Number(this.recibido ?? 0) - Number(this.venta()?.total ?? 0); }
 
-  private cargarPendientes() { this.api.pendientes().subscribe({ next: (p) => this.pendientes.set(p), error: () => {} }); }
+  private cargarPendientes() { if (this.enLinea()) this.api.pendientes().subscribe({ next: (p) => this.pendientes.set(p), error: () => {} }); }
+
+  private get sucursalId() { return this.auth.sesion()?.usuario.sucursal_id ?? null; }
+  esLocal(p: Pedido) { return p.id === 0; }
+  comprobanteLocal(o: OperacionLocal) { return numeroLocal(o); }
+  estadoTexto(e: string) { return ({ REGISTRADA_LOCAL: 'Pendiente', ENVIADA: 'Enviando', CONFIRMADA: 'Confirmada', EN_CONFLICTO: 'En conflicto', RECHAZADA: 'Rechazada' } as Record<string, string>)[e] ?? e; }
+
+  /** Una prenda de la copia local con la misma forma que la que devuelve el servidor (CU-28), con el stock de esta sucursal. */
+  private comoProductoCaja(r: PrendaLocal): ProductoCaja {
+    const v = r.variante;
+    return { variante_id: v.id, producto_id: r.producto.id, sku: v.sku, codigo_barras: v.codigo_barras, producto: r.producto.nombre, talla: v.talla, color: v.color, precio: v.precio, precio_final: v.precio_final, promocion: v.promocion, disponible: this.local.stock(v, this.sucursalId), imagen: r.producto.imagen ?? null };
+  }
 
   // ---- CU-28 ----
   escanear() {
     const c = this.codigo.trim();
     if (!c) return;
     this.errorBusqueda.set('');
+    if (!this.enLinea()) { this.escanearLocal(c); return; }
     this.api.escanear(c).subscribe({
       next: (p) => { this.agregar(p); this.codigo = ''; },
-      error: (e) => this.errorBusqueda.set(mensajeError(e)),  // «El código de barras escaneado no coincide con ningún producto…»
+      error: (e) => { if (e.status === 0) this.escanearLocal(c); else this.errorBusqueda.set(mensajeError(e)); },  // «El código de barras escaneado no coincide con ningún producto…»
     });
+  }
+
+  /** Sin conexión el código se busca en la copia descargada (SKU o código de barras exactos). */
+  private escanearLocal(c: string) {
+    const q = c.toLowerCase();
+    const hallada = this.local.buscar(c).find((r) => r.variante.sku.toLowerCase() === q || (r.variante.codigo_barras ?? '').toLowerCase() === q);
+    if (hallada) { this.agregar(this.comoProductoCaja(hallada)); this.codigo = ''; }
+    else this.errorBusqueda.set('El código escaneado no coincide con ninguna prenda de la copia de este dispositivo.');
   }
 
   buscar() {
     if (this.consulta.trim().length < 2) return;
     this.errorBusqueda.set('');
+    if (!this.enLinea()) { this.buscarLocal(); return; }
     this.api.buscar(this.consulta.trim()).subscribe({
       next: (r) => { this.resultados.set(r); if (!r.length) this.errorBusqueda.set('No hay prendas que coincidan con la búsqueda.'); },
-      error: (e) => this.errorBusqueda.set(mensajeError(e)),
+      error: (e) => { if (e.status === 0) this.buscarLocal(); else this.errorBusqueda.set(mensajeError(e)); },
     });
+  }
+
+  private buscarLocal() {
+    const r = this.local.buscar(this.consulta.trim()).map((x) => this.comoProductoCaja(x));
+    this.resultados.set(r);
+    if (!r.length) this.errorBusqueda.set(this.local.hayCatalogo() ? 'No hay prendas que coincidan con la búsqueda.' : 'Sin conexión y sin copia del catálogo en este dispositivo.');
   }
 
   agregar(p: ProductoCaja) {
@@ -229,6 +295,7 @@ export class CajaPage implements OnInit {
   cargarReserva() {
     if (!this.codigoReserva.trim()) return;
     this.errorReserva.set('');
+    if (!this.enLinea()) { this.errorReserva.set('Para cobrar una reserva necesita Internet.'); return; }
     this.api.reserva(this.codigoReserva.trim()).subscribe({
       next: (r) => {
         this.reserva.set(r); this.lineas.set([]);
@@ -244,9 +311,24 @@ export class CajaPage implements OnInit {
     this.registrando.set(true); this.error.set('');
     const r = this.reserva();
     const items = (r ? this.itemsReserva() : this.lineas()).filter((l) => l.cantidad > 0).map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad }));
+    if (!this.enLinea()) { this.registrarLocal(); return; }
     this.api.registrarVenta({ items, reserva_codigo: r?.codigo ?? null, cliente_email: this.clienteEmail.trim() || null, nit_ci: this.nit || '0', razon_social: this.razon || 'Sin nombre' }).subscribe({
       next: (p) => { this.registrando.set(false); this.abrirCobro(p); },
-      error: (e) => { this.registrando.set(false); this.error.set(mensajeError(e)); },
+      error: (e) => { this.registrando.set(false); if (e.status === 0) this.registrarLocal(); else this.error.set(mensajeError(e)); },
+    });
+  }
+
+  /** Sin conexión: se arma la misma pre-factura y se pasa al cobro; la venta se guarda en la cola al cobrar. */
+  private registrarLocal() {
+    this.registrando.set(false);
+    if (this.reserva()) { this.error.set('Para cobrar una reserva necesita Internet.'); return; }
+    if (this.sucursalId === null || !this.lineas().length) { this.error.set('Agregue al menos una prenda.'); return; }
+    const total = this.total();
+    const items = this.lineas().map((l, i) => ({ id: i, variante_id: l.variante_id, sku: l.sku, producto: l.producto, talla: l.talla, color: l.color, cantidad: l.cantidad, precio_unitario: l.precio_final.toFixed(2), precio_final: l.precio_final.toFixed(2), subtotal: (l.precio_final * l.cantidad).toFixed(2) }));
+    this.abrirCobro({
+      id: 0, codigo: 'Venta local', estado: 'PENDIENTE_PAGO', canal: 'PRESENCIAL', tipo_entrega: 'EN_TIENDA', direccion_entrega: '', nit_ci: this.nit || '0', razon_social: this.razon || 'Sin nombre',
+      sucursal_id: this.sucursalId, sucursal: '', subtotal: total, descuento: '0.00', iva_incluido: '0.00', total, moneda: 'BOB', total_unidades: items.reduce((s, i) => s + i.cantidad, 0),
+      comprobante_numero: null, comprobante_tipo: 'PROVISIONAL', cliente: this.clienteEmail.trim() || null, creado_en: new Date().toISOString(), pagado_en: null, items, pagos: [],
     });
   }
 
@@ -260,7 +342,8 @@ export class CajaPage implements OnInit {
   }
 
   // ---- CU-30 ----
-  cobrarCaja(metodo: 'EFECTIVO') {
+  cobrarCaja(metodo: 'EFECTIVO'): void | Promise<void> {
+    if (this.esLocal(this.venta()!)) return this.cobrarLocal();
     this.cobrando.set(true); this.errorCobro.set('');
     this.api.cobrar(this.venta()!.id, metodo, metodo === 'EFECTIVO' ? this.recibido : null).subscribe({
       next: (c) => { this.cobrando.set(false); this.cobro.set(c); this.venta.set(c.pedido); },
@@ -268,15 +351,40 @@ export class CajaPage implements OnInit {
     });
   }
 
+  /** Sin conexión: la venta de contado queda en la cola con su UUID (RN11), baja el stock local y se entrega el comprobante provisional LOC-… (RN13). */
+  async cobrarLocal() {
+    const v = this.venta()!;
+    if (Number(this.recibido ?? 0) < Number(v.total)) { this.errorCobro.set('El efectivo recibido es menor al total de la venta.'); return; }
+    this.cobrando.set(true); this.errorCobro.set('');
+    const items = v.items.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad, precio_unitario: i.precio_unitario }));
+    const resumen = v.items.map((i) => `${i.cantidad}× ${i.producto} (${i.talla}, ${i.color})`).join(', ');
+    const op = await this.cola.registrar('VENTA_CONTADO', { items, forma_pago: 'EFECTIVO', monto_recibido: Number(this.recibido).toFixed(2), cliente_email: v.cliente ?? null }, v.sucursal_id, `Venta de contado ${formatoBs(Number(v.total))}: ${resumen}`);
+    await this.local.comprometer(items, v.sucursal_id);
+    this.operacionLocal = op;
+    const pedido: Pedido = { ...v, estado: 'PAGADO', comprobante_numero: numeroLocal(op), comprobante_tipo: 'PROVISIONAL' };
+    const pago = { id: 0, estado: 'APROBADO', metodo: 'EFECTIVO', proveedor: 'LOCAL', monto: v.total, monto_recibido: Number(this.recibido).toFixed(2), cambio: this.cambioNum().toFixed(2), tarjeta_marca: '', tarjeta_ultimos4: '', mensaje: '', motivo: '', creado_en: op.creada_en };
+    this.cobrando.set(false);
+    this.cobro.set({ pedido, pago, cambio: this.cambioNum().toFixed(2), aviso: null });
+    this.venta.set(pedido);
+    this.toast.ok('Venta guardada en este dispositivo. Se enviará sola al volver la red.');
+  }
+
   alTarjeta(r: ResultadoPago) { this.resultadoTarjeta.set(r); if (r.aprobado) this.venta.set(r.pedido); }
   /** Con tarjeta, si el stock se agota a mitad del cobro el sistema cancela la autorización y la venta: no se cobró nada. */
   avisoSinStock() { this.toast.aviso('El stock se agotó mientras se cobraba: no se cobró nada y la venta quedó cancelada. Registre una nueva con lo disponible.'); this.nueva(); }
 
   imprimir(p: Pedido) {
+    if (p.comprobante_tipo === 'PROVISIONAL' && this.operacionLocal) { void this.imprimirProvisional(this.operacionLocal); return; }
     this.api.comprobante(p.id).subscribe({
       next: (blob) => window.open(URL.createObjectURL(blob), '_blank'),
       error: (e) => this.toast.error(mensajeError(e)),
     });
+  }
+
+  /** Comprobante provisional LOC-… armado en el dispositivo; vale una vez sincronizada la venta, cuando recibe su número CMP-… oficial. */
+  private async imprimirProvisional(op: OperacionLocal) {
+    const nombreDe = (id: number) => { for (const x of this.local.productos()) { const v = x.variantes.find((y) => y.id === id); if (v) return `${x.nombre} (${v.talla}, ${v.color})`; } return `Prenda ${id}`; };
+    (await comprobanteProvisional(op, this.auth.sesion()?.empresa?.razon_social ?? '', nombreDe)).save(`${numeroLocal(op)}.pdf`);
   }
 
   nueva() {

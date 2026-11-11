@@ -19,8 +19,12 @@ String textoResumen(ResumenSync r) => 'Sincronización completa: ${r.confirmadas
 
 class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   /// `conectividad` emite true al recuperar la red y false al perderla (en la app es `conectividadDelDispositivo()`; en las pruebas, un doble).
-  OfflineController(this._repo, {Stream<bool>? conectividad})
+  OfflineController(this._repo, {Stream<bool>? conectividad, this.descargaAutomatica = false})
       : _conectividad = conectividad;
+
+  /// Si es true (así la crea la app), el catálogo se descarga solo en segundo plano cuando todavía no hay copia: al iniciar sesión, al volver la red y cada cierto tiempo.
+  final bool descargaAutomatica;
+  DateTime _ultimoIntentoCatalogo = DateTime.fromMillisecondsSinceEpoch(0);
 
   final OfflineRepository _repo;
   final Stream<bool>? _conectividad;
@@ -79,6 +83,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       Future.microtask(() async {
         await recargar();
         await sincronizar();
+        if (descargaAutomatica) await actualizarSiVencido(); // al iniciar sesión: baja la copia si falta o venció (solo en la app)
       });
     } else {
       notifyListeners();
@@ -164,7 +169,15 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Con conexión, si el catálogo tiene más de 6 horas se descarga de nuevo en segundo plano; «Actualizar ahora» hace lo mismo a mano.
   Future<void> actualizarSiVencido() async {
-    if (!habilitado || !enLinea || descargando || !hayCatalogo || !catalogoVencido) return;
+    if (!habilitado || !enLinea || descargando) return;
+    if (hayCatalogo && catalogoVencido) return descargarCatalogo();
+    if (!hayCatalogo && descargaAutomatica) await _descargarSiFalta();
+  }
+
+  /// Quien trabaja sin conexión necesita su copia: si no hay ninguna y hay red, se descarga sola (como mucho una vez por minuto), sin ir a otra pantalla.
+  Future<void> _descargarSiFalta() async {
+    if (DateTime.now().difference(_ultimoIntentoCatalogo).inSeconds < 60) return;
+    _ultimoIntentoCatalogo = DateTime.now();
     await descargarCatalogo();
   }
 
@@ -185,13 +198,13 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// RF19: registra una operación en el dispositivo y, si hay conexión, la sincroniza enseguida.
-  Future<void> registrar(
+  Future<OperacionLocal> registrar(
       {required String tipo,
       required Map<String, dynamic> payload,
       required int sucursalId,
       required String resumen}) async {
     final s = _sesion!;
-    await _repo.registrar(
+    final operacion = await _repo.registrar(
         tipo: tipo,
         payload: payload,
         sucursalId: sucursalId,
@@ -202,6 +215,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
         (payload['items'] as List).cast<Map<String, dynamic>>(), sucursalId);
     await recargar();
     sincronizar();
+    return operacion;
   }
 
   /// Registra una operación de la sucursal (devolución, recepción, ajuste o atención de reservas) y, si hay conexión, la sincroniza enseguida.

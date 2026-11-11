@@ -14,7 +14,9 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/data/sesion.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../notificaciones/presentation/push_controller.dart';
+import '../../offline/presentation/caja_screen.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
+import '../../offline/presentation/tareas_sucursal_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
 import '../../offline/presentation/operaciones_con_problema.dart';
 
@@ -176,16 +178,20 @@ class HomeScreen extends StatelessWidget {
                   'Pida prendas en lenguaje natural (plan Profesional)',
                   const AsistenteScreen()),
           ],
+          if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
+            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
+            _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const TareasSucursalScreen()),
+          ],
           if (s.rol == 'Cajero' || s.rol == 'Encargado') const OperacionesConProblema(tipos: ['VENTA_CONTADO'], titulo: 'Ventas con problema'),
           const InterruptorSimulacion(),
           if (offline.habilitado && !s.restringido)
             _acceso(
                 context,
                 Icons.cloud_off,
-                'Modo sin conexión',
+                s.rol == 'Cliente' ? 'Modo sin conexión' : 'Diagnóstico sin conexión',
                 s.rol == 'Cliente'
                     ? 'Descargue el catálogo y reserve sin Internet'
-                    : 'Descargue el catálogo y registre ventas de contado sin Internet',
+                    : 'Diagnóstico: catálogo descargado, cola y registro de sincronización',
                 const ModoOfflineScreen()),
         ],
       ),

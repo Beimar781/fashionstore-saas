@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/modelos.dart';
+import 'comprobante_provisional_accion.dart';
 import 'escaner_screen.dart';
 import 'offline_controller.dart';
 
@@ -178,6 +179,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         _direccionEntrega.text.trim().isEmpty) {
       return setState(() => _error = 'Ingrese la dirección de entrega.');
     }
+    OperacionLocal? venta;
     final items = [
       for (final l in _lineas)
         {'variante_id': l.prenda.variante.id, 'cantidad': l.cantidad}
@@ -224,7 +226,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         return setState(() =>
             _error = 'El efectivo recibido es menor al total de la venta.');
       }
-      await c.registrar(
+      venta = await c.registrar(
         tipo: 'VENTA_CONTADO',
         payload: {
           // el precio que se usó al registrar y la forma de pago viajan con la venta (§7.2)
@@ -240,10 +242,13 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         resumen: 'Venta de contado Bs ${_total.toStringAsFixed(2)}: $detalle',
       );
     }
+    final vendida = venta;
     messenger.showSnackBar(SnackBar(
         content: Text(c.enLinea
             ? 'Operación registrada; se está sincronizando.'
-            : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.')));
+            : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.'),
+        duration: const Duration(seconds: 10),
+        action: vendida == null ? null : SnackBarAction(label: 'Comprobante', onPressed: () => verComprobanteProvisional(context, vendida))));
     setState(() {
       _lineas.clear();
       _resultados = [];

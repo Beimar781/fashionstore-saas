@@ -1,10 +1,11 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { OfflineApi } from '../api/offline.api';
 import { MetaCatalogo, ProductoLocal, VarianteLocal } from '../offline.models';
 import { LocalDbService } from './local-db.service';
 import { VestidorApi } from '../api/vestidor.api';
 import { MEDIA_URL } from '../api.config';
 import { AuthService } from '../auth/auth.service';
+import { ConnectivityService } from './connectivity.service';
 
 export interface PrendaLocal { producto: ProductoLocal; variante: VarianteLocal; }
 
@@ -15,6 +16,7 @@ export class CatalogoLocalService {
   private db = inject(LocalDbService);
   private vestidorApi = inject(VestidorApi);
   private auth = inject(AuthService);
+  private red = inject(ConnectivityService);
 
   readonly productos = signal<ProductoLocal[]>([]);
   readonly meta = signal<MetaCatalogo | null>(null);
@@ -29,14 +31,27 @@ export class CatalogoLocalService {
   });
 
   constructor() {
-    void this.cargar().then(() => this.actualizarSiVencido());
+    const inicio = this.cargar();
+    void inicio.then(() => this.actualizarSiVencido());
     window.addEventListener('online', () => void this.actualizarSiVencido());
-    setInterval(() => void this.actualizarSiVencido(), 10 * 60 * 1000);
+    setInterval(() => void this.actualizarSiVencido(), 10 * 60 * 1000);  // y cada 10 minutos revisa si falta o venció
+    // al iniciar sesión (y cada vez que vuelve la red) se descarga solo, en segundo plano, si todavía no hay copia
+    effect(() => { if (this.auth.autenticado() && this.red.online()) untracked(() => void inicio.then(() => this.descargarSiFalta())); });
+  }
+
+  /** Quien trabaja sin conexión necesita su copia: si no hay ninguna y hay red, se descarga sola, sin que tenga que ir a otra pantalla. */
+  async descargarSiFalta(): Promise<void> {
+    const s = this.auth.sesion();
+    const puede = this.auth.autenticado() && !!s?.suscripcion?.plan?.offline && ['Cliente', 'Cajero', 'Encargado'].includes(s.usuario.rol);
+    if (!puede || this.hayCatalogo() || this.descargando() || !this.red.online()) return;
+    try { await this.descargar(); } catch { /* sin respuesta del servidor: se vuelve a intentar al volver la red o en el siguiente ciclo */ }
   }
 
   /** Con conexión, si el catálogo descargado tiene más de 6 horas se actualiza solo, en segundo plano. */
   async actualizarSiVencido(): Promise<void> {
-    if (!navigator.onLine || !this.auth.autenticado() || !this.hayCatalogo() || !this.vencido() || this.descargando()) return;
+    if (!this.red.online() || !this.auth.autenticado() || !this.hayCatalogo() || !this.vencido() || this.descargando()) {
+      return void this.descargarSiFalta();
+    }
     try { await this.descargar(); } catch { /* sin respuesta del servidor: se vuelve a intentar en el siguiente ciclo */ }
   }
 

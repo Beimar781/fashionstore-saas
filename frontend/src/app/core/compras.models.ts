@@ -16,7 +16,7 @@ export interface PagoResumen {
 export interface Pedido {
   id: number; codigo: string; estado: EstadoPedido; canal: string; tipo_entrega: string; direccion_entrega: string; nit_ci: string; razon_social: string;
   sucursal_id: number; sucursal: string; subtotal: string; descuento: string; iva_incluido: string; total: string; moneda: string; total_unidades: number;
-  comprobante_numero: string | null; comprobante_tipo?: 'FACTURA' | 'INTERNO_TEMPORAL' | null; comprobante_aviso?: string | null;
+  comprobante_numero: string | null; comprobante_tipo?: 'FACTURA' | 'INTERNO_TEMPORAL' | 'PROVISIONAL' | null; comprobante_aviso?: string | null;
   cliente?: string | null; vendedor?: string | null; reserva_id?: number | null;
   creado_en: string; pagado_en: string | null; items: ItemPedido[]; pagos: PagoResumen[];
 }

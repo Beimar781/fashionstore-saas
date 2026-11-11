@@ -41,12 +41,12 @@ const NAV_EMPRESA: Item[] = [
 const NAV_CAJERO: Item[] = [
   { ruta: '/pos/caja', texto: 'Caja', icono: '🧾' },
   { ruta: '/pos/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
-  { ruta: '/pos/offline', texto: 'Modo sin conexión', icono: '📡', plan: 'offline' },
+  { ruta: '/pos/offline', texto: 'Diagnóstico sin conexión', icono: '📡', plan: 'offline' },
 ];
 const NAV_ENCARGADO: Item[] = [
   { ruta: '/sucursal/caja', texto: 'Caja', icono: '🧾' },
   { ruta: '/sucursal/devoluciones', texto: 'Devoluciones y cambios', icono: '↩️' },
-  { ruta: '/sucursal/offline', texto: 'Modo sin conexión', icono: '📡', plan: 'offline' },
+  { ruta: '/sucursal/offline', texto: 'Diagnóstico sin conexión', icono: '📡', plan: 'offline' },
   { ruta: '/sucursal/conflictos', texto: 'Conflictos de sincronización', icono: '⚠️', plan: 'offline' },
   { ruta: '/sucursal/ventas', texto: 'Ventas de la sucursal', icono: '📈' },
   { ruta: '/sucursal/reservas', texto: 'Reservas', icono: '📅' },

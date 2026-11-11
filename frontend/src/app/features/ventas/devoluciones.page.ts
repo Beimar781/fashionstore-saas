@@ -9,19 +9,26 @@ import { DevolucionesApi } from '../../core/api/devoluciones.api';
 import { ProductoCaja } from '../../core/caja.models';
 import { IniciarPago, ResultadoPago, TarjetaSimulada } from '../../core/compras.models';
 import { Devolucion, LineaNueva, VentaDevolvible } from '../../core/devoluciones.models';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { DevolucionOfflineComponent } from '../offline/devolucion-offline.component';
 import { BsPipe } from '../../core/formato-bs';
 
 /** CU-41 · Devoluciones y cambios: se busca la venta por su comprobante (RN15), se eligen las prendas y se emite la nota. Cajero y Encargado, solo su sucursal. */
 @Component({
   selector: 'app-devoluciones',
-  imports: [BsPipe, FormsModule, DatePipe, PagoTarjetaComponent],
+  imports: [BsPipe, FormsModule, DatePipe, PagoTarjetaComponent, DevolucionOfflineComponent],
   template: `
     <div class="page" style="max-width:1100px">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Ingrese el comprobante de la venta. La prenda devuelta vuelve al inventario de la sucursal.</p></div>
         @if (venta() || resultado()) { <button class="btn" (click)="nueva()">+ Otra devolución</button> }</div>
 
-      @if (!venta() && !resultado()) {
+      @if (!enLinea() && !venta() && !resultado()) {
+        <div class="alert warn" role="status">Sin conexión: la devolución se guarda en este dispositivo con las mismas validaciones (plazo y lo ya devuelto) y se envía sola al volver la red.</div>
+        <app-devolucion-offline />
+      }
+
+      @if (enLinea() && !venta() && !resultado()) {
         <form class="card pad row" (ngSubmit)="buscar()">
           <label style="flex:1;min-width:240px">N.° de comprobante<input name="c" [(ngModel)]="comprobante" placeholder="CMP-001-000001" autocomplete="off" style="text-transform:uppercase" autofocus /></label>
           <button class="btn primary" style="align-self:end">Buscar venta</button>
@@ -160,6 +167,8 @@ export class DevolucionesPage implements OnInit {
   readonly diferencia = computed(() => this.nuevo() - this.devuelto());
   readonly reembolso = computed(() => Math.max(0, -this.diferencia()));
   readonly hayPrendas = computed(() => this.devuelto() > 0 && (this.tipo() === 'DEVOLUCION' || this.nuevas().length > 0));
+
+  readonly enLinea = inject(ConnectivityService).online;
 
   ngOnInit() { this.cargarRecientes(); }
 

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/imagen_prenda.dart';
 import '../data/comprobante_provisional.dart';
 import '../data/modelos.dart';
+import 'comprobante_provisional_accion.dart';
 import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
 import 'registro_sync_screen.dart';
@@ -31,7 +30,7 @@ class ModoOfflineScreen extends StatelessWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Modo sin conexión'),
+          title: Text(c.esCliente ? 'Modo sin conexión' : 'Diagnóstico sin conexión'),
           actions: [
             if (!c.esCliente)
               IconButton(
@@ -190,20 +189,6 @@ class _CatalogoTabState extends State<_CatalogoTab> {
 class _OperacionesTab extends StatelessWidget {
   const _OperacionesTab();
 
-  /// B1: el PDF «Comprobante provisional» se arma en el teléfono, sin conexión, y se abre con el visor del dispositivo.
-  Future<void> _verProvisional(BuildContext context, OperacionLocal o) async {
-    final c = context.read<OfflineController>();
-    final mensajes = ScaffoldMessenger.of(context);
-    final ruta = await ComprobanteProvisional.aPdf(
-      o,
-      carpeta: (await getTemporaryDirectory()).path,
-      empresa: c.sesion?.empresaNombre ?? 'FashionStore',
-      nombreDe: (id) => c.nombreDeVariante(id),
-    );
-    final abierto = await OpenFilex.open(ruta);
-    if (abierto.type != ResultType.done) mensajes.showSnackBar(const SnackBar(content: Text('No hay una aplicación para abrir PDF en este teléfono.')));
-  }
-
   Color _color(String e) => switch (e) {
         Estado.confirmada => Colors.green.shade100,
         Estado.rechazada => Colors.red.shade100,
@@ -262,7 +247,7 @@ class _OperacionesTab extends StatelessWidget {
               if (o.tipo == 'VENTA_CONTADO') ...[
                 Text('Provisional ${ComprobanteProvisional.numero(o.sucursalId, o.id)}', style: Theme.of(context).textTheme.bodySmall),
                 TextButton.icon(
-                  onPressed: () => _verProvisional(context, o),
+                  onPressed: () => verComprobanteProvisional(context, o),
                   icon: const Icon(Icons.picture_as_pdf_outlined),
                   label: const Text('Comprobante provisional'),
                 ),

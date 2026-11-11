@@ -54,7 +54,7 @@ class FashionStoreApp extends StatelessWidget {
         // el modo sin conexión sigue a la sesión: al iniciar sesión sincroniza lo pendiente y reintenta mientras haya operaciones sin enviar
         ChangeNotifierProxyProvider<AuthController, OfflineController>(
           create: (_) => OfflineController(OfflineRepository(authRepo.api),
-              conectividad: conectividadDelDispositivo())
+              conectividad: conectividadDelDispositivo(), descargaAutomatica: true)
             ..alNotificar = NotificacionLocal.mostrar
             ..alAvisar = (texto) => _mensajero.currentState?.showSnackBar(
                 SnackBar(
