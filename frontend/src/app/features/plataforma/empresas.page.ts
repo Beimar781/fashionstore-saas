@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -12,12 +13,12 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 @Component({
   selector: 'app-empresas',
   styles: `.acc { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; max-width: 250px; margin-left: auto; }`,
-  imports: [FormsModule, RouterLink, DatePipe],
+  imports: [NecesitaInternetDirective, FormsModule, RouterLink, DatePipe],
   template: `
     <div class="page">
       <div class="page-head">
         <div><h1>Empresas contratantes</h1><p>Cada empresa tiene su entorno aislado, su administrador y su suscripción.</p></div>
-        <button class="btn primary" (click)="abrirNueva()">+ Registrar empresa</button>
+        <button class="btn primary" necesitaInternet="Registrar una empresa necesita Internet." (click)="abrirNueva()">+ Registrar empresa</button>
       </div>
 
       <div class="card table-wrap">

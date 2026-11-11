@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
@@ -8,12 +9,12 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-13 · Gestionar usuarios y roles de la empresa. */
 @Component({
   selector: 'app-usuarios',
-  imports: [FormsModule, DatePipe],
+  imports: [NecesitaInternetDirective, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head">
         <div><h1>Usuarios y roles</h1><p>Solo se muestran los usuarios de su empresa.</p></div>
-        <button class="btn primary" (click)="abrirNuevo()">+ Nuevo usuario</button>
+        <button class="btn primary" necesitaInternet="Crear usuarios necesita Internet." (click)="abrirNuevo()">+ Nuevo usuario</button>
       </div>
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }

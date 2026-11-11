@@ -5,6 +5,7 @@ import { Observable, finalize, shareReplay, tap } from 'rxjs';
 import { API_URL } from '../api.config';
 import { LoginBody, ROL, Rol, Sesion, TokenResponse } from '../models';
 import { LocalDbService } from '../offline/local-db.service';
+import { UltimaConsultaService } from '../offline/ultima-consulta.service';
 import { PushService } from '../push/push.service';
 
 const K_ACCESS = 'fs.access', K_REFRESH = 'fs.refresh', K_SESION = 'fs.sesion';
@@ -17,6 +18,7 @@ export class AuthService {
   private router = inject(Router);
   private local = inject(LocalDbService);
   private push = inject(PushService);
+  private ultimaConsulta = inject(UltimaConsultaService);
 
   readonly sesion = signal<Sesion | null>(this.leer());
   readonly autenticado = computed(() => this.sesion() !== null);
@@ -76,6 +78,7 @@ export class AuthService {
     localStorage.removeItem(K_ACCESS); localStorage.removeItem(K_REFRESH); localStorage.removeItem(K_SESION);
     this.sesion.set(null);
     void this.local.borrarSesion();
+    this.ultimaConsulta.olvidar();
     // A6 · los datos de la API guardados por el service worker son de la cuenta que sale: se borran
     void (globalThis.caches?.keys().then((n) => Promise.all(n.filter((x) => x.includes('api-consultas')).map((x) => caches.delete(x)))));
     void this.router.navigateByUrl('/login');

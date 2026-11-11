@@ -32,4 +32,6 @@ export interface RespuestaSync { resultados: ResultadoSync[]; sincronizado_en: s
 export interface OperacionServidor {
   id: string; tipo: TipoOperacion; estado: EstadoLocal; mensaje: string; referencia: string | null; comprobante: string | null; detalle: { faltantes: Faltante[] } | null;
   sucursal_id: number; sucursal: string; usuario: string; creada_en: string; procesada_en: string; intentos: number; resolucion: string | null; motivo_resolucion: string | null;
+  /** Venta de contado: lo que hay que devolver al cliente si se descarta y el efectivo que entregó en caja (null si la operación no trae los precios). */
+  monto_a_devolver?: string | null; efectivo_recibido?: string | null;
 }

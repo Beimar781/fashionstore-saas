@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -10,13 +11,13 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-35 · Gestionar suscripciones de empresas. La ruta entrega el id de la empresa como input. */
 @Component({
   selector: 'app-suscripcion',
-  imports: [BsPipe, FormsModule, DatePipe, RouterLink],
+  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe, RouterLink],
   template: `
     <div class="page">
       <p class="small"><a routerLink="/plataforma/empresas">← Empresas</a></p>
       <div class="page-head">
         <div><h1>Suscripción de {{ empresa()?.razon_social ?? '…' }}</h1><p>{{ empresa()?.codigo }} · empresa {{ empresa()?.estado }}</p></div>
-        <button class="btn primary" (click)="abrir()">Asignar / cambiar / renovar plan</button>
+        <button class="btn primary" necesitaInternet="Cambiar el plan necesita Internet." (click)="abrir()">Asignar / cambiar / renovar plan</button>
       </div>
 
       @if (detalle(); as d) {
@@ -29,8 +30,8 @@ import { BsPipe } from '../../core/formato-bs';
               @if (v.estado !== 'ACTIVA') { <div class="alert warn">La empresa está restringida (RN05) hasta que se renueve o reactive la suscripción.</div> }
               @if (v.estado === 'ACTIVA') {
                 <div class="row">
-                  <button class="btn sm" (click)="cambiarEstado('SUSPENDIDA')">Suspender</button>
-                  <button class="btn sm danger" (click)="cambiarEstado('CANCELADA')">Cancelar</button>
+                  <button class="btn sm" necesitaInternet (click)="cambiarEstado('SUSPENDIDA')">Suspender</button>
+                  <button class="btn sm danger" necesitaInternet (click)="cambiarEstado('CANCELADA')">Cancelar</button>
                 </div>
               }
             } @else { <div class="alert warn">La empresa no tiene suscripción.</div> }

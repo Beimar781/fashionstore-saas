@@ -1,5 +1,6 @@
 import { CatalogoLocalService } from '../core/offline/catalogo-local.service';
 import { InstalarAppComponent } from '../core/ui/instalar-app.component';
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
@@ -7,6 +8,7 @@ import { ROL } from '../core/models';
 import { ColaOperacionesService } from '../core/offline/cola-operaciones.service';
 import { AvisosConexionService } from '../core/offline/avisos-conexion.service';
 import { ConnectivityService } from '../core/offline/connectivity.service';
+import { UltimaConsultaService } from '../core/offline/ultima-consulta.service';
 import { CarritoEstadoService } from '../core/carrito/carrito-estado.service';
 import { ReservaBorradorService } from '../core/reservas/reserva-borrador.service';
 import { ConfirmarSalidaComponent } from '../core/ui/confirmar-salida.component';
@@ -75,7 +77,7 @@ const porRol: Record<string, Item[]> = {
 /** Estructura común de los paneles: menú por rol, datos de la empresa y aviso de conectividad. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent, InstalarAppComponent],
+  imports: [DatePipe, RouterOutlet, RouterLink, RouterLinkActive, ConfirmarSalidaComponent, NotificacionesComponent, InstalarAppComponent],
   template: `
     <div class="layout">
       <aside class="side">
@@ -102,7 +104,7 @@ const porRol: Record<string, Item[]> = {
       </aside>
       <div class="main">
         @if (!net.online()) {
-          <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (catalogoLocal.meta(); as m) { <span> Datos al {{ m.generado_en.slice(8, 10) }}/{{ m.generado_en.slice(5, 7) }} {{ m.generado_en.slice(11, 16) }} (UTC).</span> }@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
+          <div class="offline" role="status">{{ net.simulado() ? 'Modo sin conexión simulado. ' : 'Sin conexión. ' }}Se muestra la información almacenada, que puede estar desactualizada.@if (datosAl(); as d) { <span> Datos al {{ d | date: 'dd/MM HH:mm' }}.</span> }@if (cola.pendientes().length) { <strong> {{ cola.pendientes().length }} operación(es) pendiente(s) de sincronizar.</strong> }</div>
         }
         @if (s()?.empresa) {
           <div class="topbar">
@@ -154,6 +156,9 @@ export class ShellComponent {
   readonly carrito = inject(CarritoEstadoService);
   readonly catalogoLocal = inject(CatalogoLocalService);  // al crearse, actualiza solo el catálogo descargado si tiene más de 6 horas
   readonly cola = inject(ColaOperacionesService);
+  private readonly ultimaConsulta = inject(UltimaConsultaService);
+  /** «Datos al…»: quien trabaja con la copia descargada (Cliente, Cajero, Encargado) ve su fecha; el resto, cuándo vio datos del servidor por última vez. */
+  readonly datosAl = computed(() => (this.auth.rol() && ['Cliente', 'Cajero', 'Encargado'].includes(this.auth.rol()!) ? this.catalogoLocal.meta()?.generado_en : null) ?? this.ultimaConsulta.momento());
   private readonly avisos = inject(AvisosConexionService);  // al crearse, avisa en cualquier pantalla al perder y recuperar la red  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);

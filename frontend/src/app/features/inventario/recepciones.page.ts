@@ -2,13 +2,22 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InventarioApi } from '../../core/api/inventario.api';
 import { Lote } from '../../core/inventario.models';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
+import { RecepcionOfflineComponent } from '../offline/recepcion-offline.component';
 
 /** Recepción de lotes en tránsito (CU-31 → CU-26): al recibir se cuentan las unidades y se suman al inventario de la sucursal. */
 @Component({
   selector: 'app-recepciones',
-  imports: [FormsModule],
+  imports: [RecepcionOfflineComponent, FormsModule],
   template: `
+    @if (!enLinea()) {
+      <div class="page"><div class="page-head"><div><h1>Recepción de mercadería</h1><p>Registre lo que llegó: sube el inventario de forma provisional hasta sincronizar.</p></div></div>
+        <div class="alert warn" role="status" style="margin:1rem 1.5rem">Sin conexión: lo que registre se guarda en este dispositivo y se envía solo al volver la red.</div>
+        <app-recepcion-offline />
+      </div>
+    } @else {
     <div class="page">
       <div class="page-head"><div><h1>Recepción de mercadería</h1><p>Lotes que los proveedores despacharon y todavía no se suman al inventario.</p></div></div>
       @if (cargando()) { <div class="empty">Cargando…</div> }
@@ -47,6 +56,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
           <footer><button type="button" class="btn" (click)="lote.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando()">Confirmar recepción</button></footer>
         </form>
       </div>
+    }
     }`,
 })
 export class RecepcionesPage implements OnInit {
@@ -60,7 +70,11 @@ export class RecepcionesPage implements OnInit {
   readonly error = signal('');
   recibidas: Record<number, number> = {};
 
-  ngOnInit() { this.cargar(); }
+  readonly enLinea = inject(ConnectivityService).online;
+
+  constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargar()); }  // tras sincronizar o al volver la red
+
+  ngOnInit() { if (this.enLinea()) this.cargar(); }
 
   cargar() {
     this.api.recepciones().subscribe({

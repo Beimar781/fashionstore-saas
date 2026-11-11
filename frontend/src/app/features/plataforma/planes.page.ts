@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { FormsModule } from '@angular/forms';
 import { PlataformaApi } from '../../core/api/plataforma.api';
 import { Plan } from '../../core/models';
@@ -8,12 +9,12 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-34 · Gestionar planes de suscripción. */
 @Component({
   selector: 'app-planes',
-  imports: [BsPipe, FormsModule],
+  imports: [NecesitaInternetDirective, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
         <div><h1>Planes de suscripción</h1><p>Los límites y funcionalidades se configuran aquí y se aplican a todas las empresas con el plan.</p></div>
-        <button class="btn primary" (click)="abrirNuevo()">+ Nuevo plan</button>
+        <button class="btn primary" necesitaInternet="Crear o editar planes necesita Internet." (click)="abrirNuevo()">+ Nuevo plan</button>
       </div>
 
       @if (cargando()) { <div class="empty">Cargando…</div> }

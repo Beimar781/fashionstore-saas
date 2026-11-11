@@ -3,13 +3,22 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReservasApi } from '../../../core/api/reservas.api';
 import { CLASE_ESTADO_RESERVA, EstadoReserva, Reserva, TEXTO_ESTADO_ITEM, TEXTO_ESTADO_RESERVA } from '../../../core/reservas.models';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { ReservasOfflineComponent } from '../../offline/reservas-offline.component';
 
 /** CU-24 · El Encargado revisa las reservas de su sucursal, prepara las prendas y reporta las que no encuentra. */
 @Component({
   selector: 'app-reservas-sucursal',
-  imports: [FormsModule, DatePipe],
+  imports: [ReservasOfflineComponent, FormsModule, DatePipe],
   template: `
+    @if (!enLinea()) {
+      <div class="page"><div class="page-head"><div><h1>Reservas de la sucursal</h1><p>Valide el código, prepare las prendas, marque las que no encuentra y atienda al cliente.</p></div></div>
+        <div class="alert warn" role="status" style="margin:1rem 1.5rem">Sin conexión: lo que registre se guarda en este dispositivo y se envía solo al volver la red.</div>
+        <app-reservas-offline />
+      </div>
+    } @else {
     <div class="page">
       <div class="page-head"><div><h1>Reservas de la sucursal</h1><p>Reúna las prendas reservadas y avise al cliente que puede pasar.</p></div></div>
 
@@ -68,6 +77,7 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
           </footer>
         </div>
       </div>
+    }
     }`,
   styles: `.codigo { font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; } code { font-size: .8rem; background: #f1eee9; padding: .05rem .35rem; border-radius: 5px; }`,
 })
@@ -86,7 +96,11 @@ export class ReservasSucursalPage implements OnInit {
   readonly clase = (e: EstadoReserva) => CLASE_ESTADO_RESERVA[e];
   readonly itemTexto = (e: string) => TEXTO_ESTADO_ITEM[e] ?? e;
 
-  ngOnInit() { this.cargar(); }
+  readonly enLinea = inject(ConnectivityService).online;
+
+  constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargar()); }  // tras sincronizar o al volver la red
+
+  ngOnInit() { if (this.enLinea()) this.cargar(); }
 
   hoy() { const d = new Date(); this.fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; this.estado = 'PENDIENTE'; this.cargar(); }
   limpiar() { this.estado = ''; this.fecha = ''; this.cargar(); }

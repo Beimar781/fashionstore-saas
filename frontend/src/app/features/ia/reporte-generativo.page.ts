@@ -1,4 +1,5 @@
 import { DatePipe, JsonPipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, NgZone, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReportesApi } from '../../core/api/reportes.api';
@@ -13,7 +14,7 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
 /** CU-23 · Reportes generativos: el Administrador escribe o dicta (Web Speech API del navegador) lo que necesita y el sistema interpreta la petición y genera el reporte. */
 @Component({
   selector: 'app-reporte-generativo',
-  imports: [FormsModule, DatePipe, JsonPipe, BsPipe],
+  imports: [NecesitaInternetDirective, FormsModule, DatePipe, JsonPipe, BsPipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes con IA</h1><p>Escriba o dicte lo que necesita, por ejemplo «ventas del último mes» o «el producto menos vendido de la sucursal centro».</p></div></div>
@@ -26,9 +27,9 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
             @for (e of ejemplos; track e) { <button type="button" class="chip" (click)="prompt = e">{{ e }}</button> }
           </span>
           <span class="row">
-            @if (hayVoz) { <button type="button" class="btn" [class.grabando]="escuchando() && !conversando()" (click)="dictar()" [disabled]="conversando()" [attr.aria-pressed]="escuchando()">{{ escuchando() && !conversando() ? '⏹ Detener' : '🎤 Dictar' }}</button>
-              <button type="button" class="btn" [class.grabando]="conversando()" (click)="conversando() ? terminarConversacion() : iniciarConversacion()" [attr.aria-pressed]="conversando()">{{ conversando() ? '⏹ Terminar conversación' : '🗣 Conversar' }}</button> }
-            <button class="btn primary" [disabled]="generando() || !prompt.trim()">{{ generando() ? 'Generando…' : 'Generar reporte' }}</button>
+            @if (hayVoz) { <button type="button" class="btn" [class.grabando]="escuchando() && !conversando()" necesitaInternet="El dictado por voz necesita Internet." (click)="dictar()" [disabled]="conversando()" [attr.aria-pressed]="escuchando()">{{ escuchando() && !conversando() ? '⏹ Detener' : '🎤 Dictar' }}</button>
+              <button type="button" class="btn" [class.grabando]="conversando()" necesitaInternet="El chat de voz necesita Internet." (click)="conversando() ? terminarConversacion() : iniciarConversacion()" [attr.aria-pressed]="conversando()">{{ conversando() ? '⏹ Terminar conversación' : '🗣 Conversar' }}</button> }
+            <button class="btn primary" necesitaInternet="Generar un reporte con IA necesita Internet." [disabled]="generando() || !prompt.trim()">{{ generando() ? 'Generando…' : 'Generar reporte' }}</button>
           </span>
         </div>
         @if (!hayVoz) { <p class="muted small">Este navegador no permite dictar por voz; escriba su petición.</p> }
@@ -54,14 +55,14 @@ const EJEMPLOS = ['Ventas de este mes', 'El producto más vendido de la semana',
                 </table></div>
               }
               <details><summary class="small">Cómo se interpretó la petición</summary><pre class="small">{{ r.especificacion | json }}</pre></details>
-              <div class="row">@if (voz.disponible) { <button class="btn" [class.grabando]="voz.hablando()" (click)="voz.hablando() ? voz.detener() : voz.hablar(r.texto)">{{ voz.hablando() ? '⏹ Detener lectura' : '🔊 Escuchar' }}</button> }<button class="btn" (click)="copiar(r)">Copiar texto</button><button class="btn" (click)="imprimir()">Imprimir</button><button class="btn" (click)="descargar(r, 'xlsx')">⬇ Descargar Excel</button><button class="btn" (click)="descargar(r, 'pdf')">⬇ Descargar PDF</button></div>
+              <div class="row">@if (voz.disponible) { <button class="btn" [class.grabando]="voz.hablando()" (click)="voz.hablando() ? voz.detener() : voz.hablar(r.texto)">{{ voz.hablando() ? '⏹ Detener lectura' : '🔊 Escuchar' }}</button> }<button class="btn" (click)="copiar(r)">Copiar texto</button><button class="btn" (click)="imprimir()">Imprimir</button><button class="btn" necesitaInternet="Descargar el Excel necesita Internet." (click)="descargar(r, 'xlsx')">⬇ Descargar Excel</button><button class="btn" necesitaInternet="Descargar el PDF necesita Internet." (click)="descargar(r, 'pdf')">⬇ Descargar PDF</button></div>
             </div>
           } @else { <div class="card empty">El reporte aparecerá aquí.</div> }
         </section>
         <aside class="card pad stack"><h3>Reportes anteriores</h3>
           @for (h of historial(); track h.id) {
             <button type="button" class="hist" (click)="actual.set(h)"><strong class="small">{{ h.prompt }}</strong><span class="small muted">{{ h.creado_en | date: 'dd/MM HH:mm' }} · {{ h.origen === 'IA' ? 'IA' : 'Reglas' }}</span></button>
-            <span class="row small"><button type="button" class="btn sm ghost" (click)="descargar(h, 'xlsx')">Excel</button><button type="button" class="btn sm ghost" (click)="descargar(h, 'pdf')">PDF</button></span>
+            <span class="row small"><button type="button" class="btn sm ghost" necesitaInternet="Descargar el Excel necesita Internet." (click)="descargar(h, 'xlsx')">Excel</button><button type="button" class="btn sm ghost" necesitaInternet="Descargar el PDF necesita Internet." (click)="descargar(h, 'pdf')">PDF</button></span>
           } @empty { <p class="muted small">Todavía no generó reportes.</p> }
         </aside>
       </div>

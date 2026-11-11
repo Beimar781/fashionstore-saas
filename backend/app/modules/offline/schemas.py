@@ -130,3 +130,5 @@ class OperacionOut(BaseModel):
     intentos: int
     resolucion: str | None
     motivo_resolucion: str | None
+    monto_a_devolver: Decimal | None = None  # venta de contado: lo que se debe devolver al cliente si se descarta (suma de las prendas al precio con que se registró)
+    efectivo_recibido: Decimal | None = None  # venta de contado: el efectivo que el cliente entregó en caja

@@ -3,12 +3,13 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OfflineApi } from '../../core/api/offline.api';
 import { OperacionServidor } from '../../core/offline.models';
+import { BsPipe } from '../../core/formato-bs';
 import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
 /** CU-40 · Conflictos de sincronización: operaciones hechas sin conexión que no se pudieron aplicar por falta de existencias. Nada se descontó (RN14): el Encargado reintenta o descarta. */
 @Component({
   selector: 'app-conflictos',
-  imports: [FormsModule, DatePipe],
+  imports: [BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Conflictos de sincronización</h1><p>Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.</p></div><button class="btn" (click)="cargar()">Actualizar</button></div>
@@ -19,10 +20,14 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             <div><strong>{{ c.tipo === 'VENTA_CONTADO' ? 'Venta de contado' : c.tipo === 'COMPRA' ? 'Compra del cliente' : 'Reserva' }}</strong> · {{ c.sucursal }} · registrada por {{ c.usuario }} el {{ c.creada_en | date: 'dd/MM/yyyy HH:mm' }}</div>
             <span class="badge warn">En conflicto · {{ c.intentos }} intento(s)</span>
           </div>
-          <p class="small">{{ c.mensaje }}</p>
+          <p class="small"><strong>Qué pasó:</strong> {{ c.mensaje }}</p>
+          <p class="small"><strong>Qué pidió ese dispositivo:</strong> las prendas de la tabla, registradas sin conexión el {{ c.creada_en | date: 'dd/MM/yyyy HH:mm' }} por {{ c.usuario }} en {{ c.sucursal }}. Hoy el inventario tiene lo que muestra la columna «Hay hoy».</p>
+          @if (c.tipo === 'VENTA_CONTADO' && c.monto_a_devolver) {
+            <div class="alert warn small" role="status">El cliente entregó <strong>{{ c.efectivo_recibido | bs }}</strong> en caja. Si descarta esta venta debe devolverle <strong>{{ c.monto_a_devolver | bs }}</strong>.</div>
+          }
           <div class="table-wrap"><table>
-            <thead><tr><th>Prenda</th><th class="right">Solicitadas</th><th class="right">Disponibles hoy</th></tr></thead>
-            <tbody>@for (f of c.detalle?.faltantes ?? []; track f.variante_id) { <tr><td>{{ f.producto }} ({{ f.talla }}, {{ f.color }})</td><td class="right">{{ f.solicitadas }}</td><td class="right"><strong>{{ f.disponibles }}</strong></td></tr> }</tbody>
+            <thead><tr><th>Prenda</th><th class="right">Solicitadas</th><th class="right">Hay hoy</th><th class="right">Faltan</th></tr></thead>
+            <tbody>@for (f of c.detalle?.faltantes ?? []; track f.variante_id) { <tr><td>{{ f.producto }} ({{ f.talla }}, {{ f.color }})</td><td class="right">{{ f.solicitadas }}</td><td class="right"><strong>{{ f.disponibles }}</strong></td><td class="right">{{ f.solicitadas - f.disponibles }}</td></tr> }</tbody>
           </table></div>
           @if (descartando() === c.id) {
             <label>Motivo del descarte<input name="m{{ c.id }}" [(ngModel)]="motivo" maxlength="200" placeholder="Por ejemplo: el cliente ya se fue" /></label>
@@ -37,7 +42,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                 </fieldset>
               }
             }
-            <div class="row"><button class="btn danger" (click)="descartar(c)" [disabled]="devolverDinero && !condicionCompleta()">{{ devolverDinero ? 'Descartar y devolver el dinero' : 'Confirmar descarte' }}</button><button class="btn ghost" (click)="descartando.set(null)">Cancelar</button></div>
+            <div class="row"><button class="btn danger" (click)="descartar(c)" [disabled]="devolverDinero && !condicionCompleta()">{{ devolverDinero ? (c.monto_a_devolver ? 'Descartar y devolver ' + (c.monto_a_devolver | bs) : 'Descartar y devolver el dinero') : 'Confirmar descarte' }}</button><button class="btn ghost" (click)="descartando.set(null)">Cancelar</button></div>
           } @else {
             <div class="row">
               <button class="btn primary" (click)="reintentar(c)" [disabled]="trabajando()">Reintentar con las existencias de ahora</button>
@@ -76,7 +81,7 @@ export class ConflictosPage implements OnInit {
 
   descartar(c: OperacionServidor) {
     this.api.resolver(c.id, 'DESCARTAR', this.motivo, this.devolverDinero ? { ...this.condicion } : undefined).subscribe({
-      next: (o) => { this.descartando.set(null); this.toast.ok(this.devolverDinero ? 'Operación descartada y dinero devuelto.' : 'Operación descartada.'); void o; this.cargar(); },
+      next: (o) => { this.descartando.set(null); this.toast.ok(this.devolverDinero ? o.mensaje : 'Operación descartada.'); this.cargar(); },
       error: (e) => this.toast.error(mensajeError(e)),
     });
   }

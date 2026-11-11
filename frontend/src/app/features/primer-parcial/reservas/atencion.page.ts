@@ -3,13 +3,21 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReservasApi } from '../../../core/api/reservas.api';
 import { CLASE_ESTADO_RESERVA, Reserva, TEXTO_ESTADO_ITEM, TEXTO_ESTADO_RESERVA } from '../../../core/reservas.models';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { ReservasOfflineComponent } from '../../offline/reservas-offline.component';
 
 /** CU-25 · Atención en el mostrador: validar el código del cliente, entregar las prendas y cerrar la atención. */
 @Component({
   selector: 'app-atencion',
-  imports: [FormsModule, DatePipe],
+  imports: [ReservasOfflineComponent, FormsModule, DatePipe],
   template: `
+    @if (!enLinea()) {
+      <div class="page"><div class="page-head"><div><h1>Atención de reservas</h1><p>El cliente presenta su código; valídelo, entregue las prendas y cierre la atención.</p></div></div>
+        <div class="alert warn" role="status" style="margin:1rem 1.5rem">Sin conexión: lo que registre se guarda en este dispositivo y se envía solo al volver la red.</div>
+        <app-reservas-offline />
+      </div>
+    } @else {
     <div class="page" style="max-width:760px">
       <div class="page-head"><div><h1>Atención de reservas</h1><p>El cliente presenta su código; valídelo, entregue las prendas y cierre la atención.</p></div></div>
 
@@ -46,12 +54,14 @@ import { ToastService, mensajeError } from '../../../core/ui/toast.service';
       @if (cobro()) {
         <div class="alert ok" style="margin-top:1rem"><strong>Pase a caja.</strong> La venta de estas prendas se registra desde la reserva en el punto de venta (próxima fase); su stock sigue apartado hasta el cobro.</div>
       }
-    </div>`,
+    </div>
+    }`,
   styles: `.items { margin: 0; padding-left: 1.1rem; display: grid; gap: .3rem; } code { font-size: .8rem; background: #f1eee9; padding: .05rem .35rem; border-radius: 5px; margin-left: .3rem; }`,
 })
 export class AtencionPage {
   private api = inject(ReservasApi);
   private toast = inject(ToastService);
+  readonly enLinea = inject(ConnectivityService).online;
 
   readonly reserva = signal<Reserva | null>(null);
   readonly buscando = signal(false);

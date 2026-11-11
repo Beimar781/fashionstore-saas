@@ -15,6 +15,7 @@ import '../../auth/data/sesion.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../notificaciones/presentation/push_controller.dart';
 import '../../offline/presentation/caja_screen.dart';
+import '../../offline/presentation/conflictos_screen.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
 import '../../offline/presentation/tareas_sucursal_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
@@ -182,6 +183,7 @@ class HomeScreen extends StatelessWidget {
             _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
             _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const DevolucionesScreen()),
             if (s.rol == 'Encargado') _acceso(context, Icons.assignment_outlined, 'Tareas de la sucursal', 'Recepción, ajuste de inventario y reservas, con o sin conexión', const TareasSucursalScreen()),
+            if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, 'Conflictos de sincronización', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
           ],
           if (s.rol == 'Cajero' || s.rol == 'Encargado') const OperacionesConProblema(tipos: ['VENTA_CONTADO'], titulo: 'Ventas con problema'),
           const InterruptorSimulacion(),

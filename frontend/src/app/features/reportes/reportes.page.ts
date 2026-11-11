@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
@@ -13,11 +14,11 @@ type Pestana = 'ventas' | 'reservas' | 'pagos' | 'inventario';
 /** CU-21 · Reportes de ventas y reservas del Administrador: ventas netas de devoluciones, reservas con su conversión y vista de pagos (aprobados, rechazados y pendientes). */
 @Component({
   selector: 'app-reportes',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Reportes</h1><p>Ventas digitales y presenciales netas de devoluciones, reservas y pagos de su empresa.</p></div>
-        <div class="row"><button class="btn" (click)="exportar('xlsx')">⬇ Excel</button><button class="btn" (click)="exportar('pdf')">⬇ PDF</button><button class="btn" (click)="exportar('csv')">⬇ CSV</button></div></div>
+        <div class="row"><button class="btn" necesitaInternet="Exportar a Excel necesita Internet." (click)="exportar('xlsx')">⬇ Excel</button><button class="btn" necesitaInternet="Exportar a PDF necesita Internet." (click)="exportar('pdf')">⬇ PDF</button><button class="btn" necesitaInternet="Exportar a CSV necesita Internet." (click)="exportar('csv')">⬇ CSV</button></div></div>
 
       <form class="card pad row" style="margin-bottom:1rem" (ngSubmit)="cargar()">
         <label style="max-width:160px">Desde<input name="d" type="date" [(ngModel)]="desde" /></label>

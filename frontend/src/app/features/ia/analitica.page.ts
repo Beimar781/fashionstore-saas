@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
@@ -10,10 +11,10 @@ import { mensajeError } from '../../core/ui/toast.service';
 /** CU-42 · Dashboard analítico con Machine Learning: rotación de productos (KMeans) y pronóstico de demanda a 4 semanas (regresión lineal) con recomendación de reposición. */
 @Component({
   selector: 'app-analitica',
-  imports: [FormsModule, DatePipe],
+  imports: [NecesitaInternetDirective, FormsModule, DatePipe],
   template: `
     <div class="page">
-      <div class="page-head"><div><h1>Analítica con ML</h1><p>Qué productos rotan más y cuánto se espera vender en las próximas semanas, con modelos de aprendizaje automático (scikit-learn).</p></div><button class="btn" (click)="exportarPdf()">⬇ Exportar PDF</button></div>
+      <div class="page-head"><div><h1>Analítica con ML</h1><p>Qué productos rotan más y cuánto se espera vender en las próximas semanas, con modelos de aprendizaje automático (scikit-learn).</p></div><button class="btn" necesitaInternet="Exportar a PDF necesita Internet." (click)="exportarPdf()">⬇ Exportar PDF</button></div>
       <form class="card pad row" style="margin-bottom:1rem">
         <label style="max-width:240px">Sucursal<select name="s" [(ngModel)]="sucursal" (ngModelChange)="cargar()"><option [ngValue]="null">Todas</option>@for (s of sucursales(); track s.id) { <option [ngValue]="s.id">{{ s.nombre }}</option> }</select></label>
       </form>
