@@ -23,7 +23,7 @@ describe('Proponer producto del Proveedor con y sin conexión (D3)', () => {
         { provide: CatalogoAdminApi, useValue: {} },
         { provide: AuthService, useValue: { rol: () => 'Proveedor', sesion: () => ({ usuario: { id: 9 } }) } },
         { provide: ConnectivityService, useValue: { online } },
-        { provide: ColaOperacionesService, useValue: { registrar } },
+        { provide: ColaOperacionesService, useValue: { registrar, alRefrescar: () => undefined } },
       ],
     });
     pagina = TestBed.createComponent(AbastecimientoPage).componentInstance;

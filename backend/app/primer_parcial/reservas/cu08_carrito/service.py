@@ -97,6 +97,20 @@ class CarritoService:
         carrito.sucursal_id = sucursal_id
         return self._guardar(carrito)
 
+    def descontar(self, cliente_id: int, cantidades: dict[int, int]) -> None:
+        """Quita del carrito lo que una compra hecha sin conexión ya compró, para que no se pueda comprar dos veces. No confirma: lo hace quien lo llama."""
+        carrito = self.carritos.de_cliente(cliente_id)
+        if carrito is None:
+            return
+        for item in list(carrito.items):
+            comprada = cantidades.get(item.variante_id, 0)
+            if comprada <= 0:
+                continue
+            if item.cantidad > comprada:
+                item.cantidad -= comprada
+            else:
+                carrito.items.remove(item)
+
     def vaciar(self, cliente_id: int, confirmar: bool = True) -> schemas.CarritoOut:
         """Quita todas las prendas. El pago lo llama con `confirmar=False` para que todo se guarde en una sola transacción."""
         carrito = self.carritos.de_cliente(cliente_id)

@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { VacioComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-14 · Gestionar ciudades y sucursales dentro del límite del plan (RN06). */
 @Component({
   selector: 'app-sucursales',
-  imports: [VacioComponent, FormsModule],
+  imports: [NecesitaInternetDirective, VacioComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -41,8 +42,8 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                   <td><span class="badge" [class.ok]="s.activa" [class.warn]="!s.activa">{{ s.activa ? 'Activa' : 'Inactiva' }}</span></td>
                   <td class="actions">
                     <button class="btn sm" (click)="abrirEditar(s)">Editar</button>
-                    @if (s.activa) { <button class="btn sm danger" (click)="desactivar(s)">Desactivar</button> }
-                    @else { <button class="btn sm" (click)="activar(s)">Activar</button> }
+                    @if (s.activa) { <button necesitaInternet class="btn sm danger" (click)="desactivar(s)">Desactivar</button> }
+                    @else { <button necesitaInternet class="btn sm" (click)="activar(s)">Activar</button> }
                   </td>
                 </tr>
               }
@@ -73,7 +74,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             </div>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
           </div>
-          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
+          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>
       </div>
     }`,

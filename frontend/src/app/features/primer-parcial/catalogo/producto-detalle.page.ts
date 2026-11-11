@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -14,14 +15,14 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
 /** CU-18 · Detalle del producto: datos, variantes (SKU), fotografías y retiro del catálogo. */
 @Component({
   selector: 'app-producto-detalle',
-  imports: [CargandoComponent, FormsModule, RouterLink, VestidorProductoComponent],
+  imports: [NecesitaInternetDirective, CargandoComponent, FormsModule, RouterLink, VestidorProductoComponent],
   template: `
     <div class="page">
       <a routerLink="/empresa/catalogo/productos" class="small">← Productos</a>
       @if (p(); as prod) {
         <div class="page-head" style="margin-top:.4rem">
           <div><h1>{{ prod.nombre }}</h1><p>{{ prod.categoria }} · {{ prod.coleccion }} ({{ prod.temporada }}) · <span class="badge" [class.ok]="prod.activo" [class.warn]="!prod.activo">{{ prod.activo ? 'Visible en la tienda' : 'Retirado' }}</span></p></div>
-          @if (prod.activo) { <button class="btn danger" (click)="cambiarEstado(false)">Retirar del catálogo</button> } @else { <button class="btn primary" (click)="cambiarEstado(true)">Publicar</button> }
+          @if (prod.activo) { <button necesitaInternet class="btn danger" (click)="cambiarEstado(false)">Retirar del catálogo</button> } @else { <button necesitaInternet class="btn primary" (click)="cambiarEstado(true)">Publicar</button> }
         </div>
 
         <form class="card pad stack" (ngSubmit)="guardarDatos()" #f="ngForm">
@@ -38,7 +39,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
             <label class="full">Cuidado<input name="cu" [(ngModel)]="datos.cuidado" /></label>
           </div>
           @if (errorDatos()) { <div class="alert danger" role="alert">{{ errorDatos() }}</div> }
-          <div><button class="btn primary" [disabled]="!f.valid || guardando()">Guardar datos</button></div>
+          <div><button necesitaInternet class="btn primary" [disabled]="!f.valid || guardando()">Guardar datos</button></div>
         </form>
 
         <section class="card stack" style="margin-top:1rem">
@@ -53,7 +54,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
                     <td><input type="number" min="0" step="0.01" [(ngModel)]="v.precio" [name]="'pr' + v.id" style="width:7.5rem" placeholder="{{ prod.precio_base }}" /></td>
                     <td><input [(ngModel)]="v.barras" [name]="'ba' + v.id" maxlength="32" style="width:9rem" /></td>
                     <td><input type="checkbox" [(ngModel)]="v.activa" [name]="'ac' + v.id" /></td>
-                    <td class="actions"><button class="btn sm" (click)="guardarVariante(v)">Guardar</button></td>
+                    <td class="actions"><button necesitaInternet class="btn sm" (click)="guardarVariante(v)">Guardar</button></td>
                   </tr>
                 }
               </tbody>
@@ -64,7 +65,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
             <div class="chips">@for (t of tallasDisponibles(); track t.id) { <button type="button" class="chip" [class.sel]="nuevasTallas.includes(t.id)" (click)="alternar(nuevasTallas, t.id)">{{ t.codigo }}</button> }</div>
             <div class="chips" style="margin-top:.6rem">@for (c of colores(); track c.id) { <button type="button" class="chip" [class.sel]="nuevosColores.includes(c.id)" (click)="alternar(nuevosColores, c.id)"><span class="swatch" [style.background]="c.codigo_hex"></span>{{ c.nombre }}</button> }</div>
             @if (errorVariantes()) { <div class="alert danger" role="alert" style="margin-top:.7rem">{{ errorVariantes() }}</div> }
-            <div style="margin-top:.8rem"><button class="btn" (click)="generar()" [disabled]="!nuevasTallas.length || !nuevosColores.length">Generar variantes</button></div>
+            <div style="margin-top:.8rem"><button necesitaInternet class="btn" (click)="generar()" [disabled]="!nuevasTallas.length || !nuevosColores.length">Generar variantes</button></div>
           </fieldset>
         </section>
 
@@ -74,7 +75,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
             <input type="file" accept="image/png,image/jpeg,image/webp" (change)="elegirArchivo($event)" style="max-width:260px" />
             <select [(ngModel)]="colorImagen" name="ci" style="width:auto"><option [ngValue]="null">Todos los colores</option>@for (c of colores(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }</select>
             <input [(ngModel)]="textoAlt" name="alt" placeholder="Texto alternativo" style="max-width:220px" />
-            <button class="btn primary" (click)="subir()" [disabled]="!archivo || subiendo()">{{ subiendo() ? 'Subiendo…' : 'Subir' }}</button>
+            <button necesitaInternet class="btn primary" (click)="subir()" [disabled]="!archivo || subiendo()">{{ subiendo() ? 'Subiendo…' : 'Subir' }}</button>
           </div>
           @if (errorImagen()) { <div class="alert danger" role="alert">{{ errorImagen() }}</div> }
           <div class="galeria">
@@ -83,8 +84,8 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
                 <img [src]="media + i.url" [alt]="i.texto_alt || prod.nombre" />
                 <figcaption>
                   <span class="small">{{ nombreColor(i.color_id) }}</span>
-                  @if (i.principal) { <span class="badge ok">Principal</span> } @else { <button class="btn sm" (click)="hacerPrincipal(i.id)">Hacer principal</button> }
-                  <button class="btn sm danger" (click)="quitarImagen(i.id)">Quitar</button>
+                  @if (i.principal) { <span class="badge ok">Principal</span> } @else { <button necesitaInternet class="btn sm" (click)="hacerPrincipal(i.id)">Hacer principal</button> }
+                  <button necesitaInternet class="btn sm danger" (click)="quitarImagen(i.id)">Quitar</button>
                 </figcaption>
               </figure>
             } @empty { <p class="muted small">Todavía no hay fotografías: el producto se verá sin imagen en la tienda.</p> }

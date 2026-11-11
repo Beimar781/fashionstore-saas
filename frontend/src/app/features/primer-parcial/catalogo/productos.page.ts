@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +14,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-18 · Gestionar productos: listado y alta con sus variantes (talla × color). Las fotos se suben en el detalle. */
 @Component({
   selector: 'app-productos',
-  imports: [VacioComponent, BsPipe, FormsModule, RouterLink],
+  imports: [NecesitaInternetDirective, VacioComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head">
@@ -84,7 +85,7 @@ import { BsPipe } from '../../../core/formato-bs';
             </fieldset>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
           </div>
-          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Crear producto</button></footer>
+          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Crear producto</button></footer>
         </form>
       </div>
     }`,

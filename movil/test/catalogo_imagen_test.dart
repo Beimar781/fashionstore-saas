@@ -12,6 +12,12 @@ void main() {
       expect(urlImagen('/media/prendas/1.png'), '$origen/media/prendas/1.png');
     });
 
+    test('el catálogo descargado trae la ruta de la base y se completa con /media', () {
+      final origen = ApiConfig.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
+      expect(urlImagen('2/productos/5/abc.jpg'), '$origen/media/2/productos/5/abc.jpg');
+      expect(urlImagen('https://cdn.ejemplo.com/a.jpg'), 'https://cdn.ejemplo.com/a.jpg');
+    });
+
     test('devuelve nulo cuando la prenda no tiene imagen', () {
       expect(urlImagen(null), isNull);
       expect(urlImagen('  '), isNull);

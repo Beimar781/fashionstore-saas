@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { NecesitaInternetDirective } from '../../../core/ui/necesita-internet.directive';
 import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +15,7 @@ type Pestana = 'proveedores' | 'colecciones';
 /** CU-15 · Gestionar proveedores, su acceso al portal y las colecciones que proveen. */
 @Component({
   selector: 'app-proveedores',
-  imports: [VacioComponent, FormsModule, PasswordFieldComponent],
+  imports: [NecesitaInternetDirective, VacioComponent, FormsModule, PasswordFieldComponent],
   template: `
     <div class="page">
       <div class="page-head">
@@ -42,10 +43,10 @@ type Pestana = 'proveedores' | 'colecciones';
                     <td><strong>{{ p.nombre_comercial || p.razon_social }}</strong>@if (p.nombre_comercial) { <div class="muted small">{{ p.razon_social }}</div> }</td>
                     <td>{{ p.nit ?? '—' }}</td>
                     <td class="small">{{ p.email ?? '' }}<br />{{ p.telefono ?? '' }}</td>
-                    <td>@if (p.tiene_acceso) { <span class="badge ok">Con acceso</span> } @else { <button class="btn sm" (click)="abrirAcceso(p)">Crear acceso</button> }</td>
+                    <td>@if (p.tiene_acceso) { <span class="badge ok">Con acceso</span> } @else { <button necesitaInternet class="btn sm" (click)="abrirAcceso(p)">Crear acceso</button> }</td>
                     <td><span class="badge" [class.ok]="p.activo" [class.warn]="!p.activo">{{ p.activo ? 'Activo' : 'Inactivo' }}</span></td>
                     <td class="actions"><button class="btn sm" (click)="abrirEditar(p)">Editar</button>
-                      @if (p.activo) { <button class="btn sm danger" (click)="cambiarEstado(p, false)">Desactivar</button> } @else { <button class="btn sm" (click)="cambiarEstado(p, true)">Activar</button> }</td>
+                      @if (p.activo) { <button necesitaInternet class="btn sm danger" (click)="cambiarEstado(p, false)">Desactivar</button> } @else { <button necesitaInternet class="btn sm" (click)="cambiarEstado(p, true)">Activar</button> }</td>
                   </tr>
                 }
               </tbody>
@@ -86,7 +87,7 @@ type Pestana = 'proveedores' | 'colecciones';
             <p class="muted small">Obligatorios: razón social y al menos un dato de contacto (correo o teléfono).</p>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
           </div>
-          <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando()">Guardar</button></footer>
+          <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando()">Guardar</button></footer>
         </form>
       </div>
     }
@@ -100,7 +101,7 @@ type Pestana = 'proveedores' | 'colecciones';
             <label>Contraseña inicial <span class="hint">(mínimo 8 caracteres)</span><app-password-field [(valor)]="acceso.password" /></label>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
           </div>
-          <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !g.valid || acceso.password.length < 8">Crear acceso</button></footer>
+          <footer><button type="button" class="btn" (click)="modal.set(null)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !g.valid || acceso.password.length < 8">Crear acceso</button></footer>
         </form>
       </div>
     }`,

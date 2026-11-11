@@ -284,6 +284,19 @@ Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se desca
 | 17.4 | Web | Encargado, Cajero, Proveedor, Administrador | Iniciar sesión con red, esperar y cortar la red. Abrir recepciones, reservas de la sucursal, inventario, proveedores, usuarios, sucursales, productos y plan. | Cada pantalla muestra lo último visto o precargado; si nunca se abrió, «Sin conexión: todavía no hay datos guardados…». Ninguna queda en «Cargando…». | ☐ |
 | 17.5 | Web | Cualquiera | Cerrar sesión e iniciar con otra cuenta sin red. | No aparecen datos de la cuenta anterior. | ☐ |
 
+## 18. Cada actor en sus pantallas normales (segunda ronda · E2)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 18.1 | Web | Cliente | Con 2 prendas en el carrito (con red), activar «Simular sin conexión» y abrir «Mi carrito». Cambiar una cantidad, quitar la otra y agregar una prenda nueva desde su ficha. | El carrito se ve con lo cambiado y el aviso «Sin conexión…»; el indicador muestra que hay cambios; «Cambiar de sucursal necesita Internet.» | ☐ |
+| 18.2 | Web | Cliente | Seguir 18.1: «Proceder al pago», elegir una tarjeta guardada, autorizar y «Guardar compra para sincronizar». Apagar la simulación. | La compra se confirma y se cobra; el carrito del servidor queda **sin** lo comprado (si quedó algo, solo lo no comprado). | ☐ |
+| 18.3 | Web | Cliente | Repetir 18.1 pero sin comprar: apagar la simulación. | Los cambios se aplican al carrito del servidor (cantidad, quitado) y la prenda nueva se fusiona; no se duplica nada. | ☐ |
+| 18.4 | Web | Cajero | Abrir Caja con red y luego con «Simular sin conexión»: buscar una prenda. | Las fotos se ven (también sin conexión). Si todas dicen «Sin stock» con red, ver 18.5. | ☐ |
+| 18.5 | Web | Administrador | Ver el inventario de la sucursal del Cajero. | Debe tener existencias en esa sucursal (los datos de demostración se preparan con el script del prompt E5). | ☐ |
+| 18.6 | Web | Administrador | Sin conexión abrir Usuarios, Sucursales, Productos, Promociones y Proveedores. | Se ve lo último visto o precargado; los botones Crear, Editar, Activar, Desactivar y Guardar salen apagados («Esta función necesita Internet.»). | ☐ |
+| 18.7 | Web | Proveedor | Sin conexión abrir «Mis envíos y propuestas». | Ve los avisos y propuestas guardados; si nunca los abrió, el mensaje de datos sin guardar (no «Aún no hay…»); «Nueva propuesta» se guarda en la cola. | ☐ |
+| 18.8 | Web | Administrador | Sin conexión abrir Reportes con IA. | Se ve el último reporte visto; «Generar» queda apagado. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

@@ -140,8 +140,7 @@ export class CheckoutPage implements OnInit {
 
   private async cargar(enLinea: boolean) {
     if (!enLinea) {
-      await this.estado.cargarLocal();
-      const c = this.estado.carritoLocal() ?? (await this.estado.leerEspejo()) ?? null;
+      const c = await this.estado.vistaSinConexion();  // la copia del servidor + los cambios hechos sin conexión + lo agregado sin conexión
       this.carrito.set(c); this.sinCarrito.set(!c);
       return;
     }
@@ -157,14 +156,13 @@ export class CheckoutPage implements OnInit {
   // ---- CU-11: del carrito al pedido ----
   crearPedido() {
     if (!this.red.online()) {
-      if (this.carrito() && !this.estado.carritoLocal()) void this.estado.guardarLocal(this.carrito()!);
       this.errorDatos.set('');
       if (this.form.nit_ci.trim().length < 3) { this.errorDatos.set('Ingrese su NIT o CI para la facturación.'); return; }
       if (this.form.tipo_entrega === 'DELIVERY' && !this.form.direccion_entrega.trim()) { this.errorDatos.set('Ingrese la dirección de entrega.'); return; }
       const tarjeta = this.tarjetas().find((t) => t.id === this.tarjetaElegida);
       if (tarjeta && !this.autorizo) { this.errorDatos.set(MSG_AUTORIZAR); return; }
       this.creando.set(true);
-      void (async () => { if (this.carrito() && !this.estado.carritoLocal()) await this.estado.guardarLocal(this.carrito()!); await this.estado.registrarCompraLocal(this.form, tarjeta ? { tarjeta_guardada_id: tarjeta.id, marca: tarjeta.marca, ultimos4: tarjeta.ultimos4 } : undefined); this.cobroAutorizado.set(tarjeta ? `${tarjeta.marca} terminada en ${tarjeta.ultimos4}` : ''); })().then(() => { this.creando.set(false); this.compraPendiente.set(true); this.carrito.set(null); }).catch((e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); });
+      void (async () => { await this.estado.registrarCompraLocal(this.form, tarjeta ? { tarjeta_guardada_id: tarjeta.id, marca: tarjeta.marca, ultimos4: tarjeta.ultimos4 } : undefined, this.carrito()); this.cobroAutorizado.set(tarjeta ? `${tarjeta.marca} terminada en ${tarjeta.ultimos4}` : ''); })().then(() => { this.creando.set(false); this.compraPendiente.set(true); this.carrito.set(null); }).catch((e) => { this.creando.set(false); this.errorDatos.set(mensajeError(e)); });
       return;
     }
     this.creando.set(true); this.errorDatos.set('');

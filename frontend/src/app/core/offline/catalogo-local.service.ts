@@ -3,11 +3,16 @@ import { OfflineApi } from '../api/offline.api';
 import { MetaCatalogo, ProductoLocal, VarianteLocal } from '../offline.models';
 import { LocalDbService } from './local-db.service';
 import { VestidorApi } from '../api/vestidor.api';
-import { MEDIA_URL } from '../api.config';
+import { MEDIA_URL, rutaMedia } from '../api.config';
 import { AuthService } from '../auth/auth.service';
 import { ConnectivityService } from './connectivity.service';
 
 export interface PrendaLocal { producto: ProductoLocal; variante: VarianteLocal; }
+
+/** Las fotos del catálogo descargado quedan como «/media/…», igual que las que sirve la API en línea. */
+function conRutasDeImagen(p: ProductoLocal): ProductoLocal {
+  return { ...p, imagen: rutaMedia(p.imagen), imagenes: p.imagenes?.map((i) => ({ ...i, url: rutaMedia(i.url) })) };
+}
 
 /** CU-37 · Catálogo descargado en el dispositivo. Permite consultar y buscar sin conexión; siempre se muestra de cuándo es (RN16). */
 @Injectable({ providedIn: 'root' })
@@ -56,7 +61,7 @@ export class CatalogoLocalService {
   }
 
   async cargar() {
-    this.productos.set(await this.db.leerCatalogo());
+    this.productos.set((await this.db.leerCatalogo()).map(conRutasDeImagen));
     this.meta.set((await this.db.metaCatalogo()) ?? null);
   }
 
@@ -66,7 +71,7 @@ export class CatalogoLocalService {
     return new Promise((resolver, rechazar) => {
       this.api.catalogo().subscribe({
         next: async (c) => {
-          const productos: ProductoLocal[] = c.productos.map((p) => ({ ...p, empresa_id: c.empresa_id }));
+          const productos: ProductoLocal[] = c.productos.map((p) => conRutasDeImagen({ ...p, empresa_id: c.empresa_id }));
           const meta: MetaCatalogo = { generado_en: c.generado_en, empresa_id: c.empresa_id, sucursales: c.sucursales, clientes: c.clientes, plazo_devolucion_dias: c.plazo_devolucion_dias ?? null, ventas_recientes: c.ventas_recientes ?? [], reservas_sucursal: c.reservas_sucursal ?? [] };
           await this.db.guardarCatalogo(productos, meta);
           await this.guardarImagenesCatalogo(productos);

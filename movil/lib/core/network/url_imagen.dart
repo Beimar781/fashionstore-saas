@@ -5,5 +5,7 @@ String? urlImagen(String? ruta) {
   if (ruta == null || ruta.trim().isEmpty) return null;
   if (ruta.startsWith('http://') || ruta.startsWith('https://')) return ruta;
   final origen = ApiConfig.baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
-  return '$origen${ruta.startsWith('/') ? ruta : '/$ruta'}';
+  // el catálogo descargado trae la ruta guardada en la base («1/productos/…»); la API normal ya trae «/media/…»
+  final conMedia = ruta.startsWith('/media/') ? ruta : '/media/${ruta.startsWith('/') ? ruta.substring(1) : ruta}';
+  return '$origen$conMedia';
 }

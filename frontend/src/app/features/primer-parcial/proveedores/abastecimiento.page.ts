@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
@@ -17,7 +18,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
 /** CU-31 · Información de productos y abastecimiento. El Proveedor avisa remisiones y propone productos; el Administrador revisa. */
 @Component({
   selector: 'app-abastecimiento',
-  imports: [BsPipe, FormsModule],
+  imports: [VacioComponent, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -41,7 +42,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
 
       @if (pestana() === 'avisos') {
         <div class="card table-wrap">
-          @if (!lotes().length) { <div class="empty">Aún no hay avisos de remisión.</div> } @else {
+          @if (!lotes().length) { <app-vacio>Aún no hay avisos de remisión.</app-vacio> } @else {
             <table>
               <thead><tr><th>Lote</th>@if (!esProveedor) { <th>Proveedor</th> }<th>Destino</th><th>Referencia</th><th class="right">Unidades</th><th>Estado</th><th></th></tr></thead>
               <tbody>
@@ -61,7 +62,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
         </div>
       } @else {
         <div class="card table-wrap">
-          @if (!propuestas().length) { <div class="empty">Aún no hay propuestas.</div> } @else {
+          @if (!propuestas().length) { <app-vacio>Aún no hay propuestas.</app-vacio> } @else {
             <table>
               <thead><tr><th>Producto propuesto</th>@if (!esProveedor) { <th>Proveedor</th> }<th>Colección</th><th class="right">Precio</th><th>Estado</th><th></th></tr></thead>
               <tbody>
@@ -194,17 +195,20 @@ export class AbastecimientoPage implements OnInit {
   aviso: any = {}; lineas: Linea[] = []; busqueda = '';
   propuesta: any = {}; notas = '';
 
+  private readonly recargaAlVolverLaRed = this.cola.alRefrescar(() => this.cargar());  // al volver la red la pantalla se recarga sola
+
   ngOnInit() {
     this.cargar();
-    this.api.sucursalesDestino().subscribe((r) => this.sucursales.set(r));
-    this.catalogo.colecciones().subscribe((r) => this.colecciones.set(r));
-    if (!this.esProveedor) this.api.proveedores({ solo_activos: true }).subscribe((r) => this.proveedores.set(r));
+    const sinAviso = () => undefined;  // sin conexión y sin copia guardada, estas listas auxiliares quedan vacías
+    this.api.sucursalesDestino().subscribe({ next: (r) => this.sucursales.set(r), error: sinAviso });
+    this.catalogo.colecciones().subscribe({ next: (r) => this.colecciones.set(r), error: sinAviso });
+    if (!this.esProveedor) this.api.proveedores({ solo_activos: true }).subscribe({ next: (r) => this.proveedores.set(r), error: sinAviso });
   }
 
   cargar() {
-    this.api.lotes().subscribe({ next: (r) => this.lotes.set(r), error: (e) => this.toast.error(mensajeError(e)) });
-    this.api.propuestas().subscribe({ next: (r) => this.propuestas.set(r), error: (e) => this.toast.error(mensajeError(e)) });
-    if (!this.esProveedor) this.api.resumen().subscribe((r) => this.resumen.set(r));
+    this.api.lotes().subscribe({ next: (r) => this.lotes.set(r), error: (e) => { if (e.status !== 0) this.toast.error(mensajeError(e)); } });
+    this.api.propuestas().subscribe({ next: (r) => this.propuestas.set(r), error: (e) => { if (e.status !== 0) this.toast.error(mensajeError(e)); } });
+    if (!this.esProveedor) this.api.resumen().subscribe({ next: (r) => this.resumen.set(r), error: () => undefined });
   }
 
   // ---- aviso de remisión ----

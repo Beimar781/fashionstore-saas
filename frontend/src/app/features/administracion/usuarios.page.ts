@@ -31,8 +31,8 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
                   <td><span class="badge" [class.ok]="u.activo" [class.danger]="!u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span></td>
                   <td class="actions">
                     <button class="btn sm" (click)="abrirEditar(u)">Editar</button>
-                    @if (u.activo) { <button class="btn sm danger" (click)="desactivar(u)">Desactivar</button> }
-                    @else { <button class="btn sm" (click)="activar(u)">Activar</button> }
+                    @if (u.activo) { <button necesitaInternet class="btn sm danger" (click)="desactivar(u)">Desactivar</button> }
+                    @else { <button necesitaInternet class="btn sm" (click)="activar(u)">Activar</button> }
                   </td>
                 </tr>
               }
@@ -65,7 +65,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             </div>
             @if (error()) { <div class="alert danger" role="alert">{{ error() }}</div> }
           </div>
-          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
+          <footer><button type="button" class="btn" (click)="modal.set(false)">Cancelar</button><button necesitaInternet class="btn primary" [disabled]="guardando() || !f.valid">Guardar</button></footer>
         </form>
       </div>
     }`,

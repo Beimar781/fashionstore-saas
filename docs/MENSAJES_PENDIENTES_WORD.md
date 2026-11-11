@@ -808,3 +808,19 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Precarga por rol:** al iniciar sesión, y al volver la red pasados 10 minutos, se piden en segundo plano las lecturas de las pantallas normales del rol (Cliente: carrito, compras, reservas, tarjetas, sucursales; Cajero y Encargado: reservas de la sucursal, devoluciones, inventario y recepciones; Proveedor: lotes y propuestas; Administrador: usuarios, sucursales, productos, plan e inventario).
 - **Carrito:** cada carrito que llega del servidor se copia aparte del carrito local (que solo guarda las prendas agregadas sin conexión pendientes de fusionar), para que «Pagar mi compra» lo encuentre sin red.
 - **Pantallas:** ninguna se queda en «Cargando…» sin conexión y una lista vacía sin conexión ya no afirma «No hay…»; al volver la red la pantalla abierta se recarga sola.
+
+## Segunda ronda sin conexión · E2 (web por actor)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Cambio del carrito sin conexión | «Cambio guardado en este dispositivo; se aplicará al volver la conexión.» | — (solo en la app) | Pendiente |
+| Banner del carrito sin conexión | «Sin conexión: los cambios de su carrito se guardan en este dispositivo y se aplicarán al volver Internet.» | — (solo en la app) | Pendiente |
+| Cambiar de sucursal el carrito sin conexión | «Cambiar de sucursal necesita Internet.» | — (solo en la app) | Pendiente |
+| Cantidad fuera de rango sin conexión | «La cantidad debe estar entre 1 y 10.» / «No hay más unidades disponibles en el catálogo descargado.» | — (solo en la app) | Pendiente |
+| Cambios del carrito que ya no se pueden aplicar al reconectar | «No se pudieron aplicar N cambio(s) del carrito hechos sin conexión (la prenda ya no está o no hay stock).» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Carrito sin conexión (CU-08):** se ve la última copia del carrito del servidor más los cambios hechos en el dispositivo (cantidad, quitar, vaciar) y las prendas agregadas sin conexión. Al volver la red los cambios se repiten en orden sobre el carrito del servidor y las prendas nuevas se fusionan (RN11). Cambiar de sucursal necesita Internet.
+- **Compra sin conexión y carrito del servidor (CU-11/CU-38):** al confirmarse una compra hecha sin conexión, lo comprado se descuenta del carrito del servidor (si compró 2 de 3 unidades quedan 1), para que no se pueda comprar dos veces.
+- **Fotos del catálogo descargado (CU-37):** el catálogo descargado trae las fotos con la misma ruta `/media/…` que el catálogo en línea (antes traía la ruta de la base y las fotos salían rotas en Caja y sin conexión).
+- **Botones de escritura del Administrador y del Proveedor** (crear, editar, activar, desactivar, eliminar, subir fotos, generar variantes) quedan apagados sin conexión con «Esta función necesita Internet.»

@@ -165,11 +165,10 @@ export class InventarioPage implements OnInit {
   constructor() { inject(ColaOperacionesService).alRefrescar(() => this.irA(this.datos()?.pagina ?? 1)); }  // tras sincronizar o al volver la red
 
   ngOnInit() {
-    if (this.enLinea()) {
-      this.catalogo.categorias().subscribe((r) => this.categorias.set(r));
-      this.catalogo.temporadas().subscribe((r) => this.temporadas.set(r));
-      if (!this.esEncargado) this.publico.sucursales().subscribe((r) => this.sucursales.set(r));
-    }
+    // también sin conexión: salen de las lecturas guardadas (si nunca se abrieron, los filtros quedan vacíos)
+    this.catalogo.categorias().subscribe({ next: (r) => this.categorias.set(r), error: () => undefined });
+    this.catalogo.temporadas().subscribe({ next: (r) => this.temporadas.set(r), error: () => undefined });
+    if (!this.esEncargado) this.publico.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
     this.irA(1);
   }
 

@@ -31,7 +31,7 @@ describe('Pago con tarjeta guardada sin conexión (D4)', () => {
         { provide: ConnectivityService, useValue: { online } },
         { provide: AuthService, useValue: { sesion: () => ({ empresa: { id: 1 }, usuario: { id: 5 } }) } },
         { provide: LocalDbService, useValue: { leerTarjetasLocal: async () => [visa, vencida], guardarTarjetasLocal } },
-        { provide: CarritoEstadoService, useValue: { carritoLocal: signal(carrito), cargarLocal: async () => undefined, guardarLocal: async () => undefined, fijar: () => undefined, refrescar: async () => undefined, registrarCompraLocal } },
+        { provide: CarritoEstadoService, useValue: { vistaSinConexion: async () => carrito, carritoLocal: signal(carrito), cargarLocal: async () => undefined, guardarLocal: async () => undefined, fijar: () => undefined, refrescar: async () => undefined, registrarCompraLocal } },
       ],
     });
     pagina = TestBed.createComponent(CheckoutPage).componentInstance;

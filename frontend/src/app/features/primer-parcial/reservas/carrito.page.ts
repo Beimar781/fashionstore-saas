@@ -10,6 +10,7 @@ import { SucursalCatalogo } from '../../../core/catalogo.models';
 import { CarritoEstadoService } from '../../../core/carrito/carrito-estado.service';
 import { Carrito, ItemCarrito } from '../../../core/compras.models';
 import { ToastService, mensajeError } from '../../../core/ui/toast.service';
+import { ConnectivityService } from '../../../core/offline/connectivity.service';
 import { BsPipe } from '../../../core/formato-bs';
 
 /** CU-08 · Carrito de compras: cantidades, subtotal e IVA en tiempo real, con el stock de la sucursal elegida. */
@@ -20,7 +21,9 @@ import { BsPipe } from '../../../core/formato-bs';
     <div class="page">
       <div class="page-head"><div><h1>Mi carrito</h1><p>Las prendas se descuentan del stock de la sucursal elegida recién cuando el pago se aprueba.</p></div></div>
 
-      @if (!carrito()) { <app-cargando /> }
+      @if (!red.online() && (carrito() || estado.ediciones().length)) { <div class="alert warn" role="status">Sin conexión: los cambios de su carrito se guardan en este dispositivo y se aplicarán al volver Internet.</div> }
+      @if (!carrito() && sinCarrito()) { <div class="card pad empty" role="status">Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.</div> }
+      @else if (!carrito()) { <app-cargando /> }
       @else if (!carrito()!.items.length) {
         <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div>
       } @else {
@@ -85,18 +88,38 @@ import { BsPipe } from '../../../core/formato-bs';
 export class CarritoPage implements OnInit {
   private api = inject(ComprasApi);
   private catalogo = inject(CatalogoApi);
-  private estado = inject(CarritoEstadoService);
+  readonly estado = inject(CarritoEstadoService);
+  readonly red = inject(ConnectivityService);
   private toast = inject(ToastService);
 
   readonly media = MEDIA_URL;
   readonly carrito = signal<Carrito | null>(null);
   readonly sucursales = signal<SucursalCatalogo[]>([]);
   readonly error = signal('');
+  readonly sinCarrito = signal(false);
 
-  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.api.carrito().subscribe({ next: (c) => this.mostrar(c), error: () => undefined }));  // E1 · al volver la red la pantalla abierta se recarga sola
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
-    this.catalogo.sucursales().subscribe((r) => this.sucursales.set(r));
-    this.api.carrito().subscribe({ next: (c) => this.mostrar(c), error: (e) => this.toast.error(mensajeError(e)) });
+    this.catalogo.sucursales().subscribe({ next: (r) => this.sucursales.set(r), error: () => undefined });
+    void this.cargar();
+  }
+
+  /** Con red, el carrito del servidor; sin red, la copia más los cambios hechos en este dispositivo (nunca «Cargando…» eterno). */
+  private async cargar() {
+    if (!this.red.online()) { await this.mostrarLocal(); return; }
+    this.api.carrito().subscribe({ next: (c) => { this.sinCarrito.set(false); this.mostrar(c); }, error: (e) => { if (e.status === 0) void this.mostrarLocal(); else this.toast.error(mensajeError(e)); } });
+  }
+
+  private async mostrarLocal() {
+    const c = await this.estado.vistaSinConexion();
+    this.carrito.set(c); this.sinCarrito.set(!c); this.estado.fijar(c); this.error.set('');
+  }
+
+  /** Aplica un cambio en el dispositivo cuando no hay red; devuelve true si ya quedó resuelto aquí. */
+  private async sinRed(cambio: () => Promise<void>): Promise<boolean> {
+    if (this.red.online()) return false;
+    try { await cambio(); await this.mostrarLocal(); this.toast.ok('Cambio guardado en este dispositivo; se aplicará al volver la conexión.'); } catch (e) { this.error.set((e as Error).message); }
+    return true;
   }
 
   private mostrar(c: Carrito) { this.carrito.set(c); this.estado.fijar(c); this.error.set(''); }
@@ -105,13 +128,21 @@ export class CarritoPage implements OnInit {
     this.api.carrito().subscribe((c) => { this.carrito.set(c); this.estado.fijar(c); this.error.set(mensajeError(e)); });
   }
 
-  cambiar(i: ItemCarrito, valor: string) {
+  async cambiar(i: ItemCarrito, valor: string) {
+    if (await this.sinRed(() => this.estado.cambiarCantidadSinConexion(i, Number(valor)))) return;
     this.api.cambiarCantidad(i.id, Number(valor)).subscribe({ next: (c) => this.mostrar(c), error: (e) => this.fallo(e) });
   }
-  quitar(i: ItemCarrito) { this.api.quitar(i.id).subscribe({ next: (c) => this.mostrar(c), error: (e) => this.toast.error(mensajeError(e)) }); }
-  cambiarSucursal(id: number) { this.api.elegirSucursal(id).subscribe({ next: (c) => this.mostrar(c), error: (e) => this.fallo(e) }); }
-  vaciar() {
+  async quitar(i: ItemCarrito) {
+    if (await this.sinRed(() => this.estado.quitarSinConexion(i))) return;
+    this.api.quitar(i.id).subscribe({ next: (c) => this.mostrar(c), error: (e) => this.toast.error(mensajeError(e)) });
+  }
+  cambiarSucursal(id: number) {
+    if (!this.red.online()) { this.error.set('Cambiar de sucursal necesita Internet.'); void this.mostrarLocal(); return; }
+    this.api.elegirSucursal(id).subscribe({ next: (c) => this.mostrar(c), error: (e) => this.fallo(e) });
+  }
+  async vaciar() {
     if (!confirm('¿Vaciar el carrito?')) return;
+    if (await this.sinRed(() => this.estado.vaciarSinConexion())) return;
     this.api.vaciar().subscribe({ next: (c) => this.mostrar(c), error: (e) => this.toast.error(mensajeError(e)) });
   }
 }

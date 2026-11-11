@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from datetime import timedelta
 
+from app.core.almacenamiento import url_media
 from app.core.constantes import CAJERO, CLIENTE, ENCARGADO
 from app.core.tiempo import ahora
 from app.modules.acceso.dependencias import Contexto
@@ -55,10 +56,10 @@ class CatalogoOfflineService:
             if variantes:
                 principal = next((i for i in p.imagenes if i.principal), p.imagenes[0] if p.imagenes else None)
                 salida.append(schemas.ProductoLocalOut(
-                    id=p.id, nombre=p.nombre, categoria=p.categoria.nombre, genero=p.genero, imagen=principal.ruta if principal else None,
+                    id=p.id, nombre=p.nombre, categoria=p.categoria.nombre, genero=p.genero, imagen=url_media(principal.ruta) if principal else None,
                     publico_id=str(p.publico_id), slug=p.slug, descripcion=p.descripcion, marca=p.marca.nombre if p.marca else None,
                     coleccion=p.coleccion.nombre, temporada=p.coleccion.temporada.nombre, material=p.material, cuidado=p.cuidado,
-                    imagenes=[{"id": i.id, "color_id": i.color_id, "url": i.ruta, "texto_alt": i.texto_alt, "principal": i.principal} for i in sorted(p.imagenes, key=lambda x: x.orden)],
+                    imagenes=[{"id": i.id, "color_id": i.color_id, "url": url_media(i.ruta), "texto_alt": i.texto_alt, "principal": i.principal} for i in sorted(p.imagenes, key=lambda x: x.orden)],
                     variantes=variantes,
                 ))
         clientes = [] if self.ctx.rol == CLIENTE else [schemas.ClienteLocalOut(id=i, nombre=n, email=e) for i, n, e in nombres_y_correos_de_clientes(self.db, self.empresa_id)]

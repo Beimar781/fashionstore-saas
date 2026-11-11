@@ -14,7 +14,7 @@ from app.modules.offline.repository import OperacionRepository
 from app.modules.offline.schemas import AjusteOfflineIn, AtencionReservaOfflineIn, CompraOfflineIn, DevolucionOfflineIn, RecepcionOfflineIn, VentaOfflineIn
 from app.modules.reservas.publico import ReservaClienteService, ReservaIn, ReservaService
 from app.primer_parcial.proveedores.publico import AbastecimientoService, PropuestaIn
-from app.primer_parcial.reservas.publico import AtencionService, CompletarIn, ReservasSucursalService
+from app.primer_parcial.reservas.publico import AtencionService, CarritoService, CompletarIn, ReservasSucursalService
 from app.modules.sucursales.publico import nombres_de_sucursales
 from app.modules.ventas.publico import CondicionIn, Devolucion, DevolucionIn, DevolucionService, ItemDevueltoIn, LineaIn, VarianteVentaRepository, VentaIn, VentaPresencialService
 from app.primer_parcial.catalogo.publico import descuentos_vigentes
@@ -173,6 +173,7 @@ class Ejecutor:
             direccion=datos.direccion_entrega if datos.tipo_entrega == "DELIVERY" else "",
         )
         self.db.flush()
+        CarritoService(self.db, self.ctx.empresa_id).descontar(self.ctx.usuario.id, pedidas)  # lo comprado sin conexión sale del carrito del servidor
         if datos.tarjeta_guardada_id is not None and validar_precio and Decimal(pedido.total).quantize(Decimal("0.01")) != datos.total_autorizado.quantize(Decimal("0.01")):
             raise PrecioCambio([{"total_autorizado": f"{datos.total_autorizado:.2f}", "total_actual": f"{Decimal(pedido.total):.2f}"}], MSG_PRECIO_COMPRA)  # no se cobra nada
         resultado = Resultado(pedido.codigo, None, pedido_id=pedido.id)

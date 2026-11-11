@@ -24,7 +24,7 @@ describe('Checkout abierto sin conexión (E1)', () => {
         { provide: ConnectivityService, useValue: { online } },
         { provide: AuthService, useValue: { sesion: () => ({ empresa: { id: 1 }, usuario: { id: 5 } }) } },
         { provide: LocalDbService, useValue: { leerTarjetasLocal: async () => [], guardarTarjetasLocal: async () => undefined } },
-        { provide: CarritoEstadoService, useValue: { carritoLocal: signal(null), cargarLocal: async () => undefined, leerEspejo: async () => (hayEspejo ? espejo : undefined), fijar: () => undefined, refrescar: async () => undefined } },
+        { provide: CarritoEstadoService, useValue: { carritoLocal: signal(null), cargarLocal: async () => undefined, vistaSinConexion: async () => (hayEspejo ? espejo : null), fijar: () => undefined, refrescar: async () => undefined } },
       ],
     });
     const f = TestBed.createComponent(CheckoutPage);
