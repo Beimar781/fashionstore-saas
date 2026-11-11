@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -17,7 +18,7 @@ type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local
 /** CU-10 · Consultar el estado de las reservas y cancelarlas (RF12). */
 @Component({
   selector: 'app-mis-reservas',
-  imports: [FormsModule, RouterLink, DatePipe, OperacionesConProblemaComponent],
+  imports: [VacioComponent, FormsModule, RouterLink, DatePipe, OperacionesConProblemaComponent],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mis reservas</h1><p>Presente el código en el mostrador de la sucursal.</p></div><a class="btn primary" routerLink="/tienda/catalogo">+ Nueva reserva</a></div>
@@ -29,7 +30,7 @@ type ReservaLista = Omit<Reserva, 'id'> & { id: number | string; pendiente_local
       </div>
 
       @if (cargando()) { <div class="empty">Cargando…</div> }
-      @else if (!reservas().length) { <div class="card empty">No tiene reservas {{ estado() ? 'con ese estado' : 'todavía' }}.</div> }
+      @else if (!reservas().length) { <app-vacio>No tiene reservas {{ estado() ? 'con ese estado' : 'todavía' }}.</app-vacio> }
       @else {
         <div class="stack">
           @for (r of reservas(); track r.id) {

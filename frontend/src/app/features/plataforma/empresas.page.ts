@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +15,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 @Component({
   selector: 'app-empresas',
   styles: `.acc { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; max-width: 250px; margin-left: auto; }`,
-  imports: [NecesitaInternetDirective, FormsModule, RouterLink, DatePipe],
+  imports: [VacioComponent, NecesitaInternetDirective, FormsModule, RouterLink, DatePipe],
   template: `
     <div class="page">
       <div class="page-head">
@@ -23,7 +25,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!empresas().length) { <div class="empty">Aún no hay empresas registradas.</div> }
+        @else if (!empresas().length) { <app-vacio>Aún no hay empresas registradas.</app-vacio> }
         @else {
           <table>
             <thead><tr><th>Código</th><th>Razón social</th><th>NIT</th><th>Plan</th><th>Vence</th><th>Estado</th><th></th></tr></thead>
@@ -139,6 +141,7 @@ export class EmpresasPage implements OnInit {
 
   form = this.formVacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   cargar() {

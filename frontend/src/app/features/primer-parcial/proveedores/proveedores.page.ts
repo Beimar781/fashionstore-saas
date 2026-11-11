@@ -1,4 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { ProveedoresApi } from '../../../core/api/proveedores.api';
@@ -12,7 +14,7 @@ type Pestana = 'proveedores' | 'colecciones';
 /** CU-15 · Gestionar proveedores, su acceso al portal y las colecciones que proveen. */
 @Component({
   selector: 'app-proveedores',
-  imports: [FormsModule, PasswordFieldComponent],
+  imports: [VacioComponent, FormsModule, PasswordFieldComponent],
   template: `
     <div class="page">
       <div class="page-head">
@@ -30,7 +32,7 @@ type Pestana = 'proveedores' | 'colecciones';
         </form>
         <div class="card table-wrap">
           @if (cargando()) { <div class="empty">Cargando…</div> }
-          @else if (!proveedores().length) { <div class="empty">Aún no hay proveedores.</div> }
+          @else if (!proveedores().length) { <app-vacio>Aún no hay proveedores.</app-vacio> }
           @else {
             <table>
               <thead><tr><th>Proveedor</th><th>NIT</th><th>Contacto</th><th>Portal</th><th>Estado</th><th></th></tr></thead>
@@ -121,6 +123,7 @@ export class ProveedoresPage implements OnInit {
   form: any = this.vacio();
   acceso = { email: '', password: '' };
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   activos() { return this.proveedores().filter((p) => p.activo); }

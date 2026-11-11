@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,7 +19,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-20 · Inventario global (Administrador) y CU-26 · Inventario de la sucursal (Encargado): la misma consulta, con ajustes solo en la sucursal. */
 @Component({
   selector: 'app-inventario',
-  imports: [FormsModule, RouterLink, EscanerComponent],
+  imports: [VacioComponent, FormsModule, RouterLink, EscanerComponent],
   template: `
     <div class="page">
       <div class="page-head">
@@ -68,7 +69,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!datos()?.items?.length) { <div class="empty">No hay variantes con esos filtros.</div> }
+        @else if (!datos()?.items?.length) { <app-vacio>No hay variantes con esos filtros.</app-vacio> }
         @else {
           <table>
             <thead><tr><th>Producto</th><th>Talla</th><th>Color</th><th class="right">Disp.</th><th class="right">Reserv.</th><th class="right">Vend.</th><th class="right">Próx.</th>@if (esEncargado) { <th class="right">Mínimo</th> }<th>Estado</th>@if (esEncargado) { <th></th> }</tr></thead>

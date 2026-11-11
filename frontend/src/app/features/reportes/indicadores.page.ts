@@ -1,4 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { CargandoComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
@@ -11,7 +13,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-22 · Indicadores empresariales: el panel del Administrador, con cada cifra comparada con el periodo anterior. */
 @Component({
   selector: 'app-indicadores',
-  imports: [BsPipe, FormsModule, DatePipe, DecimalPipe],
+  imports: [CargandoComponent, BsPipe, FormsModule, DatePipe, DecimalPipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Indicadores</h1><p>Panel de la empresa. Las ventas son netas de devoluciones y cambios.</p></div></div>
@@ -58,7 +60,7 @@ import { BsPipe } from '../../core/formato-bs';
             @for (v of x.ultimas_ventas; track v.id) { <div class="row between small"><span>{{ v.comprobante ?? v.codigo }} · {{ v.sucursal }} · {{ v.canal === 'PRESENCIAL' ? 'Caja' : 'Online' }} · {{ v.fecha | date: 'dd/MM HH:mm' }}</span><strong>{{ v.total | bs }}</strong></div> } @empty { <p class="muted small">Sin ventas.</p> }
           </section>
         </div>
-      } @else if (!error()) { <div class="empty">Cargando…</div> }
+      } @else if (!error()) { <app-cargando /> }
     </div>`,
   styles: `.cifra { font: 600 1.7rem var(--serif); margin: .2rem 0; }
     .columnas { display: flex; align-items: flex-end; gap: 2px; height: 140px; border-bottom: 1px solid var(--line); }
@@ -74,6 +76,7 @@ export class IndicadoresPage implements OnInit {
   readonly error = signal('');
   dias = 30; sucursal: number | null = null;
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.admin.sucursales().subscribe((r) => this.sucursales.set(r.sucursales)); this.cargar(); }
 
   cargar() {

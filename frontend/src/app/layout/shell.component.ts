@@ -7,6 +7,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { ROL } from '../core/models';
 import { ColaOperacionesService } from '../core/offline/cola-operaciones.service';
+import { PrecargaService } from '../core/offline/precarga.service';
 import { AvisosConexionService } from '../core/offline/avisos-conexion.service';
 import { ConnectivityService } from '../core/offline/connectivity.service';
 import { UltimaConsultaService } from '../core/offline/ultima-consulta.service';
@@ -160,6 +161,7 @@ export class ShellComponent {
   private readonly ultimaConsulta = inject(UltimaConsultaService);
   /** «Datos al…»: quien trabaja con la copia descargada (Cliente, Cajero, Encargado) ve su fecha; el resto, cuándo vio datos del servidor por última vez. */
   readonly datosAl = computed(() => (this.auth.rol() && ['Cliente', 'Cajero', 'Encargado'].includes(this.auth.rol()!) ? this.catalogoLocal.meta()?.generado_en : null) ?? this.ultimaConsulta.momento());
+  private readonly precarga = inject(PrecargaService);  // al crearse, guarda en segundo plano las lecturas de las pantallas del rol
   private readonly avisos = inject(AvisosConexionService);  // al crearse, avisa en cualquier pantalla al perder y recuperar la red  // al crearse, sincroniza solo al volver la conexión
   readonly s = this.auth.sesion;
   readonly confirmarSalida = signal(false);

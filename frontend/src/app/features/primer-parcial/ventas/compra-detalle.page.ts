@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ComprasApi } from '../../../core/api/compras.api';
@@ -14,7 +16,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
 /** CU-12 · Detalle de una compra: prendas, totales, entrega, facturación, pagos y descarga del comprobante. */
 @Component({
   selector: 'app-compra-detalle',
-  imports: [BsPipe, RouterLink, DatePipe, PagoTarjetaComponent],
+  imports: [CargandoComponent, BsPipe, RouterLink, DatePipe, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:900px">
       <a routerLink="/tienda/compras" class="small">← Mis compras</a>
@@ -65,7 +67,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
             </div>
           } @empty { <p class="muted small">Sin intentos de pago.</p> }
         </section>
-      } @else { <div class="empty">Cargando…</div> }
+      } @else { <app-cargando /> }
     </div>`,
 })
 export class CompraDetallePage implements OnInit {
@@ -80,6 +82,7 @@ export class CompraDetallePage implements OnInit {
   readonly pedido = signal<Pedido | null>(null);
   readonly verificando = signal(false);
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   private cargar() {

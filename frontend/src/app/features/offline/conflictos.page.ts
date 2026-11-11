@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OfflineApi } from '../../core/api/offline.api';
@@ -9,7 +11,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-40 · Conflictos de sincronización: operaciones hechas sin conexión que no se pudieron aplicar por falta de existencias. Nada se descontó (RN14): el Encargado reintenta o descarta. */
 @Component({
   selector: 'app-conflictos',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [VacioComponent, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Conflictos de sincronización</h1><p>Ventas, compras y reservas hechas sin conexión que no alcanzaron en el inventario. No se descontó nada del stock.</p></div><button class="btn" (click)="cargar()">Actualizar</button></div>
@@ -51,7 +53,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
             <p class="small muted">Si llegó mercadería, recíbala primero en «Recepción de mercadería» y luego reintente. Al descartar una venta de contado, puede devolver el efectivo desde aquí o hacerlo a mano.</p>
           }
         </section>
-      } @empty { <div class="card empty">No hay operaciones en conflicto.</div> }
+      } @empty { <app-vacio>No hay operaciones en conflicto.</app-vacio> }
     </div>`,
 })
 export class ConflictosPage implements OnInit {
@@ -67,6 +69,7 @@ export class ConflictosPage implements OnInit {
   condicion = { sin_danos: false, sin_desgaste: false, con_etiquetas: false };
   condicionCompleta() { const c = this.condicion; return c.sin_danos && c.sin_desgaste && c.con_etiquetas; }
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   cargar() { this.error.set(''); this.api.conflictos().subscribe({ next: (l) => this.conflictos.set(l), error: (e) => this.error.set(mensajeError(e)) }); }

@@ -1,4 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { CatalogoAdminApi } from '../../../core/api/catalogo-admin.api';
 import { Categoria, Coleccion, Promocion } from '../../../core/catalogo.models';
@@ -9,7 +11,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-19 · Gestionar promociones y descuentos. Se reflejan en el catálogo (CU-03) y, después, en el punto de venta. */
 @Component({
   selector: 'app-promociones',
-  imports: [BsPipe, FormsModule],
+  imports: [VacioComponent, BsPipe, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -19,7 +21,7 @@ import { BsPipe } from '../../../core/formato-bs';
 
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!promociones().length) { <div class="empty">Aún no hay promociones.</div> }
+        @else if (!promociones().length) { <app-vacio>Aún no hay promociones.</app-vacio> }
         @else {
           <table>
             <thead><tr><th>Promoción</th><th>Descuento</th><th>Vigencia</th><th>Alcance</th><th>Estado</th><th></th></tr></thead>
@@ -85,6 +87,7 @@ export class PromocionesPage implements OnInit {
   editandoId = 0;
   form: any = this.vacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.api.categorias().subscribe((r) => this.categorias.set(r));
     this.api.colecciones().subscribe((r) => this.colecciones.set(r));

@@ -274,6 +274,16 @@ Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se desca
 | 16.14 | Web | Cualquiera | **Demostración.** Abrir «Modo sin conexión → Demostración», activar el interruptor, registrar algo y apagarlo. | Los contadores (Pendientes, Confirmadas, En conflicto, Rechazadas), la cola en vivo y el registro de sincronización cambian sin recargar. | ☐ |
 | 16.15 | Móvil | Cliente o Cajero | Tocar el indicador de la barra del inicio. | Abre la cola de operaciones; la cuarta pestaña «Demostración» tiene lo mismo que la web. | ☐ |
 
+## 17. Lecturas guardadas sin conexión (segunda ronda · E1)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 17.1 | Web (Chrome, build de producción) | Cliente | Iniciar sesión con red y esperar unos segundos sin abrir nada. Activar el modo avión (DevTools → Network → Offline) y abrir «Pagar mi compra». | Se ve el carrito guardado (nunca «Cargando…» eterno). Con «Simular sin conexión» pasa lo mismo. | ☐ |
+| 17.2 | Web | Cliente | Con «Pagar mi compra» abierto sin red, volver la red. | La pantalla se recarga sola con el carrito del servidor. | ☐ |
+| 17.3 | Web | Cliente | Iniciar sesión sin haber puesto nada en el carrito en este navegador y abrir «Pagar mi compra» sin red. | «Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.» | ☐ |
+| 17.4 | Web | Encargado, Cajero, Proveedor, Administrador | Iniciar sesión con red, esperar y cortar la red. Abrir recepciones, reservas de la sucursal, inventario, proveedores, usuarios, sucursales, productos y plan. | Cada pantalla muestra lo último visto o precargado; si nunca se abrió, «Sin conexión: todavía no hay datos guardados…». Ninguna queda en «Cargando…». | ☐ |
+| 17.5 | Web | Cualquiera | Cerrar sesión e iniciar con otra cuenta sin red. | No aparecen datos de la cuenta anterior. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

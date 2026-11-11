@@ -79,6 +79,7 @@ export class AuthService {
     this.sesion.set(null);
     void this.local.borrarSesion();
     this.ultimaConsulta.olvidar();
+    void this.local.borrarLecturas();  // E1 · las lecturas guardadas eran de esta cuenta
     // A6 · los datos de la API guardados por el service worker son de la cuenta que sale: se borran
     void (globalThis.caches?.keys().then((n) => Promise.all(n.filter((x) => x.includes('api-consultas')).map((x) => caches.delete(x)))));
     void this.router.navigateByUrl('/login');

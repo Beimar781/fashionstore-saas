@@ -795,3 +795,16 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 
 **Pantallas que cambiaron:** barra superior de web y móvil (indicador); «Modo sin conexión» (pestaña Demostración); Caja y «Mi turno»; Mis compras y Mis reservas; Devoluciones; Inventario, Recepción y Reservas de la sucursal; Conflictos de sincronización (monto a devolver); Checkout y pago del Cliente (tarjeta guardada).
 
+## Segunda ronda sin conexión · E1 (web: lecturas guardadas)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Lista vacía sin conexión (no se pudo consultar) | «Sin conexión: todavía no hay datos guardados de esta pantalla en este dispositivo. Ábrala una vez con Internet para tenerlos disponibles.» | — (solo en la app) | Pendiente |
+| Pantalla que tarda más de 12 s con red | «Está tardando más de lo normal. Revise su conexión y vuelva a abrir esta pantalla.» | — (solo en la app) | Pendiente |
+| Pagar mi compra sin conexión y sin carrito guardado | «Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- **Lecturas guardadas (RNF03):** cada consulta (GET) hecha con red se guarda en el dispositivo por cuenta, dirección y filtros; sin red (modo avión o «Simular sin conexión») la misma consulta se responde con esa copia y su fecha («Datos al…»). Se excluyen el inicio de sesión, los contenidos que genera la IA, las notificaciones y la descarga del catálogo. Se conservan como mucho 400 lecturas y se borran al cerrar sesión.
+- **Precarga por rol:** al iniciar sesión, y al volver la red pasados 10 minutos, se piden en segundo plano las lecturas de las pantallas normales del rol (Cliente: carrito, compras, reservas, tarjetas, sucursales; Cajero y Encargado: reservas de la sucursal, devoluciones, inventario y recepciones; Proveedor: lotes y propuestas; Administrador: usuarios, sucursales, productos, plan e inventario).
+- **Carrito:** cada carrito que llega del servidor se copia aparte del carrito local (que solo guarda las prendas agregadas sin conexión pendientes de fusionar), para que «Pagar mi compra» lo encuentre sin red.
+- **Pantallas:** ninguna se queda en «Cargando…» sin conexión y una lista vacía sin conexión ya no afirma «No hay…»; al volver la red la pantalla abierta se recarga sola.

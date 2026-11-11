@@ -1,4 +1,6 @@
 import { AprendizajeService } from '../../core/ia/aprendizaje.service';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { CargandoComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -20,7 +22,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-03 · Detalle de la prenda. La matriz color × talla la calcula el backend (`/opciones`); aquí solo se dibuja. */
 @Component({
   selector: 'app-prenda',
-  imports: [BsPipe, FormsModule, RouterLink],
+  imports: [CargandoComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <a routerLink="/tienda/catalogo" class="small">← Catálogo</a>
@@ -104,7 +106,7 @@ import { BsPipe } from '../../core/formato-bs';
             </dl>
           </div>
         </div>
-      } @else { <div class="empty">Cargando…</div> }
+      } @else { <app-cargando /> }
     </div>`,
   styles: `
     .detalle { display: grid; grid-template-columns: minmax(260px, 420px) 1fr; gap: 2rem; margin-top: 1rem; align-items: start; }
@@ -155,6 +157,7 @@ export class PrendaPage implements OnInit {
   });
   readonly hayDisponible = (v: { disponible: boolean }) => v.disponible;
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.api.sucursales().subscribe((r) => this.sucursales.set(r));
     this.ruta.paramMap.subscribe((pm) => {

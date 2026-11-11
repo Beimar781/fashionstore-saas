@@ -22,7 +22,11 @@ interface FashionDB extends DBSchema {
   detalle_reserva: { key: string; value: LineaLocal & { operacion_id: string }; indexes: { por_operacion: string } };
   resultados_sync: { key: string; value: ResultadoLocal; indexes: { por_estado: string; por_fecha: string } };
   registro_sincronizacion: { key: number; value: IntentoSync; indexes: { por_fecha: string } };
+  // E1: respuestas GET guardadas con red para verlas sin conexión (una por cuenta, URL y filtros)
+  lecturas: { key: string; value: LecturaLocal; indexes: { por_fecha: string } };
 }
+
+export interface LecturaLocal { clave: string; cuerpo: unknown; fecha: string }
 
 export interface LineaLocal { variante_id: number; cantidad: number; precio_unitario?: string | null }
 export interface FilaVenta { operacion_id: string; empresa_id: number; sucursal_id: number | null; usuario_id: number; cliente_email: string | null; forma_pago: string; monto_recibido: string; total: string; registrada_en: string }
@@ -50,13 +54,14 @@ export class LocalDbService {
   private dbPromise: Promise<IDBPDatabase<FashionDB>> | null = null;
 
   private db(): Promise<IDBPDatabase<FashionDB>> {
-    this.dbPromise ??= openDB<FashionDB>('fashionstore', 3, {
+    this.dbPromise ??= openDB<FashionDB>('fashionstore', 4, {
       async upgrade(db, anterior, _nueva, tx) {
         if (!db.objectStoreNames.contains('sesion')) db.createObjectStore('sesion');
         if (!db.objectStoreNames.contains('catalogo')) db.createObjectStore('catalogo', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('operaciones')) db.createObjectStore('operaciones', { keyPath: 'id' });
         if (!db.objectStoreNames.contains('cache_meta')) db.createObjectStore('cache_meta');
         if (!db.objectStoreNames.contains('carrito_local')) db.createObjectStore('carrito_local');
+        if (anterior < 4 && !db.objectStoreNames.contains('lecturas')) db.createObjectStore('lecturas', { keyPath: 'clave' }).createIndex('por_fecha', 'fecha');
         if (anterior < 3) {
           // versión 3: almacenes relacionales de §6.3. La cola existente NO se toca: sus ventas y reservas se copian a los almacenes nuevos.
           db.createObjectStore('ventas', { keyPath: 'operacion_id' }).createIndex('por_fecha', 'registrada_en');
@@ -114,6 +119,22 @@ export class LocalDbService {
       const db = await this.db();
       await db.clear('catalogo');
       await db.delete('cache_meta', 'catalogo');
+    } catch { /* noop */ }
+  }
+
+  // ---- E1 · lecturas guardadas ----
+  async guardarLectura(lectura: LecturaLocal): Promise<void> { try { await (await this.db()).put('lecturas', lectura); } catch { /* sin espacio: la pantalla funciona igual con red */ } }
+  async leerLectura(clave: string): Promise<LecturaLocal | undefined> { try { return await (await this.db()).get('lecturas', clave); } catch { return undefined; } }
+  async borrarLecturas(): Promise<void> { try { await (await this.db()).clear('lecturas'); } catch { /* noop */ } }
+  /** Deja las `maximo` lecturas más recientes y descarta las más viejas. */
+  async podarLecturas(maximo: number): Promise<void> {
+    try {
+      const db = await this.db();
+      const claves = await db.getAllKeysFromIndex('lecturas', 'por_fecha');
+      const sobran = claves.length - maximo;
+      if (sobran <= 0) return;
+      const llaves = (await db.getAllFromIndex('lecturas', 'por_fecha', undefined, sobran)).map((l) => l.clave);
+      for (const k of llaves) await db.delete('lecturas', k);
     } catch { /* noop */ }
   }
 

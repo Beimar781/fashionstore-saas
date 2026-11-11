@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -13,7 +14,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
 /** CU-18 · Detalle del producto: datos, variantes (SKU), fotografías y retiro del catálogo. */
 @Component({
   selector: 'app-producto-detalle',
-  imports: [FormsModule, RouterLink, VestidorProductoComponent],
+  imports: [CargandoComponent, FormsModule, RouterLink, VestidorProductoComponent],
   template: `
     <div class="page">
       <a routerLink="/empresa/catalogo/productos" class="small">← Productos</a>
@@ -90,7 +91,7 @@ interface FilaVariante { id: number; sku: string; talla: string; color: string; 
           </div>
         </section>
         <app-vestidor-producto [productoId]="prod.id" />
-      } @else { <div class="empty">Cargando…</div> }
+      } @else { <app-cargando /> }
     </div>`,
   styles: `
     .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .9rem; }

@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -11,7 +13,7 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-18 · Gestionar productos: listado y alta con sus variantes (talla × color). Las fotos se suben en el detalle. */
 @Component({
   selector: 'app-productos',
-  imports: [BsPipe, FormsModule, RouterLink],
+  imports: [VacioComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head">
@@ -28,7 +30,7 @@ import { BsPipe } from '../../../core/formato-bs';
 
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!datos()?.items?.length) { <div class="empty">No hay productos con esos filtros.</div> }
+        @else if (!datos()?.items?.length) { <app-vacio>No hay productos con esos filtros.</app-vacio> }
         @else {
           <table>
             <thead><tr><th></th><th>Producto</th><th>Categoría</th><th>Colección</th><th class="right">Precio</th><th class="right">Variantes</th><th>Estado</th><th></th></tr></thead>
@@ -108,6 +110,7 @@ export class ProductosPage implements OnInit {
   q = ''; categoriaId: number | null = null; activo: boolean | null = null;
   form: any = this.vacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(1));  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.api.categorias().subscribe((r) => this.categorias.set(r));
     this.api.grupos().subscribe((r) => this.grupos.set(r));

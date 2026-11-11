@@ -1,4 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
+import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MEDIA_URL } from '../../../core/api.config';
@@ -13,12 +15,12 @@ import { BsPipe } from '../../../core/formato-bs';
 /** CU-08 · Carrito de compras: cantidades, subtotal e IVA en tiempo real, con el stock de la sucursal elegida. */
 @Component({
   selector: 'app-carrito',
-  imports: [BsPipe, FormsModule, RouterLink],
+  imports: [CargandoComponent, BsPipe, FormsModule, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi carrito</h1><p>Las prendas se descuentan del stock de la sucursal elegida recién cuando el pago se aprueba.</p></div></div>
 
-      @if (!carrito()) { <div class="empty">Cargando…</div> }
+      @if (!carrito()) { <app-cargando /> }
       @else if (!carrito()!.items.length) {
         <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div>
       } @else {
@@ -91,6 +93,7 @@ export class CarritoPage implements OnInit {
   readonly sucursales = signal<SucursalCatalogo[]>([]);
   readonly error = signal('');
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.api.carrito().subscribe({ next: (c) => this.mostrar(c), error: () => undefined }));  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.catalogo.sucursales().subscribe((r) => this.sucursales.set(r));
     this.api.carrito().subscribe({ next: (c) => this.mostrar(c), error: (e) => this.toast.error(mensajeError(e)) });

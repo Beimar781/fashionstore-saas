@@ -1,4 +1,5 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal, untracked } from '@angular/core';
+import { CargandoComponent } from '../../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ComprasApi } from '../../../core/api/compras.api';
@@ -25,13 +26,14 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
 /** CU-11 · Checkout (entrega y facturación). El pago con tarjeta (CU-32) lo resuelve el componente compartido `app-pago-tarjeta`. */
 @Component({
   selector: 'app-checkout',
-  imports: [BsPipe, FormsModule, RouterLink, PagoTarjetaComponent],
+  imports: [CargandoComponent, BsPipe, FormsModule, RouterLink, PagoTarjetaComponent],
   template: `
     <div class="page" style="max-width:980px">
       <div class="page-head"><div><h1>Pagar mi compra</h1><p>Complete los datos de entrega y facturación, y pague con tarjeta.</p></div></div>
       @if (compraPendiente()) { <div class="alert warn" role="status">@if (cobroAutorizado()) { Compra guardada en este dispositivo. Al recuperar la conexión se cobrará a su {{ cobroAutorizado() }}; si no se puede cobrar, quedará por pagar en Mis compras. } @else { Compra guardada en este dispositivo. Se pagará con tarjeta al recuperar la conexión, desde Mis compras. }<br /><a routerLink="/tienda/compras">Ir a Mis compras</a></div> }
 
-      @if (!carrito()) { <div class="empty">Cargando…</div> }
+      @if (!carrito() && sinCarrito()) { <div class="card pad empty" role="status">Su carrito no está guardado en este dispositivo. Ábralo con conexión una vez.</div> }
+      @else if (!carrito()) { <app-cargando /> }
       @else if (!carrito()!.items.length && !pedido()) { <div class="card empty">Su carrito está vacío. <a routerLink="/tienda/catalogo">Ver el catálogo</a></div> }
       @else {
         <div class="layout">
@@ -113,6 +115,7 @@ export class CheckoutPage implements OnInit {
   readonly agotado = signal(false);
   readonly errorDatos = signal('');
   readonly compraPendiente = signal(false);
+  readonly sinCarrito = signal(false);  // sin conexión y sin copia del carrito: se explica en vez de quedar en «Cargando…»
   readonly cobroAutorizado = signal('');
   readonly tarjetas = signal<TarjetaGuardada[]>([]);  // sin conexión: las que se guardaron la última vez con red
   readonly msgTarjetaNueva = MSG_TARJETA_NUEVA;
@@ -123,17 +126,26 @@ export class CheckoutPage implements OnInit {
   constructor() {
     // sin conexión (también si se pierde con la pantalla abierta) se ofrecen las tarjetas guardadas la última vez con red
     effect(() => { if (!this.red.online()) void this.cargarTarjetasLocales(); });
+    // al volver la red (o al perderla) con la pantalla abierta, el carrito se vuelve a cargar solo
+    effect(() => { const enLinea = this.red.online(); untracked(() => { if (this.iniciado && !this.pedido()) void this.cargar(enLinea); }); });
   }
 
   async cargarTarjetasLocales() { this.tarjetas.set(tarjetasVigentes((await this.db.leerTarjetasLocal<TarjetaGuardada[]>(this.claveTarjetas)) ?? [])); }
 
   private get claveTarjetas() { const s = this.auth.sesion(); return `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`; }
 
-  async ngOnInit() {
-    if (!this.red.online()) {
-      await this.estado.cargarLocal(); this.carrito.set(this.estado.carritoLocal());
+  private iniciado = false;
+
+  async ngOnInit() { this.iniciado = true; await this.cargar(this.red.online()); }
+
+  private async cargar(enLinea: boolean) {
+    if (!enLinea) {
+      await this.estado.cargarLocal();
+      const c = this.estado.carritoLocal() ?? (await this.estado.leerEspejo()) ?? null;
+      this.carrito.set(c); this.sinCarrito.set(!c);
       return;
     }
+    this.sinCarrito.set(false);
     // con red se guarda la lista de tarjetas (marca, últimos 4 y vencimiento) para ofrecerlas si después se queda sin conexión
     this.api.tarjetas().subscribe({ next: (t) => void this.db.guardarTarjetasLocal(this.claveTarjetas, t), error: () => undefined });
     await this.estado.cargarLocal();

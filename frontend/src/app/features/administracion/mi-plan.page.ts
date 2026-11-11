@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { CargandoComponent } from '../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ReportesApi } from '../../core/api/reportes.api';
@@ -10,7 +12,7 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-36 · Plan, límites y uso de la empresa. Es lo único habilitado cuando la suscripción no está vigente (RN05); entonces solo se muestra el plan y la vigencia. */
 @Component({
   selector: 'app-mi-plan',
-  imports: [BsPipe, DatePipe, RouterLink],
+  imports: [CargandoComponent, BsPipe, DatePipe, RouterLink],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Mi plan</h1><p>Plan contratado, vigencia, límites con su uso y funcionalidades habilitadas para su empresa.</p></div></div>
@@ -48,7 +50,7 @@ import { BsPipe } from '../../core/formato-bs';
             </section>
           </div>
         } @else { <div class="card empty">{{ m.alertas[0] }}</div> }
-      } @else if (!error()) { <div class="empty">Cargando…</div> }
+      } @else if (!error()) { <app-cargando /> }
     </div>`,
   styles: `
     ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
@@ -61,6 +63,7 @@ export class MiPlanPage implements OnInit {
   readonly p = signal<MiPlan | null>(null);
   readonly error = signal('');
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     // Se refresca el contexto (el plan pudo cambiar) y se pide el detalle del plan y su uso.
     this.auth.actualizarSesion().subscribe({ next: () => this.cargar(), error: () => this.cargar() });

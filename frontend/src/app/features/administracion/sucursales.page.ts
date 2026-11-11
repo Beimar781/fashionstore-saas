@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AdministracionApi } from '../../core/api/administracion.api';
 import { Ciudad, Sucursal, UsoPlan } from '../../core/models';
@@ -7,7 +9,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** CU-14 · Gestionar ciudades y sucursales dentro del límite del plan (RN06). */
 @Component({
   selector: 'app-sucursales',
-  imports: [FormsModule],
+  imports: [VacioComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head">
@@ -28,7 +30,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!sucursales().length) { <div class="empty">Aún no registró sucursales.</div> }
+        @else if (!sucursales().length) { <app-vacio>Aún no registró sucursales.</app-vacio> }
         @else {
           <table>
             <thead><tr><th>Sucursal</th><th>Ciudad</th><th>Dirección</th><th>Teléfono</th><th>Horario</th><th>Estado</th><th></th></tr></thead>
@@ -91,6 +93,7 @@ export class SucursalesPage implements OnInit {
   editandoId = 0;
   form = this.vacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   cargar() {

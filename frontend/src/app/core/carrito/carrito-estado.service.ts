@@ -37,12 +37,15 @@ export class CarritoEstadoService {
     try {
       const c = await new Promise<Carrito>((ok, mal) => this.api.carrito().subscribe({ next: ok, error: mal }));
       this.fijar(c);
+      void this.db.guardarCarritoLocal(`espejo:${this.claveLocal()}`, c);  // E1 · copia del carrito del servidor: el checkout la encuentra sin red
       if (this.carritoLocal()?.items.length) await this.fusionarLocal(c);
     } catch { if (this.carritoLocal()?.items.length) this.fijar(this.carritoLocal()); }
   }
 
   private claveLocal() { const s = this.auth.sesion(); return `${s?.empresa?.id ?? 0}:${s?.usuario.id ?? 0}`; }
   async cargarLocal() { const c = await this.db.leerCarritoLocal<Carrito>(this.claveLocal()); if (c) { this.carritoLocal.set(c); this.fijar(c); } }
+  /** Último carrito que mostró el servidor (distinto del local, que son prendas pendientes de fusionar). */
+  async leerEspejo() { return this.db.leerCarritoLocal<Carrito>(`espejo:${this.claveLocal()}`); }
   async guardarLocal(carrito: Carrito) { this.carritoLocal.set(carrito); this.fijar(carrito); await this.db.guardarCarritoLocal(this.claveLocal(), carrito); }
 
   async agregarLocal(varianteId: number, sucursalId: number) {

@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { VacioComponent } from '../../../core/ui/vacio.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReservasApi } from '../../../core/api/reservas.api';
@@ -11,7 +12,7 @@ import { ReservasOfflineComponent } from '../../offline/reservas-offline.compone
 /** CU-24 · El Encargado revisa las reservas de su sucursal, prepara las prendas y reporta las que no encuentra. */
 @Component({
   selector: 'app-reservas-sucursal',
-  imports: [ReservasOfflineComponent, FormsModule, DatePipe],
+  imports: [VacioComponent, ReservasOfflineComponent, FormsModule, DatePipe],
   template: `
     @if (!enLinea()) {
       <div class="page"><div class="page-head"><div><h1>Reservas de la sucursal</h1><p>Valide el código, prepare las prendas, marque las que no encuentra y atienda al cliente.</p></div></div>
@@ -31,7 +32,7 @@ import { ReservasOfflineComponent } from '../../offline/reservas-offline.compone
       </form>
 
       @if (cargando()) { <div class="empty">Cargando…</div> }
-      @else if (!reservas().length) { <div class="card empty">No hay reservas con esos filtros.</div> }
+      @else if (!reservas().length) { <app-vacio>No hay reservas con esos filtros.</app-vacio> }
       @else {
         <div class="card table-wrap">
           <table>
@@ -100,7 +101,7 @@ export class ReservasSucursalPage implements OnInit {
 
   constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargar()); }  // tras sincronizar o al volver la red
 
-  ngOnInit() { if (this.enLinea()) this.cargar(); }
+  ngOnInit() { this.cargar(); }  // también sin conexión: la lectura sale de la copia guardada o falla con mensaje (nunca «Cargando…» eterno)
 
   hoy() { const d = new Date(); this.fecha = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; this.estado = 'PENDIENTE'; this.cargar(); }
   limpiar() { this.estado = ''; this.fecha = ''; this.cargar(); }

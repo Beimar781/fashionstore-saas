@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { InventarioApi } from '../../core/api/inventario.api';
 import { Lote } from '../../core/inventario.models';
@@ -10,7 +11,7 @@ import { RecepcionOfflineComponent } from '../offline/recepcion-offline.componen
 /** Recepción de lotes en tránsito (CU-31 → CU-26): al recibir se cuentan las unidades y se suman al inventario de la sucursal. */
 @Component({
   selector: 'app-recepciones',
-  imports: [RecepcionOfflineComponent, FormsModule],
+  imports: [VacioComponent, RecepcionOfflineComponent, FormsModule],
   template: `
     @if (!enLinea()) {
       <div class="page"><div class="page-head"><div><h1>Recepción de mercadería</h1><p>Registre lo que llegó: sube el inventario de forma provisional hasta sincronizar.</p></div></div>
@@ -21,7 +22,7 @@ import { RecepcionOfflineComponent } from '../offline/recepcion-offline.componen
     <div class="page">
       <div class="page-head"><div><h1>Recepción de mercadería</h1><p>Lotes que los proveedores despacharon y todavía no se suman al inventario.</p></div></div>
       @if (cargando()) { <div class="empty">Cargando…</div> }
-      @else if (!lotes().length) { <div class="card empty">No hay lotes en tránsito.</div> }
+      @else if (!lotes().length) { <app-vacio>No hay lotes en tránsito.</app-vacio> }
       @else {
         <div class="stack">
           @for (l of lotes(); track l.id) {
@@ -74,7 +75,7 @@ export class RecepcionesPage implements OnInit {
 
   constructor() { inject(ColaOperacionesService).alRefrescar(() => this.cargar()); }  // tras sincronizar o al volver la red
 
-  ngOnInit() { if (this.enLinea()) this.cargar(); }
+  ngOnInit() { this.cargar(); }  // también sin conexión: la lectura sale de la copia guardada o falla con mensaje (nunca «Cargando…» eterno)
 
   cargar() {
     this.api.recepciones().subscribe({

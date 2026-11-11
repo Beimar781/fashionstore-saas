@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { VacioComponent } from '../../core/ui/vacio.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogoApi } from '../../core/api/catalogo.api';
@@ -10,7 +12,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
 /** Bitácora de movimientos de inventario: tipo, referencia y usuario de cada cambio. El Encargado ve su sucursal; el Administrador, todas. */
 @Component({
   selector: 'app-movimientos',
-  imports: [FormsModule],
+  imports: [VacioComponent, FormsModule],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Movimientos de inventario</h1><p>Todo cambio de existencias queda registrado y no se puede editar.</p></div></div>
@@ -23,7 +25,7 @@ import { ToastService, mensajeError } from '../../core/ui/toast.service';
       </form>
       <div class="card table-wrap">
         @if (cargando()) { <div class="empty">Cargando…</div> }
-        @else if (!datos()?.items?.length) { <div class="empty">No hay movimientos.</div> }
+        @else if (!datos()?.items?.length) { <app-vacio>No hay movimientos.</app-vacio> }
         @else {
           <table>
             <thead><tr><th>Fecha</th><th>Sucursal</th><th>Producto</th><th>Movimiento</th><th class="right">Cant.</th><th>Referencia</th><th>Usuario</th><th>Nota</th></tr></thead>
@@ -60,6 +62,7 @@ export class MovimientosPage implements OnInit {
   readonly cargando = signal(true);
   f = { sucursal: null as number | null, tipo: '', desde: '', hasta: '' };
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(1));  // E1 · al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     if (!this.esEncargado) this.publico.sucursales().subscribe((r) => this.sucursales.set(r));
     this.irA(1);
