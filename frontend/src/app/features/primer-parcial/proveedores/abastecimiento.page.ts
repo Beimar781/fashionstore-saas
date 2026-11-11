@@ -54,7 +54,7 @@ interface Linea { sku: string; producto: string; talla: string; color: string; c
                     <td>{{ l.sucursal }}</td><td>{{ l.referencia || '—' }}</td><td class="right">{{ l.total_unidades }}</td>
                     <td><span class="badge" [class.warn]="l.estado === 'EN_TRANSITO'" [class.ok]="l.estado === 'RECIBIDO'" [class.danger]="l.estado === 'CANCELADO'">{{ textoEstado(l.estado) }}</span></td>
                     <td class="actions"><button class="btn sm" (click)="detalle.set(l)">Ver</button>
-                      @if (l.estado === 'EN_TRANSITO') { <button necesitaInternet class="btn sm danger" (click)="cancelar(l)">Cancelar</button> }</td>
+                      @if (l.estado === 'EN_TRANSITO') { <button necesitaInternet="Cancelar un aviso de remisión necesita Internet." class="btn sm danger" (click)="cancelar(l)">Cancelar</button> }</td>
                   </tr>
                 }
               </tbody>
