@@ -8,6 +8,7 @@ import 'package:fashionstore_movil/features/home/presentation/home_screen.dart';
 import 'package:fashionstore_movil/features/notificaciones/data/push_repository.dart';
 import 'package:fashionstore_movil/features/notificaciones/presentation/push_controller.dart';
 import 'package:fashionstore_movil/features/offline/data/offline_repository.dart';
+import 'package:fashionstore_movil/features/offline/presentation/caja_en_linea_screen.dart';
 import 'package:fashionstore_movil/features/offline/presentation/conflictos_screen.dart';
 import 'package:fashionstore_movil/features/offline/presentation/offline_controller.dart';
 import 'package:fashionstore_movil/primer_parcial/reservas/data/reserva_borrador.dart';
@@ -127,4 +128,55 @@ void main() {
     expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Descartar…')).onPressed, isNull);
     ApiClient.lecturaLocalDesde = null;
   });
+
+  testWidgets('Plan sin modo sin conexión: la Caja del móvil funciona con Internet (buscar, registrar y cobrar) y sin Internet lo explica', (tester) async {
+    final api = _ApiCaja();
+    await tester.pumpWidget(MaterialApp(home: CajaEnLineaScreen(api: api)));
+    expect(find.text(msgPlanSinOffline), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'camisa');
+    await tester.tap(find.byTooltip('Buscar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Camisa Oxford (S, Rojo)'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Efectivo recibido (Bs)'), '150');
+    await tester.tap(find.text('Cobrar en efectivo'));
+    await tester.pumpAndSettle();
+    expect(api.llamadas, ['GET /caja/productos?q=camisa', 'POST /caja/ventas', 'POST /caja/ventas/7/cobrar']);
+    expect(find.textContaining('Venta cobrada. Comprobante CMP-001-000001. Cambio: Bs 50.00'), findsOneWidget);
+
+    api.sinRed = true;
+    await tester.tap(find.byTooltip('Buscar'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(msgCajaNecesitaInternet), findsOneWidget);
+  });
+}
+
+class _ApiCaja extends ApiClient {
+  _ApiCaja() : super(obtenerToken: () async => null, renovarToken: () async => false);
+
+  final llamadas = <String>[];
+  bool sinRed = false;
+
+  void _red() {
+    if (sinRed) throw ApiException('Sin conexión con el servidor.', sinConexion: true);
+  }
+
+  @override
+  Future<List<dynamic>> getLista(String ruta) async {
+    llamadas.add('GET $ruta');
+    _red();
+    return [
+      {'variante_id': 100, 'sku': 'CAM-S-ROJ', 'producto': 'Camisa Oxford', 'talla': 'S', 'color': 'Rojo', 'precio_final': '100.00', 'disponible': 5}
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>> post(String ruta, Map<String, dynamic> cuerpo, {bool autenticado = true}) async {
+    llamadas.add('POST $ruta');
+    _red();
+    if (ruta.endsWith('/cobrar')) {
+      return {'pedido': {'comprobante_numero': 'CMP-001-000001'}, 'cambio': '50.00'};
+    }
+    return {'id': 7};
+  }
 }

@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../../core/offline/cola-operaciones.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CajaApi } from '../../../core/api/caja.api';
@@ -99,6 +100,7 @@ export class VentasSucursalPage implements OnInit {
   readonly error = signal('');
   fecha = hoy(); canal = ''; metodo = '';
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   nombreMetodo(m: string | null) { return m === 'EFECTIVO' ? 'Efectivo' : m === 'TARJETA' ? 'Tarjeta' : '—'; }

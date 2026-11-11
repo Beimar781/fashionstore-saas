@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { FormsModule } from '@angular/forms';
 import { PlataformaApi } from '../../core/api/plataforma.api';
@@ -86,6 +87,7 @@ export class PlanesPage implements OnInit {
   editandoId = 0;
   form = this.vacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
   cargar() { this.api.planes().subscribe({ next: (p) => { this.planes.set(p); this.cargando.set(false); }, error: (e) => { this.cargando.set(false); this.toast.error(mensajeError(e)); } }); }
 

@@ -861,3 +861,16 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Conflictos (CU-40) en el móvil:** sin conexión se ve la última lista guardada con su fecha; reintentar y descartar solo funcionan con respuesta del servidor. La lista se recarga sola al volver la red.
 - **Puesta al día al reconectar:** al volver la red, el Cajero y el Encargado renuevan lo descargado (stock, reservas de la sucursal, ventas recientes) si tiene más de 15 minutos; las reservas y las devoluciones se recargan solas.
 - **Proveedor y Administrador en el móvil:** la app solo muestra su plan y su suscripción (contexto guardado); sus funciones son de la web y no hay pantallas con spinner.
+
+## Segunda ronda sin conexión · E5 (cierre)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Caja del móvil con un plan sin modo sin conexión | «Su plan no incluye el modo sin conexión: la Caja funciona solo con Internet.» | — (solo en la app) | Pendiente |
+| Caja del móvil sin respuesta del servidor | «Esta función necesita Internet. Su plan no incluye el modo sin conexión: la Caja funciona solo con Internet.» | — (solo en la app) | Pendiente |
+| Cobro en efectivo con el monto insuficiente (Caja del móvil) | «El efectivo recibido no cubre el total (Bs …).» | — (validación local) | Pendiente |
+
+**Reglas nuevas**
+- **Plan sin modo sin conexión (CU-28 a CU-30):** el Cajero y el Encargado conservan la Caja en el móvil aunque el plan no incluya el modo sin conexión; trabaja solo con Internet (buscar, registrar y cobrar en efectivo contra el servidor). Las devoluciones, las tareas de la sucursal y la sincronización siguen requiriendo el plan con modo sin conexión.
+- **Datos de demostración:** `scripts/preparar_demo.py` (idempotente, por la API, sin claves en el código) deja existencias en cada sucursal, un Encargado por sucursal, dos Cajeros en la primera sucursal y una tarjeta de prueba guardada para el cliente de demostración.
+- **Auditoría:** `scripts/auditar_offline.py` revisa todas las pantallas por rol y falla si aparece un «Cargando…» sin salida, una carga solo con red o una lista vacía que engaña; el informe queda en `docs/AUDITORIA_OFFLINE.md`.

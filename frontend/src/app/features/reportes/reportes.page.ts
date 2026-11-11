@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -128,6 +129,7 @@ export class ReportesPage implements OnInit {
   readonly error = signal('');
   desde = ''; hasta = ''; canal = ''; sucursal: number | null = null;
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.admin.sucursales().subscribe((r) => this.sucursales.set(r.sucursales));
     this.cargar();

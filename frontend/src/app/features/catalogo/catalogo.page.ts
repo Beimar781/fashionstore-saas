@@ -1,4 +1,5 @@
 import { AprendizajeService } from '../../core/ia/aprendizaje.service';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -98,6 +99,7 @@ export class CatalogoPage implements OnInit {
   readonly cargando = signal(true);
   f: FiltrosCatalogo = this.vacio();
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.irA(this.datos()?.pagina ?? 1));  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.lecturas.categorias().subscribe((r) => this.categorias.set(r));
     this.lecturas.marcas().subscribe((r) => this.marcas.set(r));

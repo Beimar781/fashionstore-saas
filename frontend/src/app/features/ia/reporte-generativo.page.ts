@@ -1,4 +1,5 @@
 import { DatePipe, JsonPipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, NgZone, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -92,6 +93,7 @@ export class ReporteGenerativoPage implements OnInit, OnDestroy {
   private reconocimiento: any = null;
   readonly hayVoz = !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.ngOnInit());  // al volver la red se vuelve a leer el historial
   ngOnInit() { this.api.historialReportes().subscribe({ next: (h) => { this.historial.set(h); this.actual.set(h[0] ?? null); }, error: (e) => this.error.set(mensajeError(e)) }); }
   ngOnDestroy() { this.conversando.set(false); this.reconocimiento?.stop?.(); this.voz.detener(); }
 

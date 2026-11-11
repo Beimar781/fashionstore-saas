@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -97,6 +98,7 @@ export class SuscripcionPage implements OnInit {
   readonly error = signal('');
   form = { plan_id: null as number | null, fecha_inicio: new Date().toISOString().slice(0, 10), duracion_meses: 12, forma_pago: 'QR' };
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() { this.cargar(); }
 
   cargar() {

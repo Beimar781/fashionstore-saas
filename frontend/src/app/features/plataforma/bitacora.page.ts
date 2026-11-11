@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -76,6 +77,7 @@ export class BitacoraPage implements OnInit {
   readonly paginas = computed(() => Math.max(1, Math.ceil((this.datos()?.total ?? 0) / (this.f.tamano ?? 25))));
   f: FiltrosBitacora = { usuario: '', entidad: '', accion: '', desde: '', hasta: '', q: '', empresa: '', pagina: 1, tamano: 25 };
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargar());  // al volver la red la pantalla abierta se recarga sola
   ngOnInit() {
     this.api.opciones(this.general).subscribe({ next: (o) => this.opciones.set(o), error: (e) => this.error.set(mensajeError(e)) });
     this.cargar();

@@ -1,4 +1,6 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
+import { NecesitaInternetDirective } from '../../core/ui/necesita-internet.directive';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DevolucionesApi } from '../../core/api/devoluciones.api';
@@ -9,14 +11,14 @@ import { BsPipe } from '../../core/formato-bs';
 /** CU-41 · Administrador: plazo de devolución de la empresa y consulta de todas las notas de devolución y cambio. */
 @Component({
   selector: 'app-devoluciones-admin',
-  imports: [BsPipe, FormsModule, DatePipe],
+  imports: [NecesitaInternetDirective, BsPipe, FormsModule, DatePipe],
   template: `
     <div class="page">
       <div class="page-head"><div><h1>Devoluciones y cambios</h1><p>Plazo de devolución de la empresa y notas registradas en todas las sucursales.</p></div></div>
 
       <form class="card pad row" style="margin-bottom:1rem" (ngSubmit)="guardarPlazo()">
         <label style="max-width:240px">Plazo de devolución (días desde el pago)<input name="p" type="number" min="0" max="365" [(ngModel)]="plazo" /></label>
-        <button class="btn primary" style="align-self:end">Guardar plazo</button>
+        <button necesitaInternet class="btn primary" style="align-self:end">Guardar plazo</button>
       </form>
 
       <form class="card pad row" style="margin-bottom:1rem" (ngSubmit)="cargar()">
@@ -48,6 +50,8 @@ export class DevolucionesAdminPage implements OnInit {
   readonly notas = signal<Devolucion[]>([]);
   readonly error = signal('');
   plazo = 15; desde = ''; hasta = '';
+
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.ngOnInit());  // al volver la red se vuelve a leer todo
 
   ngOnInit() {
     this.api.plazo().subscribe({ next: (c) => (this.plazo = c.plazo_dias), error: (e) => this.error.set(mensajeError(e)) });

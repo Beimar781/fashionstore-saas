@@ -148,7 +148,7 @@ El campo **Código de empresa** se deja vacío solo para el SuperAdministrador.
 
 EMP-A tiene el plan **Básico** (sin IA: los reportes con IA, la analítica con ML y el asistente salen bloqueados). EMP-B tiene el plan **Profesional** (todo habilitado).
 
-**Otras empresas del despliegue.** EMP-C (**Moda Juvenil**, plan Básico) se creó a mano desde el panel del SuperAdministrador; su administrador es `Juvenil@gmail.com` con la clave que se le asignó al crearla (no se escribe aquí). EMP-D a EMP-G las crea y puebla `scripts/poblar_via_api.py`; todas usan la contraseña `Demo2026*`:
+**Otras empresas del despliegue.** EMP-C (**Moda Juvenil**, plan Básico) se creó a mano desde el panel del SuperAdministrador; su administrador es `miguel@gmail.com` con la clave que se le asignó al crearla (no se escribe aquí). EMP-D a EMP-G las crea y puebla `scripts/poblar_via_api.py`; todas usan la contraseña `Demo2026*`:
 
 | Código | Empresa | Plan | Sucursales | Administrador | Encargados (uno por sucursal) |
 |---|---|---|---|---|---|
@@ -170,6 +170,8 @@ python scripts/poblar_via_api.py --url https://fashionstore-saas-production.up.r
 ```
 
 Es **idempotente** (se puede correr varias veces: lo que ya existe se omite) y **no modifica la aplicación**: solo usa los endpoints públicos. Con `--destino-existente CODIGO,correo,clave` también copia el catálogo a una empresa que ya existe (por ejemplo EMP-C). Con `--url http://localhost:8000` sirve para probarlo en local.
+
+**Datos de la demostración sin conexión.** `python scripts/preparar_demo.py --url <backend>` deja existencias en cada sucursal, un Encargado por sucursal, dos Cajeros y una tarjeta de prueba guardada (con la pasarela simulada); también `--empresa-c` para el catálogo mínimo de EMP-C. Es idempotente y no lleva claves (ver `docs/PRUEBAS_SISTEMA.md` §21).
 
 **Tarjetas de prueba de Stripe** (cualquier fecha futura y cualquier CVC): `4242 4242 4242 4242` aprueba · `4000 0000 0000 0002` rechaza · `4000 0027 6000 3184` pide 3D Secure.
 

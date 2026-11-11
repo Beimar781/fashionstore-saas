@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, of } from 'rxjs';
@@ -170,6 +171,7 @@ export class DevolucionesPage implements OnInit {
 
   readonly enLinea = inject(ConnectivityService).online;
 
+  private readonly recargaAlVolverLaRed = inject(ColaOperacionesService).alRefrescar(() => this.cargarRecientes());  // al volver la red la lista se recarga sola
   ngOnInit() { this.cargarRecientes(); }
 
   nombreMedio(m: string | null) { return m === 'EFECTIVO' ? 'efectivo' : m === 'TARJETA' ? 'tarjeta' : '—'; }

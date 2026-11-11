@@ -14,6 +14,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/data/sesion.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../notificaciones/presentation/push_controller.dart';
+import '../../offline/presentation/caja_en_linea_screen.dart';
 import '../../offline/presentation/caja_screen.dart';
 import '../../offline/presentation/conflictos_screen.dart';
 import '../../offline/presentation/estado_conexion_chip.dart';
@@ -181,6 +182,9 @@ class HomeScreen extends StatelessWidget {
                   'Pida prendas en lenguaje natural (plan Profesional)',
                   const AsistenteScreen()),
           ],
+          if ((s.rol == 'Cajero' || s.rol == 'Encargado') && !offline.habilitado && !s.restringido)
+            // el plan de la empresa no incluye el modo sin conexión: la Caja sigue disponible, pero solo con Internet
+            _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado en efectivo (su plan no incluye el modo sin conexión: necesita Internet)', const CajaEnLineaScreen()),
           if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
             _acceso(context, Icons.point_of_sale, 'Caja', 'Venta de contado con o sin conexión, ventas del turno y su resumen', const CajaScreen()),
             _acceso(context, Icons.assignment_return_outlined, 'Devoluciones', 'Devuelva prendas con o sin conexión (plazo y lo ya devuelto)', const DevolucionesScreen()),

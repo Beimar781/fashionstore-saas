@@ -321,6 +321,34 @@ Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se desca
 | 20.6 | Móvil | Proveedor o Administrador | Abrir la app con y sin conexión. | Con red: «Las funciones de su rol se usan desde la web…»; sin red: «Esta función necesita Internet.» y «Actualizar mi plan» apagado. Nunca un spinner infinito. | ☐ |
 | 20.7 | Web | Encargado | Abrir «Conflictos de sincronización» sin conexión. | Se ve lo último guardado; Reintentar y Descartar salen apagados («Esta función necesita Internet.»). | ☐ |
 
+## 21. Cierre de la segunda ronda (E5): recorridos de la demostración y datos
+
+**Preparar los datos** (una vez, contra el despliegue; es idempotente y no lleva claves en el código):
+
+```bash
+python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.railway.app
+# opcional: catálogo mínimo en EMP-C (necesita CLAVE_SUPERADMIN en el entorno)
+python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.railway.app --empresa-c "EMP-C,<correo>,<clave>"
+```
+
+**Auditoría de pantallas:** `python scripts/auditar_offline.py` (o `--verificar` en la integración continua) escribe `docs/AUDITORIA_OFFLINE.md`; también la corre `pytest` (`test_e5_auditoria_offline.py`).
+
+**Cada guion de la sección 16 y la prueba automática que lo respalda**
+
+| Guion | Backend | Web | Móvil |
+|---|---|---|---|
+| (a) Cajero vende sin conexión y sincroniza | `test_cu38_sincronizar.py` | `caja-offline.spec.ts` | `caja_screen_test.dart`, `flujo_offline_completo_test.dart` |
+| (b) Dos cajeros y la última unidad (monto a devolver) | `test_d2_dos_cajeros_ultima_unidad.py`, `test_d3_conflictos_monto.py` | `deshacer-y-tiempo.spec.ts`, `tareas-sucursal.spec.ts` | `conflictos_screen_test.dart`, `e4_roles_sin_conexion_test.dart` |
+| (c) Cliente compra con tarjeta guardada, con y sin stock | `test_d4_compra_tarjeta_guardada.py`, `test_e2_compra_offline_vacia_carrito.py` | `checkout-offline.spec.ts`, `checkout-sin-carrito.spec.ts`, `carrito-sin-conexion.spec.ts` | `tarjeta_guardada_offline_test.dart`, `e3_cliente_sin_conexion_test.dart` |
+| (d) Encargado, Proveedor y Administrador | `test_r_operaciones_offline_sucursal.py`, `test_r_propuesta_proveedor_offline.py`, `test_r_atencion_reservas_offline.py` | `inventario-offline.spec.ts`, `abastecimiento-offline.spec.ts`, `lecturas-locales.spec.ts` | `tareas_sucursal_test.dart`, `e4_roles_sin_conexion_test.dart` |
+| (e) Aviso de reconexión sin recargar | — | `avisos-conexion.spec.ts`, `simulacion.spec.ts` | `avisos_conexion_test.dart`, `simulacion_test.dart` |
+| Reporte CU-23 por sucursal | `test_cu23_reportes_generativos.py` | `lecturas-locales.spec.ts` (último reporte visto sin red) | no aplica (solo web) |
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 21.1 | Web (Chrome, build de producción) | Cajero de EMP-B | Después de correr `preparar_demo.py`, abrir Caja con red y con el modo avión. | Las prendas tienen existencias y las fotos se ven en ambos casos. | ☐ |
+| 21.2 | Móvil | Cajero o Encargado de una empresa con un plan SIN modo sin conexión | Abrir el inicio. | Aparece «Caja» (con el aviso del plan); buscar, registrar y cobrar en efectivo funciona con Internet; sin Internet dice «Esta función necesita Internet…». | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.
