@@ -301,11 +301,23 @@ def copiar_atributos(destino: Api, pl: Plantilla) -> Mapas:
     return m
 
 
+def tallas_de_la_categoria(destino: Api, m: Mapas, p: dict, tallas: list[int]) -> list[int]:
+    """Si la categoría del destino ya existía con OTRO grupo de tallas (EMP-C se creó a mano), las tallas se toman de SU grupo: las del mismo código y, si no hay, las tres primeras."""
+    categoria = next((c for c in destino.get("/categorias") if c["id"] == m.categoria[p["categoria_id"]]), None)
+    grupo = next((g for g in destino.get("/grupos-talla") if categoria and g["id"] == categoria.get("grupo_talla_id")), None)
+    if grupo is None or set(tallas) <= {t["id"] for t in grupo["tallas"]}:
+        return tallas
+    codigos = {v["talla"] for v in p["variantes"]}
+    iguales = [t["id"] for t in grupo["tallas"] if t["codigo"] in codigos]
+    return sorted(iguales) or [t["id"] for t in sorted(grupo["tallas"], key=lambda t: t["orden"])][:3]
+
+
 def copiar_producto(destino: Api, pl: Plantilla, p: dict, m: Mapas, existentes: dict[str, dict], avisos: list[str], etiqueta: str) -> dict | None:
     """Crea (o completa) el producto en la empresa destino con variantes, fotos y PNG del vestidor."""
     nuevo = existentes.get(sin_tilde(p["nombre"]))
     if nuevo is None:
         tallas = sorted({m.talla[v["talla_id"]] for v in p["variantes"]})
+        tallas = tallas_de_la_categoria(destino, m, p, tallas)
         colores = sorted({m.color[v["color_id"]] for v in p["variantes"]})
         nuevo = destino.post("/productos", {
             "nombre": p["nombre"], "descripcion": p["descripcion"], "categoria_id": m.categoria[p["categoria_id"]], "marca_id": m.marca.get(p["marca_id"]),
