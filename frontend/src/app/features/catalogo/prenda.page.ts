@@ -74,6 +74,7 @@ import { BsPipe } from '../../core/formato-bs';
                   </div>
                   <div class="row">
                     <button type="button" class="btn primary" (click)="agregarAlCarrito(p)" [disabled]="!sucursalParaCarrito()" [title]="sucursalParaCarrito() ? '' : 'Elija una sucursal para comprar'">🛒 Agregar al carrito</button>
+                    @if (!sucursalParaCarrito()) { <span class="small muted aviso-sucursal">Elija una sucursal para agregar al carrito.</span> }
                     <button type="button" class="btn" (click)="agregarAReserva(p)">+ Agregar a mi reserva</button>
                     @if (carrito.total() > 0) { <a class="btn" routerLink="/tienda/carrito">Ver mi carrito ({{ carrito.total() }})</a> }
                     @if (borrador.total() > 0) { <a class="btn" routerLink="/tienda/reservar">Ver mi reserva ({{ borrador.total() }})</a> }
@@ -181,7 +182,11 @@ export class PrendaPage implements OnInit {
       const p = this.catalogoLocal.productos().find((x) => x.id === this.id);
       if (p) this.prenda.set(this.detalleLocal(p)); else this.falloConsulta(e);
     } });
-    this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: (e) => this.falloConsulta(e) });
+    this.inventario.disponibilidad(this.id).subscribe({ next: (d) => this.disponibilidad.set(d), error: async (e) => {
+      if (e.status !== 0) return this.falloConsulta(e);
+      await this.catalogoLocal.listo();  // sin red el stock sale de la copia local: solo se avisa si no hay copia
+      if (!this.catalogoLocal.productos().some((x) => x.id === this.id)) this.toast.error('Sin conexión: no hay stock guardado para esta sucursal.');
+    } });
     this.api.opciones(this.id, this.sucursalId()).subscribe({
       next: (o) => { this.opciones.set(o); this.ajustarSeleccion(o); },
       error: async (e) => {
