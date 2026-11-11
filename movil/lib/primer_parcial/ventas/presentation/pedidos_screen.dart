@@ -6,6 +6,7 @@ import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
     show fechaCorta;
 import '../../../features/offline/presentation/offline_controller.dart';
+import '../../../features/offline/presentation/operacion_acciones.dart';
 import '../data/comprobante_movil.dart';
 import '../data/ventas_repository.dart';
 import '../../reservas/data/hoja_de_pago.dart';
@@ -128,12 +129,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
   Future<void> _ver(Map<String, dynamic> c) async {
     if (c['pendiente_local'] == true) {
+      final operacion = context.read<OfflineController>().operaciones.where((o) => o.id == c['id']).firstOrNull;
       await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
                   title: const Text('Compra pendiente de sincronizar'),
-                  content: Text(
-                      '${c['resumen']}\nEstado: ${c['estado']}\nSe enviará al recuperar la conexión.'),
+                  content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${c['resumen']}\nEstado: ${c['estado']}\nSe enviará al recuperar la conexión.'),
+                    if (operacion != null) AccionesOperacion(operacion, alDeshacer: () { Navigator.pop(ctx); _cargar(); }),
+                  ]),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(ctx),

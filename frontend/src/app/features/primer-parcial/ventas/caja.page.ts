@@ -170,7 +170,7 @@ import { OperacionesConProblemaComponent } from '../../offline/operaciones-con-p
             <button class="btn sm" (click)="verResumen.set(!verResumen())">{{ verResumen() ? 'Ocultar el resumen' : 'Resumen de mi turno' }}</button></span></div>
           @for (o of ventasTurno(); track o.id) {
             <div class="row between small"><span>{{ o.creada_en | date: 'HH:mm' }} · {{ o.resumen }}</span>
-              <span class="row"><strong>{{ o.comprobante ?? comprobanteLocal(o) }}</strong><span class="badge" [class.ok]="o.estado === 'CONFIRMADA'" [class.warn]="o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA' || o.estado === 'EN_CONFLICTO'" [class.danger]="o.estado === 'RECHAZADA'">{{ estadoTexto(o.estado) }}</span></span></div>
+              <span class="row"><strong>{{ o.comprobante ?? comprobanteLocal(o) }}</strong><span class="badge" [class.ok]="o.estado === 'CONFIRMADA'" [class.warn]="o.estado === 'REGISTRADA_LOCAL' || o.estado === 'ENVIADA' || o.estado === 'EN_CONFLICTO'" [class.danger]="o.estado === 'RECHAZADA'">{{ estadoTexto(o.estado) }}</span>@if (cola.puedeDeshacer(o)) { <button type="button" class="btn sm danger" (click)="cola.deshacer(o)">Deshacer</button> }</span></div>
           }
           @if (verResumen()) { <app-resumen-turno /> }
         </section>
@@ -193,7 +193,7 @@ export class CajaPage implements OnInit {
   private toast = inject(ToastService);
   private auth = inject(AuthService);
   private red = inject(ConnectivityService);
-  private cola = inject(ColaOperacionesService);
+  readonly cola = inject(ColaOperacionesService);
   readonly local = inject(CatalogoLocalService);
   readonly enLinea = this.red.online;
   readonly verResumen = signal(false);
@@ -377,7 +377,7 @@ export class CajaPage implements OnInit {
     const resumen = v.items.map((i) => `${i.cantidad}× ${i.producto} (${i.talla}, ${i.color})`).join(', ');
     const reserva = this.reserva();
     const cuerpo = { items, forma_pago: 'EFECTIVO', monto_recibido: Number(this.recibido).toFixed(2), ...(reserva ? { reserva_codigo: reserva.codigo } : { cliente_email: v.cliente ?? null }) };
-    const op = await this.cola.registrar('VENTA_CONTADO', cuerpo, v.sucursal_id, `${reserva ? `Cobro de la reserva ${reserva.codigo}` : 'Venta de contado'} ${formatoBs(Number(v.total))}: ${resumen}`);
+    const op = await this.cola.registrar('VENTA_CONTADO', cuerpo, v.sucursal_id, `${reserva ? `Cobro de la reserva ${reserva.codigo}` : 'Venta de contado'} ${formatoBs(Number(v.total))}: ${resumen}`, reserva ? undefined : { stock: items.map((i) => ({ variante_id: i.variante_id, delta: -i.cantidad })) });
     if (reserva) await this.local.actualizarExtras((m) => { m.reservas_sucursal = (m.reservas_sucursal ?? []).filter((x) => x.id !== reserva.id); });  // ya se cobró: sale de la copia
     else await this.local.comprometer(items, v.sucursal_id);  // la reserva ya tenía su stock apartado
     this.operacionLocal = op;

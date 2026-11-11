@@ -161,7 +161,12 @@ class _ReservasScreenState extends State<ReservasScreen> {
     if (motivo == null) return; // el cliente se arrepintió
     final offline = context.read<OfflineController>();
     if (r['pendiente_local'] == true) {
-      await offline.repo.borrarOperacionLocal(r['id'] as String);
+      final local = offline.operaciones.where((o) => o.id == r['id']).firstOrNull;
+      if (local != null) {
+        await offline.deshacer(local); // devuelve también el stock reservado en la copia local
+      } else {
+        await offline.repo.borrarOperacionLocal(r['id'] as String);
+      }
       await offline.recargar();
       await _cargar();
       return;

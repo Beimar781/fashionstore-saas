@@ -1,12 +1,16 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { OfflineApi } from '../api/offline.api';
 import { AuthService } from '../auth/auth.service';
-import { OperacionLocal, OperacionServidor, TipoOperacion } from '../offline.models';
+import { EfectoLocal, OperacionLocal, OperacionServidor, TipoOperacion } from '../offline.models';
 import { ToastService } from '../ui/toast.service';
+import { CatalogoLocalService } from './catalogo-local.service';
 import { ConnectivityService } from './connectivity.service';
 import { LocalDbService } from './local-db.service';
 
 const REINTENTO_MS = 30_000;
+
+/** Operaciones que se pueden deshacer mientras no se hayan enviado (las de reservas del Encargado cambian el estado de la reserva y no se deshacen). */
+const SE_PUEDEN_DESHACER: TipoOperacion[] = ['VENTA_CONTADO', 'COMPRA', 'RESERVA', 'CANCELAR_RESERVA', 'AJUSTE_INVENTARIO', 'RECEPCION', 'DEVOLUCION', 'PROPUESTA_PROVEEDOR'];
 
 /** Resultado de una pasada de sincronización (lo anuncia AvisosConexionService). */
 export interface ResumenSync { confirmadas: number; conflictos: number; rechazadas: number; }
@@ -24,6 +28,7 @@ export class ColaOperacionesService {
   private auth = inject(AuthService);
   private red = inject(ConnectivityService);
   private toast = inject(ToastService);
+  private local = inject(CatalogoLocalService);
 
   /** RNF06: tras cada fallo de red o respuesta 5xx la espera se duplica (30 s, 1 min, 2 min…, máximo 15 min); un 4xx de negocio no se reintenta (la operación queda RECHAZADA). */
   private fallosSeguidos = 0;
@@ -75,17 +80,33 @@ export class ColaOperacionesService {
   }
 
   /** Registra una operación en el dispositivo (estado REGISTRADA_LOCAL) y, si hay conexión, la sincroniza enseguida. */
-  async registrar(tipo: TipoOperacion, payload: Record<string, unknown>, sucursalId: number | null, resumen: string): Promise<OperacionLocal> {
+  async registrar(tipo: TipoOperacion, payload: Record<string, unknown>, sucursalId: number | null, resumen: string, efecto?: EfectoLocal): Promise<OperacionLocal> {
     const s = this.auth.sesion()!;
     const op: OperacionLocal = {
       id: crypto.randomUUID(), empresa_id: s.empresa!.id, sucursal_id: sucursalId, usuario_id: s.usuario.id, tipo, payload, estado: 'REGISTRADA_LOCAL',
-      intentos: 0, mensaje: '', referencia: null, comprobante: null, detalle: null, creada_en: new Date().toISOString(), resumen,
+      intentos: 0, mensaje: '', referencia: null, comprobante: null, detalle: null, creada_en: new Date().toISOString(), resumen, ...(efecto ? { efecto_local: efecto } : {}),
     };
     await this.db.guardarOperacion(op);
     this.operaciones.update((l) => [op, ...l]);
     if (this.red.online()) void this.sincronizar();
     else void this.pedirSincronizacionEnSegundoPlano();
     return op;
+  }
+
+  /** Solo mientras la operación sigue en el dispositivo sin enviarse; una venta que cobró una reserva cambió datos del servidor y no se deshace. */
+  puedeDeshacer(o: OperacionLocal): boolean { return o.estado === 'REGISTRADA_LOCAL' && SE_PUEDEN_DESHACER.includes(o.tipo) && !o.payload['reserva_codigo']; }
+
+  /** Deshace una operación que aún no se sincronizó: sale de la cola y la copia local vuelve a como estaba (stock y devoluciones). */
+  async deshacer(o: OperacionLocal): Promise<boolean> {
+    const viva = this.operaciones().find((x) => x.id === o.id);
+    if (!viva || !this.puedeDeshacer(viva)) { this.toast.aviso('Esa operación ya se envió y no se puede deshacer.'); return false; }
+    await this.db.borrarOperacion(viva.id);
+    const efecto = viva.efecto_local;
+    if (viva.sucursal_id !== null) for (const m of efecto?.stock ?? []) await this.local.moverStock(m.variante_id, viva.sucursal_id, -m.delta);
+    if (efecto?.devuelto) await this.local.restaurarDevolvible(efecto.devuelto.comprobante, efecto.devuelto.items);
+    this.operaciones.update((l) => l.filter((x) => x.id !== viva.id));
+    this.toast.ok(efecto?.stock?.length || efecto?.devuelto ? 'Operación deshecha: ya no se enviará y el inventario local volvió a como estaba.' : 'Operación deshecha: ya no se enviará.');
+    return true;
   }
 
   private fallo() {

@@ -129,7 +129,7 @@ export class MisReservasPage implements OnInit {
     this.enviando.set(true); this.error.set('');
     if (r.pendiente_local) {
       const operacion = this.cola.operaciones().find((o) => o.id === String(r.id) && o.tipo === 'RESERVA');
-      if (operacion) void this.db.borrarOperacion(operacion.id).then(() => this.cola.cargar()).then(() => { this.enviando.set(false); this.cancelando.set(null); this.toast.ok('Reserva local cancelada.'); void this.cargar(); });
+      if (operacion) void this.cola.deshacer(operacion).then(() => { this.enviando.set(false); this.cancelando.set(null); this.toast.ok('Reserva local cancelada.'); void this.cargar(); });
       return;
     }
     if (!this.red.online()) {

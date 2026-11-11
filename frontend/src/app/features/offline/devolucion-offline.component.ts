@@ -66,7 +66,7 @@ export class DevolucionOfflineComponent {
     const elegidas = Object.entries(this.cantidades()).filter(([, c]) => c > 0).map(([id, c]) => ({ pedido_item_id: Number(id), cantidad: c }));
     if (new Date() > new Date(venta.vence_el)) { this.error.set(MSG_PLAZO_VENCIDO); return; }
     if (!elegidas.length) { this.error.set('Elija al menos una prenda y su cantidad.'); return; }
-    await this.cola.registrar('DEVOLUCION', { comprobante: venta.comprobante, motivo: this.motivo.trim(), items: elegidas, condicion: { ...this.condicion } }, this.sucursalId, `Devolución de ${venta.comprobante}`);
+    await this.cola.registrar('DEVOLUCION', { comprobante: venta.comprobante, motivo: this.motivo.trim(), items: elegidas, condicion: { ...this.condicion } }, this.sucursalId, `Devolución de ${venta.comprobante}`, { devuelto: { comprobante: venta.comprobante, items: elegidas } });
     await this.local.actualizarExtras((m) => { for (const v of m.ventas_recientes ?? []) if (v.comprobante === venta.comprobante) for (const i of v.items) { const c = elegidas.find((e) => e.pedido_item_id === i.pedido_item_id); if (c) i.devolvible = Math.max(i.devolvible - c.cantidad, 0); } });
     this.toast.ok('Devolución guardada. Se enviará sola al recuperar la conexión.');
     this.venta.set(null); this.motivo = ''; this.error.set('');

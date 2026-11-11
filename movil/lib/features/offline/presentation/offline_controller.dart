@@ -242,6 +242,22 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     sincronizar();
   }
 
+  /// Mientras se sincroniza no se deshace: el envío en curso podría volver a guardar la operación.
+  bool puedeDeshacer(OperacionLocal o) => !sincronizando && _repo.puedeDeshacer(o);
+
+  /// D5: quita una operación que aún no salió del dispositivo y devuelve el inventario local a como estaba.
+  Future<bool> deshacer(OperacionLocal o) async {
+    if (sincronizando) return false;
+    final hecho = await _repo.deshacerOperacion(o);
+    if (hecho) {
+      await recargar();
+      refresco++;
+      notifyListeners();
+      alAvisar?.call('Operación deshecha: el inventario local volvió a como estaba.');
+    }
+    return hecho;
+  }
+
   /// CU-38: envía lo pendiente. No hace nada si ya hay una sincronización en curso.
   /// Quién muestra el mensaje emergente al cliente (lo conecta la app con su ScaffoldMessenger).
   void Function(String)? alAvisar;

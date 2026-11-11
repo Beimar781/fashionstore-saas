@@ -23,14 +23,14 @@ export class OperacionesSucursalService {
   private get sucursalId() { return this.auth.sesion()?.usuario.sucursal_id ?? null; }
 
   async recibir(varianteId: number, cantidad: number, referencia: string, nombre: string) {
-    await this.cola.registrar('RECEPCION', { variante_id: varianteId, cantidad, referencia: referencia.trim() }, this.sucursalId, `Recepción de ${cantidad}× ${nombre}`);
+    await this.cola.registrar('RECEPCION', { variante_id: varianteId, cantidad, referencia: referencia.trim() }, this.sucursalId, `Recepción de ${cantidad}× ${nombre}`, { stock: [{ variante_id: varianteId, delta: cantidad }] });
     await this.local.moverStock(varianteId, this.sucursalId!, cantidad);
     this.toast.ok('Recepción guardada. El inventario sube de forma provisional hasta sincronizar.');
   }
 
   /** El ajuste viaja como diferencia (+ o −), no como valor absoluto, para no pisar las ventas hechas mientras tanto. */
   async ajustar(varianteId: number, diferencia: number, motivo: MotivoAjuste, nota: string, nombre: string) {
-    await this.cola.registrar('AJUSTE_INVENTARIO', { variante_id: varianteId, diferencia, motivo, nota: nota.trim() }, this.sucursalId, `Ajuste de ${diferencia > 0 ? '+' : ''}${diferencia}× ${nombre} (${motivo})`);
+    await this.cola.registrar('AJUSTE_INVENTARIO', { variante_id: varianteId, diferencia, motivo, nota: nota.trim() }, this.sucursalId, `Ajuste de ${diferencia > 0 ? '+' : ''}${diferencia}× ${nombre} (${motivo})`, { stock: [{ variante_id: varianteId, delta: diferencia }] });
     await this.local.moverStock(varianteId, this.sucursalId!, diferencia);
     this.toast.ok('Ajuste guardado. Se enviará como diferencia al recuperar la conexión.');
   }

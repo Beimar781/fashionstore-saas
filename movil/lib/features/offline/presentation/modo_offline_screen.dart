@@ -5,6 +5,8 @@ import '../../../core/network/imagen_prenda.dart';
 import '../data/comprobante_provisional.dart';
 import '../data/modelos.dart';
 import 'comprobante_provisional_accion.dart';
+import 'demostracion_tab.dart';
+import 'operacion_acciones.dart';
 import 'offline_controller.dart';
 import 'registrar_offline_screen.dart';
 import 'registro_sync_screen.dart';
@@ -23,14 +25,14 @@ String fechaCorta(String? iso) {
 class ModoOfflineScreen extends StatelessWidget {
   const ModoOfflineScreen({super.key, this.pestana = 0});
 
-  /// 0 catálogo, 1 registrar, 2 operaciones (la cola, a donde lleva «Ver detalle»).
+  /// 0 catálogo, 1 registrar, 2 operaciones (la cola, a donde lleva «Ver detalle»), 3 demostración.
   final int pestana;
 
   @override
   Widget build(BuildContext context) {
     final c = context.watch<OfflineController>();
     return DefaultTabController(
-      length: 3,
+      length: 4,
       initialIndex: pestana,
       child: Scaffold(
         appBar: AppBar(
@@ -58,6 +60,7 @@ class ModoOfflineScreen extends StatelessWidget {
                 text: c.pendientes.isEmpty
                     ? 'Operaciones'
                     : 'Operaciones (${c.pendientes.length})'),
+            const Tab(text: 'Demostración'),
           ]),
         ),
         body: Column(children: [
@@ -73,7 +76,8 @@ class ModoOfflineScreen extends StatelessWidget {
               child: TabBarView(children: [
             _CatalogoTab(),
             RegistrarOfflineTab(),
-            _OperacionesTab()
+            _OperacionesTab(),
+            DemostracionTab()
           ])),
         ]),
       ),
@@ -265,6 +269,7 @@ class _OperacionesTab extends StatelessWidget {
               if (o.estado == Estado.registradaLocal && o.intentos > 0)
                 Text('${o.intentos} intento(s) de envío',
                     style: Theme.of(context).textTheme.bodySmall),
+              AccionesOperacion(o),
               Text(o.id, style: Theme.of(context).textTheme.labelSmall),
             ]),
           ),

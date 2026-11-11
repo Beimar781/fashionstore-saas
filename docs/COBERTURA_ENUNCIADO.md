@@ -107,6 +107,7 @@ Las pruebas del backend están en `backend/tests/`, las del frontend en `fronten
 | B7 Escaneo de códigos de barras y QR | móvil (`escaner_screen.dart`, ML Kit); web (`escaner.component.ts`, `BarcodeDetector`, solo navegadores que lo traen) | ✔ |
 | B8 Consulta sin conexión de otros roles: «Datos al…» global, caché de la API con tope de 3 s, borrado del caché al cerrar sesión, «Generar un reporte con IA necesita Internet.» | web `shell.component.ts`, `ngsw-config.json`, `auth.service.ts` | ◐ (lectura de lo ya visitado; no se descargan listados completos de Administrador o Proveedor) |
 | B9 Propuesta del proveedor sin conexión | web `abastecimiento.page.ts`; servidor `PROPUESTA_PROVEEDOR` (migración 0022) | ✔ (el móvil no tiene pantalla de Proveedor) |
+| D5 Indicador de estado en la barra, «Deshacer» una operación sin enviar, línea de tiempo y pantalla de demostración | web `estado-conexion.component.ts`, `linea-de-tiempo.ts`, `demostracion.component.ts`; móvil `estado_conexion_chip.dart`, `linea_de_tiempo.dart`, `demostracion_tab.dart` | ✔ |
 | B10 Sincronización en segundo plano | web `public/sw-sync.js` (Background Sync, solo Chrome/Edge); móvil: al volver a primer plano y con `connectivity_plus` | ◐ |
 | Extra: reportes con IA por voz (dictar, conversar, escuchar) | web `reporte-generativo.page.ts`, `core/voz/voz.service.ts` (solo Chrome/Edge) | ✔ |
 

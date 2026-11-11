@@ -138,6 +138,16 @@ export class CatalogoLocalService {
     this.meta.set(copia);
   }
 
+  /** Deshacer una devolución: lo que se podía devolver de esa venta vuelve a como estaba. */
+  async restaurarDevolvible(comprobante: string, items: { pedido_item_id: number; cantidad: number }[]) {
+    await this.actualizarExtras((m) => {
+      for (const v of m.ventas_recientes ?? []) {
+        if (v.comprobante !== comprobante) continue;
+        for (const i of v.items) { const c = items.find((e) => e.pedido_item_id === i.pedido_item_id); if (c) i.devolvible += c.cantidad; }
+      }
+    });
+  }
+
   /** B5 y B6: el inventario local se mueve de forma provisional con lo recibido o ajustado; el servidor aplica la operación al sincronizar. */
   async moverStock(varianteId: number, sucursalId: number, diferencia: number) {
     for (const p of this.productos()) {

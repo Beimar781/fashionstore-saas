@@ -19,12 +19,18 @@ export interface CatalogoDescargado extends ExtrasSucursal { generado_en: string
 export interface MetaCatalogo extends ExtrasSucursal { generado_en: string; empresa_id: number; sucursales: SucursalLocal[]; clientes: ClienteLocal[]; }
 
 export interface Faltante { variante_id: number; producto: string; talla: string; color: string; solicitadas: number; disponibles: number; }
+/** Lo que una operación cambió en la copia local, para devolverlo a como estaba si se deshace antes de sincronizar. */
+export interface EfectoLocal {
+  stock?: { variante_id: number; delta: number }[];
+  devuelto?: { comprobante: string; items: { pedido_item_id: number; cantidad: number }[] };
+}
 export interface OperacionLocal {
   id: string;  // UUID generado en el dispositivo (RN11)
   empresa_id: number; sucursal_id: number | null; usuario_id: number;
   tipo: TipoOperacion; payload: Record<string, unknown>; estado: EstadoLocal;
   intentos: number; mensaje: string; referencia: string | null; comprobante: string | null; detalle: { faltantes: Faltante[] } | null;
   creada_en: string; resumen: string;
+  efecto_local?: EfectoLocal;
 }
 
 export interface ResultadoSync { id: string; estado: 'CONFIRMADA' | 'RECHAZADA' | 'EN_CONFLICTO' | 'ERROR'; mensaje: string; referencia: string | null; comprobante: string | null; detalle: { faltantes: Faltante[] } | null; ya_procesada: boolean; }

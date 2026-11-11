@@ -772,3 +772,26 @@ CU-37 a CU-40 y los casos de uso del Cliente: el tipo de operación `CANCELAR_RE
 ## Para el Word
 
 Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de arriba. Modelo de datos local: las tablas de §6.3 con sus claves foráneas. Nuevos tipos de operación en CU-38 y CU-39. Matriz de requisitos: `docs/COBERTURA_ENUNCIADO.md`.
+
+## Defensa D1 a D5 · lo que cambia en el Word
+
+**Mensajes nuevos**
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Se pierde la conexión | «Sin conexión: sus acciones se guardarán en este dispositivo y se enviarán al volver Internet.» | — (solo en la app) | Pendiente |
+| Vuelve la conexión | «Conexión restablecida. Sincronizando N operaciones…» y luego el resumen con «Ver detalle» | — (solo en la app) | Pendiente |
+| Deshacer una operación sin enviar | «Operación deshecha: el inventario local volvió a como estaba.» | — (solo en la app) | Pendiente |
+| Compra sin conexión cobrada al sincronizar | «Su compra fue cobrada y confirmada.» | 200 con estado `CONFIRMADA` | Pendiente |
+| Compra sin conexión en conflicto con tarjeta | La compra queda `EN_CONFLICTO` y no se cobra; el aviso indica el motivo y que no se hizo ningún cargo | 200 con estado `EN_CONFLICTO` | Pendiente |
+| Conflicto descartado con efectivo | El Encargado ve el monto a devolver antes de descartar | — | Pendiente |
+
+**Reglas de negocio nuevas**
+
+- **Cobro con tarjeta guardada fuera de sesión (CU-32/CU-38):** la compra sin conexión lleva solo el id de la tarjeta y el total autorizado. El servidor crea y confirma el pedido y **después** cobra con Stripe (`off_session`, clave de idempotencia = id de la operación). Un fallo del cobro no deshace el pedido: queda por pagar. Una operación rechazada nunca conserva número de tarjeta ni CVC.
+- **Deshacer (CU-39):** solo una operación en estado REGISTRADA_LOCAL puede deshacerse; devuelve el stock local (venta, compra, reserva, recepción, ajuste) o la cantidad devolvible (devolución). No se deshace lo ya enviado, la atención de reservas ni el cobro de una reserva.
+- **Línea de tiempo (CU-38/CU-40):** cada operación muestra su historia (registrada en el dispositivo, cada envío con su resultado y hora, y su resolución por el Encargado). Sale de lo guardado en el dispositivo, así que se ve sin conexión.
+- **Indicador de estado:** en la barra superior de web y móvil (En línea, Sin conexión, Sincronizando) con el número de pendientes; abre la cola según el rol.
+
+**Pantallas que cambiaron:** barra superior de web y móvil (indicador); «Modo sin conexión» (pestaña Demostración); Caja y «Mi turno»; Mis compras y Mis reservas; Devoluciones; Inventario, Recepción y Reservas de la sucursal; Conflictos de sincronización (monto a devolver); Checkout y pago del Cliente (tarjeta guardada).
+

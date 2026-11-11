@@ -252,6 +252,28 @@ Web: DevTools → Network → **Offline** (o desconectar el Wi‑Fi). Móvil: **
 | 15.33 | Web | Cajero | Devolver (en Devoluciones, con red) una prenda de la compra cobrada en 15.29. | Se reembolsa a la misma tarjeta con el flujo de CU-41 y el cliente recibe el aviso con el monto. | ☐ |
 | 15.34 | Móvil | Cliente | Con red, abrir «Entrega, facturación y pago» (o descargar el catálogo) para que se guarden las tarjetas; modo avión; «Modo sin conexión → Registrar → Comprar» y elegir «Pagar con Visa terminada en 4242 al volver la conexión». | Mismo comportamiento que en 15.28 y 15.29: exige autorizar el cobro, solo guarda el id de la tarjeta y el total, y al volver la red el servidor cobra. | ☐ |
 
+## 16. Demostración de la defensa (D5)
+
+Antes de empezar: iniciar sesión con red en cada cuenta, esperar a que se descargue el catálogo y dejar a la vista la barra superior. Allí está el indicador **En línea / Sin conexión / Sincronizando… N** (web y móvil): al tocarlo abre la cola de ese rol. El panel «Modo sin conexión → Demostración» reúne el interruptor «Simular sin conexión», los contadores, la cola en vivo y el registro de sincronización en una sola vista.
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 16.1 | Web | Cajero | **Guion (a), venta sin conexión.** Activar «Simular sin conexión». En Caja buscar o escanear una prenda, «Registrar venta», escribir el efectivo y «Cobrar». | El indicador pasa a «Sin conexión · 1». La venta queda «Registrada en el dispositivo» con comprobante provisional LOC-…; el stock local baja. | ☐ |
+| 16.2 | Web | Cajero | Seguir 16.1: apagar «Simular sin conexión» sin recargar. | Aviso de reconexión; el indicador pasa por «Sincronizando…» y vuelve a «En línea»; la venta queda «Confirmada» con su CMP-… oficial. | ☐ |
+| 16.3 | Web y móvil | Cajero | **Guion (b), dos cajeros y la última unidad.** Dejar una sola unidad; en dos dispositivos con «Simular sin conexión», vender esa unidad. Volver la red en ambos. | Uno queda «Confirmada»; el otro «En conflicto» (sin existencias). Aparece en «Ventas con problema» y en «Conflictos de sincronización» del Encargado. | ☐ |
+| 16.4 | Web o móvil | Encargado | Seguir 16.3: abrir «Conflictos de sincronización», «Descartar…» devolviendo el efectivo. | Se muestra el monto a devolver; la operación queda «Rechazada» y su línea de tiempo termina en «Resuelta por el Encargado: descartada». | ☐ |
+| 16.5 | Web | Cliente | **Guion (c), compra pagada con tarjeta guardada.** Con red guardar una tarjeta de prueba (`4242 4242 4242 4242`), abrir otra vez «Pagar mi compra» para bajar la lista y activar «Simular sin conexión». Comprar eligiendo «Pagar con Visa…» y autorizar el monto. | Compra «Registrada en el dispositivo»; la cola guarda solo el id de la tarjeta y el total, nunca el número ni el CVC. | ☐ |
+| 16.6 | Web | Cliente | Seguir 16.5 con stock: apagar «Simular sin conexión». | El servidor crea el pedido y cobra la tarjeta: aviso «Su compra fue cobrada y confirmada» y comprobante CMP-…. | ☐ |
+| 16.7 | Web (dos navegadores) | Cliente + Cajero | Repetir 16.5 dejando una sola unidad que el Cajero vende antes de sincronizar. | La compra queda «En conflicto» y **no se cobra nada**; el Cliente lo ve en «Compras que no se pudieron completar». | ☐ |
+| 16.8 | Web y móvil | Encargado | **Guion (d), Encargado.** Sin conexión: «Recepción» (prenda, cantidad, referencia), «Ajuste» (Salida, cantidad, motivo) y en Reservas «Preparar» y «Atender». | Cada operación queda en la cola; el inventario local sube o baja de forma provisional. | ☐ |
+| 16.9 | Web y móvil | Encargado | Seguir 16.8: volver la red. | El resumen «Sincronización completa…» con «Ver detalle»; el inventario del servidor refleja la recepción y el ajuste, y las reservas pasan a su estado. | ☐ |
+| 16.10 | Web y móvil | Cualquiera | **Guion (e), aviso de reconexión.** Dejar dos operaciones sin conexión. Apagar el interruptor (o quitar el modo avión) sin salir de la pantalla ni recargar. | Aviso «Conexión restablecida. Sincronizando 2 operaciones…», después el resumen con «Ver detalle»; las pantallas abiertas se refrescan solas. | ☐ |
+| 16.11 | Web y móvil | Cualquiera | **Deshacer.** Sin conexión, registrar una venta o compra y tocar «Deshacer» (en «Mi turno», «Mis compras» o la cola). Repetir con una recepción, un ajuste y una devolución. | La operación sale de la cola y el stock local vuelve a como estaba (la devolución vuelve a ser devolvible). Aviso «Operación deshecha». | ☐ |
+| 16.12 | Web y móvil | Cualquiera | Buscar «Deshacer» en una operación ya enviada, en una atención de reservas o en el cobro de una reserva. | No aparece el botón: solo se deshace lo que todavía no salió del dispositivo y no depende de una reserva. | ☐ |
+| 16.13 | Web y móvil | Cualquiera | **Línea de tiempo.** En la cola, tocar «Línea de tiempo» de una operación (pendiente, confirmada y una que pasó por conflicto). | Muestra: Registrada en <dispositivo> → cada Envío con su resultado y hora → Confirmada, En conflicto o Resuelta por el Encargado. Funciona sin conexión. | ☐ |
+| 16.14 | Web | Cualquiera | **Demostración.** Abrir «Modo sin conexión → Demostración», activar el interruptor, registrar algo y apagarlo. | Los contadores (Pendientes, Confirmadas, En conflicto, Rechazadas), la cola en vivo y el registro de sincronización cambian sin recargar. | ☐ |
+| 16.15 | Móvil | Cliente o Cajero | Tocar el indicador de la barra del inicio. | Abre la cola de operaciones; la cuarta pestaña «Demostración» tiene lo mismo que la web. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.

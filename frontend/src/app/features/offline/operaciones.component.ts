@@ -1,11 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ColaOperacionesService } from '../../core/offline/cola-operaciones.service';
 import { ConnectivityService } from '../../core/offline/connectivity.service';
 import { EstadoLocal, OperacionLocal } from '../../core/offline.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogoLocalService } from '../../core/offline/catalogo-local.service';
 import { comprobanteProvisional, numeroLocal } from '../../core/offline/comprobante-provisional';
+import { PasoTiempo, lineaDeTiempo } from '../../core/offline/linea-de-tiempo';
+import { LocalDbService } from '../../core/offline/local-db.service';
 
 const TEXTO: Record<EstadoLocal, string> = {
   REGISTRADA_LOCAL: 'Registrada en el dispositivo', ENVIADA: 'Enviada, esperando respuesta', CONFIRMADA: 'Confirmada por el servidor', RECHAZADA: 'Rechazada', EN_CONFLICTO: 'En conflicto',
@@ -40,19 +42,36 @@ const TEXTO: Record<EstadoLocal, string> = {
                 {{ o.mensaje }}
                 @if (o.tipo === 'VENTA_CONTADO') { <div><button type="button" class="btn sm" (click)="descargarProvisional(o)">Comprobante {{ o.comprobante ?? numeroLocal(o) }}</button></div> }
                 @if (o.detalle?.faltantes?.length) { <ul class="faltantes">@for (f of o.detalle!.faltantes; track f.variante_id) { <li>{{ f.producto }} ({{ f.talla }}, {{ f.color }}): pidió {{ f.solicitadas }}, hay {{ f.disponibles }}</li> }</ul> }
+                <div class="row" style="margin-top:.3rem">
+                  <button type="button" class="btn sm ghost" (click)="alternar(o)" [attr.aria-expanded]="!!pasos()[o.id]">{{ pasos()[o.id] ? 'Ocultar la línea de tiempo' : 'Línea de tiempo' }}</button>
+                  @if (cola.puedeDeshacer(o)) { <button type="button" class="btn sm danger" (click)="cola.deshacer(o)">Deshacer</button> }
+                </div>
+                @if (pasos()[o.id]; as ps) {
+                  <ol class="tiempo">@for (p of ps; track $index) { <li [class]="p.tipo"><span>{{ p.texto }}</span>@if (p.fecha) { <span class="muted"> · {{ p.fecha | date: 'dd/MM HH:mm:ss' }}</span> }</li> }</ol>
+                }
               </td>
             </tr>
           } @empty { <tr><td colspan="4" class="empty">No hay operaciones registradas en este dispositivo.</td></tr> }
         </tbody></table></div>
     </section>`,
-  styles: `.faltantes { margin: .3rem 0 0; padding-left: 1.1rem; }`,
+  styles: `.faltantes { margin: .3rem 0 0; padding-left: 1.1rem; } .tiempo { margin: .4rem 0 0; padding-left: 1.2rem; } .tiempo .ok { color: #1e7a4f; } .tiempo .warn { color: #9a5b00; } .tiempo .danger { color: #b3261e; }`,
 })
 export class OperacionesLocalesComponent {
   readonly cola = inject(ColaOperacionesService);
   readonly red = inject(ConnectivityService);
   private readonly auth = inject(AuthService);
   private readonly local = inject(CatalogoLocalService);
+  private readonly db = inject(LocalDbService);
   readonly numeroLocal = numeroLocal;
+  readonly pasos = signal<Record<string, PasoTiempo[]>>({});
+
+  /** Muestra u oculta la historia de la operación (sale de lo guardado en el dispositivo: sirve sin conexión). */
+  async alternar(o: OperacionLocal) {
+    if (this.pasos()[o.id]) { this.pasos.update((p) => { const { [o.id]: _quitar, ...resto } = p; return resto; }); return; }
+    this.pasos.update((p) => ({ ...p, [o.id]: lineaDeTiempo(o, [], undefined) }));
+    const registro = await this.db.registroSincronizacion(500);
+    this.pasos.update((p) => ({ ...p, [o.id]: lineaDeTiempo(o, registro) }));
+  }
 
   /** B1: descarga el comprobante provisional LOC-… de una venta de contado registrada sin conexión. */
   async descargarProvisional(o: OperacionLocal) {

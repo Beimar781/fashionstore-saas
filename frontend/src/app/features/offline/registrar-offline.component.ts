@@ -94,17 +94,18 @@ export class RegistrarOfflineComponent {
     if (this.sucursalId === null) { this.error.set('Elija una sucursal.'); return; }
     const items = this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad }));
     const resumen = this.lineas().map((l) => `${l.cantidad}× ${l.texto}`).join(', ');
+    const efecto = { stock: items.map((i) => ({ variante_id: i.variante_id, delta: -i.cantidad })) };  // lo que baja del stock local, por si se deshace
     if (this.esCliente && this.modo === 'COMPRA') {
       this.guardando.set(true);
-      await this.cola.registrar('COMPRA', { sucursal_id: this.sucursalId, items }, this.sucursalId, `Compra: ${resumen}`);
+      await this.cola.registrar('COMPRA', { sucursal_id: this.sucursalId, items }, this.sucursalId, `Compra: ${resumen}`, efecto);
     } else if (this.esCliente) {
       if (!this.visita) { this.error.set('Indique la fecha y hora de su visita.'); return; }
       this.guardando.set(true);
-      await this.cola.registrar('RESERVA', { sucursal_id: this.sucursalId, programada_para: this.visita, notas: this.notas, items }, this.sucursalId, `Reserva: ${resumen}`);
+      await this.cola.registrar('RESERVA', { sucursal_id: this.sucursalId, programada_para: this.visita, notas: this.notas, items }, this.sucursalId, `Reserva: ${resumen}`, efecto);
     } else {
       if ((this.recibido ?? -1) < this.total()) { this.error.set('El efectivo recibido es menor al total de la venta.'); return; }
       this.guardando.set(true);
-      await this.cola.registrar('VENTA_CONTADO', { items: this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario: l.precio.toFixed(2) })), forma_pago: 'EFECTIVO', monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado ${formatoBs(this.total())}: ${resumen}`);
+      await this.cola.registrar('VENTA_CONTADO', { items: this.lineas().map((l) => ({ variante_id: l.variante_id, cantidad: l.cantidad, precio_unitario: l.precio.toFixed(2) })), forma_pago: 'EFECTIVO', monto_recibido: (this.recibido ?? 0).toFixed(2), cliente_email: this.clienteEmail }, this.sucursalId, `Venta de contado ${formatoBs(this.total())}: ${resumen}`, efecto);
     }
     await this.local.comprometer(items, this.sucursalId);
     this.toast.ok(this.red.online() ? 'Operación registrada; se está sincronizando.' : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.');

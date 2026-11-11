@@ -16,6 +16,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../notificaciones/presentation/push_controller.dart';
 import '../../offline/presentation/caja_screen.dart';
 import '../../offline/presentation/conflictos_screen.dart';
+import '../../offline/presentation/estado_conexion_chip.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
 import '../../offline/presentation/tareas_sucursal_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
@@ -48,6 +49,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(s.empresaNombre ?? 'FashionStore'),
         actions: [
+          const EstadoConexionChip(),
           IconButton(
               tooltip: 'Actualizar',
               icon: const Icon(Icons.sync),
@@ -291,6 +293,7 @@ class _InicioClienteState extends State<_InicioCliente> {
     ];
     return Scaffold(
       appBar: AppBar(title: Text(s.empresaNombre ?? 'FashionStore'), actions: [
+        const EstadoConexionChip(),
         if (!soloPerfil) ...[
           IconButton(
               tooltip: 'Avisos',

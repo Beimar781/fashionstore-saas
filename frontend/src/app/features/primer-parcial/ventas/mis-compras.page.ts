@@ -36,7 +36,7 @@ interface CompraEnLista { id: string | number; codigo: string; fecha: string; su
                   <td class="nowrap">{{ c.fecha | date: 'dd/MM/yyyy HH:mm' }}</td><td><strong>{{ c.codigo }}</strong></td><td>{{ c.sucursal }}</td>
                   <td class="right">{{ c.total_unidades }}</td><td class="right nowrap">{{ c.total | bs }}</td>
                   <td>@if (c.pendiente) { <span class="badge warn">Pendiente de sincronizar · {{ c.estado }}</span> } @else { <span class="badge" [class]="clase(c.estado)">{{ texto(c.estado) }}</span> }</td><td>{{ c.comprobante_numero ?? '—' }}</td>
-                  <td class="actions">@if (!c.pendiente) { <a class="btn sm" [routerLink]="['/tienda/compras', c.id]">Ver detalle</a> }</td>
+                  <td class="actions">@if (!c.pendiente) { <a class="btn sm" [routerLink]="['/tienda/compras', c.id]">Ver detalle</a> } @else if (puedeDeshacer(c.id)) { <button type="button" class="btn sm danger" (click)="deshacer(c.id)">Deshacer</button> }</td>
                 </tr>
               }
             </tbody>
@@ -65,6 +65,8 @@ export class MisComprasPage implements OnInit {
     }),
   ]);
   readonly mensaje = signal<string | null>(null);
+  puedeDeshacer(id: string | number) { const o = this.cola.operaciones().find((x) => x.id === id); return !!o && this.cola.puedeDeshacer(o); }
+  async deshacer(id: string | number) { const o = this.cola.operaciones().find((x) => x.id === id); if (o) await this.cola.deshacer(o); }
   readonly cargando = signal(true);
   readonly texto = (e: string) => TEXTO_ESTADO_PEDIDO[e as EstadoPedido] ?? e;
   readonly clase = (e: string) => CLASE_ESTADO_PEDIDO[e as EstadoPedido] ?? '';

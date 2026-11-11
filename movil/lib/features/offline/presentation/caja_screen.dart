@@ -6,6 +6,7 @@ import '../data/modelos.dart';
 import 'comprobante_provisional_accion.dart';
 import 'modo_offline_screen.dart' show fechaCorta;
 import 'offline_controller.dart';
+import 'operacion_acciones.dart';
 import 'operaciones_con_problema.dart';
 import 'registrar_offline_screen.dart';
 import 'resumen_turno_screen.dart';
@@ -88,12 +89,15 @@ class MiTurnoTab extends StatelessWidget {
         const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Todavía no registró ventas en este turno.'))),
       for (final o in ventas)
         Card(
-          child: ListTile(
-            title: Text(o.resumen, maxLines: 2, overflow: TextOverflow.ellipsis),
-            subtitle: Text('${fechaCorta(o.creadoEn)} · ${o.comprobante ?? ComprobanteProvisional.numero(o.sucursalId, o.id)}'),
-            trailing: Chip(label: Text(Estado.textos[o.estado] ?? o.estado), backgroundColor: _color(o.estado)),
-            onTap: () => verComprobanteProvisional(context, o),
-          ),
+          child: Column(children: [
+            ListTile(
+              title: Text(o.resumen, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text('${fechaCorta(o.creadoEn)} · ${o.comprobante ?? ComprobanteProvisional.numero(o.sucursalId, o.id)}'),
+              trailing: Chip(label: Text(Estado.textos[o.estado] ?? o.estado), backgroundColor: _color(o.estado)),
+              onTap: () => verComprobanteProvisional(context, o),
+            ),
+            Align(alignment: Alignment.centerLeft, child: Padding(padding: const EdgeInsets.only(left: 8, bottom: 4), child: AccionesOperacion(o))),
+          ]),
         ),
       OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ResumenTurnoScreen())),

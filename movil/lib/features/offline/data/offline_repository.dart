@@ -554,6 +554,45 @@ class OfflineRepository {
     await _guardarExtras(extras);
   }
 
+  /// Lo que devolvió una devolución sin enviar vuelve a ser devolvible (inverso de descontarDevolvible).
+  Future<void> restaurarDevolvible(String comprobante, Map<int, int> cantidades) async {
+    final extras = await _extras();
+    for (final v in (extras['ventas'] as List).cast<Map<String, dynamic>>().where((v) => v['comprobante'] == comprobante)) {
+      for (final i in (v['items'] as List).cast<Map<String, dynamic>>()) {
+        final cantidad = cantidades[i['pedido_item_id']];
+        if (cantidad != null) i['devolvible'] = (i['devolvible'] as int) + cantidad;
+      }
+    }
+    await _guardarExtras(extras);
+  }
+
+  /// Tipos que se pueden deshacer mientras no salieron del dispositivo (no la atención de reservas ni el cobro de una reserva).
+  static const tiposQueSeDeshacen = {'VENTA_CONTADO', 'COMPRA', 'RESERVA', 'CANCELAR_RESERVA', 'AJUSTE_INVENTARIO', 'RECEPCION', 'DEVOLUCION', 'PROPUESTA_PROVEEDOR'};
+
+  bool puedeDeshacer(OperacionLocal o) =>
+      o.estado == Estado.registradaLocal && tiposQueSeDeshacen.contains(o.tipo) && o.payload['reserva_codigo'] == null;
+
+  /// Borra la operación sin enviar y revierte su efecto en la copia local (stock o cantidad devolvible).
+  Future<bool> deshacerOperacion(OperacionLocal o) async {
+    if (!puedeDeshacer(o)) return false;
+    final p = o.payload;
+    final sucursal = o.sucursalId ?? 0;
+    switch (o.tipo) {
+      case 'VENTA_CONTADO' || 'COMPRA' || 'RESERVA':
+        for (final i in (p['items'] as List? ?? const []).cast<Map<String, dynamic>>()) {
+          await moverStockLocal(i['variante_id'] as int, sucursal, i['cantidad'] as int);
+        }
+      case 'RECEPCION':
+        await moverStockLocal(p['variante_id'] as int, sucursal, -(p['cantidad'] as int));
+      case 'AJUSTE_INVENTARIO':
+        await moverStockLocal(p['variante_id'] as int, sucursal, -(p['diferencia'] as int));
+      case 'DEVOLUCION':
+        await restaurarDevolvible('${p['comprobante']}', {for (final i in (p['items'] as List).cast<Map<String, dynamic>>()) i['pedido_item_id'] as int: i['cantidad'] as int});
+    }
+    await borrarOperacionLocal(o.id);
+    return true;
+  }
+
   /// B4: refleja en la copia local lo que se hizo sin conexión (la reserva preparada, la prenda no encontrada o la reserva ya atendida).
   Future<void> actualizarReservaLocal(int reservaId, {String? estado, int? itemNoEncontrado, bool quitar = false}) async {
     final extras = await _extras();

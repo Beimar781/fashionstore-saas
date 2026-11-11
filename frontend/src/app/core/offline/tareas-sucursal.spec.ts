@@ -31,10 +31,10 @@ describe('Tareas de la sucursal sin conexión (D3)', () => {
 
   it('la recepción y el ajuste quedan en la cola y cambian el stock local al instante', async () => {
     await tareas.recibir(100, 5, ' Envío 7 ', 'Camisa (S, Rojo)');
-    expect(registrar).toHaveBeenLastCalledWith('RECEPCION', { variante_id: 100, cantidad: 5, referencia: 'Envío 7' }, 1, 'Recepción de 5× Camisa (S, Rojo)');
+    expect(registrar).toHaveBeenLastCalledWith('RECEPCION', { variante_id: 100, cantidad: 5, referencia: 'Envío 7' }, 1, 'Recepción de 5× Camisa (S, Rojo)', { stock: [{ variante_id: 100, delta: 5 }] });
     expect(moverStock).toHaveBeenLastCalledWith(100, 1, 5);
     await tareas.ajustar(100, -2, 'MERMA', ' una menos ', 'Camisa (S, Rojo)');
-    expect(registrar).toHaveBeenLastCalledWith('AJUSTE_INVENTARIO', { variante_id: 100, diferencia: -2, motivo: 'MERMA', nota: 'una menos' }, 1, 'Ajuste de -2× Camisa (S, Rojo) (MERMA)');
+    expect(registrar).toHaveBeenLastCalledWith('AJUSTE_INVENTARIO', { variante_id: 100, diferencia: -2, motivo: 'MERMA', nota: 'una menos' }, 1, 'Ajuste de -2× Camisa (S, Rojo) (MERMA)', { stock: [{ variante_id: 100, delta: -2 }] });
     expect(moverStock).toHaveBeenLastCalledWith(100, 1, -2);
   });
 
