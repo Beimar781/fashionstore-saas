@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../primer_parcial/reservas/data/datos_entrega.dart' show msgNit;
 import 'package:provider/provider.dart';
 
@@ -158,7 +159,10 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
       } else {
         _lineas.add(_Linea(p, stock));
       }
+      _texto.clear();   // la prenda ya está en la venta: el buscador queda listo para la siguiente
+      _resultados = [];
     });
+    FocusScope.of(context).unfocus();
     if (_modo == 'COMPRA') _guardarCarrito();
   }
 
@@ -188,6 +192,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
   }
 
   int _iva = ivaPorcentajePorDefecto;
+  bool _panelAbierto = true;
 
   double get _total => _lineas.fold(0.0,
       (t, l) => t + double.parse(l.prenda.variante.precioFinal) * l.cantidad);
@@ -207,7 +212,18 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         DateTime(fecha.year, fecha.month, fecha.day, hora.hour, hora.minute));
   }
 
+  bool _registrando = false; // evita el doble toque (y la doble venta)
+
   Future<void> _registrar() async {
+    if (_registrando) return;
+    try {
+      await _registrarInterno();
+    } finally {
+      if (mounted && _registrando) setState(() => _registrando = false); // pase lo que pase, el botón vuelve a habilitarse
+    }
+  }
+
+  Future<void> _registrarInterno() async {
     final c = context.read<OfflineController>();
     final messenger = ScaffoldMessenger.of(context);
     if (_sucursalId == null) {
@@ -226,6 +242,8 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         _direccionEntrega.text.trim().isEmpty) {
       return setState(() => _error = 'Ingrese la dirección de entrega.');
     }
+    HapticFeedback.lightImpact();
+    setState(() => _registrando = true);
     OperacionLocal? venta;
     final items = [
       for (final l in _lineas)
@@ -299,9 +317,11 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         content: Text(c.enLinea
             ? 'Operación registrada; se está sincronizando.'
             : 'Operación guardada en este dispositivo. Se sincronizará al recuperar la conexión.'),
-        duration: const Duration(seconds: 10),
+        duration: const Duration(seconds: 6),
+        persist: false,
         action: vendida == null ? null : SnackBarAction(label: 'Comprobante', onPressed: () => verComprobanteProvisional(context, vendida))));
     setState(() {
+      _registrando = false;
       _lineas.clear();
       _resultados = [];
       _texto.clear();
@@ -482,46 +502,7 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
                 r.variante.stockEn(_sucursalId) == 0 ? null : () => _agregar(r),
           ),
       ]),
-      for (final l in _lineas)
-        ListTile(
-          dense: true,
-          title: Text(l.prenda.texto),
-          subtitle: Text('Bs ${l.prenda.variante.precioFinal} c/u'),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                onPressed: l.cantidad > 1
-                    ? () {
-                        setState(() => l.cantidad--);
-                        _guardarCarrito();
-                      }
-                    : null),
-            Text('${l.cantidad}'),
-            IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: l.cantidad < l.max
-                    ? () {
-                        setState(() => l.cantidad++);
-                        _guardarCarrito();
-                      }
-                    : null),
-            IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  setState(() => _lineas.remove(l));
-                  _guardarCarrito();
-                }),
-          ]),
-        ),
       if (_lineas.isNotEmpty) ...[
-        const Divider(),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text('Bs ${_total.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold))
-        ]),
-        Text('IVA incluido: Bs ${ivaIncluido(_total.toStringAsFixed(2), _iva)}', style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 8),
         if (c.esCliente && _modo == 'COMPRA')
           const Text(
               'Si cuando sincronice la prenda ya se agotó, le avisaremos y no se le cobrará nada.')
@@ -561,9 +542,67 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
         const SizedBox(height: 12),
       ],
     ]);
+    // la venta en curso (líneas, total e IVA) queda fija arriba del botón, colapsable; los resultados de la búsqueda se desplazan aparte
+    final panel = _lineas.isEmpty
+        ? const SizedBox.shrink()
+        : Material(
+            elevation: 4,
+            color: Theme.of(context).colorScheme.surface,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              InkWell(
+                  onTap: () => setState(() => _panelAbierto = !_panelAbierto),
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(children: [
+                        Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('Venta en curso · ${_lineas.fold<int>(0, (s, l) => s + l.cantidad)} prenda(s)', style: Theme.of(context).textTheme.bodySmall),
+                          Text('Total Bs ${_total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('IVA incluido: Bs ${ivaIncluido(_total.toStringAsFixed(2), _iva)}', style: Theme.of(context).textTheme.bodySmall),
+                        ])),
+                        Icon(_panelAbierto ? Icons.expand_more : Icons.expand_less),
+                      ]))),
+              if (_panelAbierto)
+                ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.28),
+                    child: ListView(shrinkWrap: true, children: [
+      for (final l in _lineas)
+        ListTile(
+          dense: true,
+          title: Text(l.prenda.texto),
+          subtitle: Text('Bs ${l.prenda.variante.precioFinal} c/u'),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: l.cantidad > 1
+                    ? () {
+                        setState(() => l.cantidad--);
+                        _guardarCarrito();
+                      }
+                    : null),
+            Text('${l.cantidad}'),
+            IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: l.cantidad < l.max
+                    ? () {
+                        setState(() => l.cantidad++);
+                        _guardarCarrito();
+                      }
+                    : null),
+            IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  setState(() => _lineas.remove(l));
+                  _guardarCarrito();
+                }),
+          ]),
+        ),
+                    ])),
+            ]));
     // el botón queda fijo abajo: ni el teclado ni los avisos lo tapan
-    return Column(children: [
-      Expanded(child: lista),
+    final cuerpo = Column(children: [
+      Expanded(child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () => FocusScope.of(context).unfocus(), child: lista)),
+      panel,
       if (_lineas.isNotEmpty)
         Material(
             elevation: 8,
@@ -573,10 +612,32 @@ class _RegistrarOfflineTabState extends State<RegistrarOfflineTab> {
                 child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: FilledButton(
-                        onPressed: _registrar,
+                        onPressed: _registrando ? null : _registrar,
                         child: Text(!c.esCliente
                             ? 'Registrar venta en el dispositivo'
                             : (_modo == 'COMPRA' ? 'Registrar compra en el dispositivo' : 'Registrar reserva en el dispositivo')))))),
     ]);
+    // con una venta en curso, «Atrás» pregunta antes de salir (el carrito del Cliente ya se guarda solo)
+    return PopScope(
+        canPop: c.esCliente || _lineas.isEmpty,
+        onPopInvokedWithResult: (salio, _) async {
+          if (salio) return;
+          final navegador = Navigator.of(context);
+          final descartar = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                    title: const Text('¿Descartar la venta en curso?'),
+                    content: const Text('Tiene prendas agregadas que todavía no se registraron.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Seguir vendiendo')),
+                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Descartar')),
+                    ],
+                  ));
+          if (descartar == true) {
+            setState(_lineas.clear);
+            navegador.pop();
+          }
+        },
+        child: cuerpo);
   }
 }

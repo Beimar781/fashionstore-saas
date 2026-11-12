@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/network/conectividad.dart';
+import 'core/ui/avisos.dart';
 import 'core/ui/tema.dart';
 import 'core/ui/area_segura.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -62,16 +63,13 @@ class FashionStoreApp extends StatelessWidget {
             ..alResumir = (texto, {bool conflicto = false}) {
               _mensajero.currentState
                 ?..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(
-                  content: Text(texto),
-                  duration: const Duration(seconds: 5),
-                  action: SnackBarAction(
-                      label: 'Ver detalle',
-                      onPressed: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => conflicto ? const ConflictosScreen() : const ModoOfflineScreen(pestana: 2))))));
+                ..showSnackBar(avisoConAccion(texto,
+                    etiqueta: 'Ver detalle',
+                    alPulsar: () => _navegador.currentState?.push(MaterialPageRoute<void>(builder: (_) => conflicto ? const ConflictosScreen() : const ModoOfflineScreen(pestana: 2)))));
             }
             ..alAvisar = (texto) {
               _mensajero.currentState?.hideCurrentSnackBar();
-              _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 5)));
+              _mensajero.currentState?.showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 5), persist: false));
             },
           update: (_, auth, offline) {
             if (auth.sesion == null) _mensajero.currentState?.clearSnackBars(); // al cerrar sesión no queda ningún aviso (ni en el Login)
@@ -96,8 +94,11 @@ class FashionStoreApp extends StatelessWidget {
         title: 'FashionStore',
         debugShowCheckedModeBanner: false,
         theme: Tema.claro(),
-        builder: (context, child) =>
-            AreaSeguraAplicacion(child: child ?? const SizedBox.shrink()),
+        // tocar fuera de un campo cierra el teclado en todas las pantallas (Caja, Carrito, Entrega, Devoluciones…)
+        builder: (context, child) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: AreaSeguraAplicacion(child: child ?? const SizedBox.shrink())),
         home: const _Raiz(),
       ),
     );
