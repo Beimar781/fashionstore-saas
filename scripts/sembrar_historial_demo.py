@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from sqlalchemy import delete, func, select  # noqa: E402
 from sqlalchemy.exc import OperationalError  # noqa: E402
 
+import app.db_models  # noqa: E402,F401  (registra TODOS los modelos: sin esto SQLAlchemy no resuelve claves foráneas como pedidos.reserva_id)
 from app.core.database import SessionLocal  # noqa: E402
 from app.core.tiempo import a_local, ahora  # noqa: E402
 from app.core.tipos import iva_incluido  # noqa: E402

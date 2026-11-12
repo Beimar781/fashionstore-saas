@@ -75,3 +75,19 @@ def test_04_el_resumen_muestra_ventas_por_sucursal_por_mes_y_top_5(inv, mundo, d
 
 def test_05_por_defecto_solo_apunta_a_emp_b():
     assert script.EMPRESA_POR_DEFECTO == "EMP-B"
+
+
+def test_06_el_script_carga_solo_todos_los_modelos_sin_otros_imports():
+    """Ejecutado como script (sin la app ni las pruebas) debe poder resolver todas las claves foráneas; si faltan modelos, el flush falla con NoReferencedTableError."""
+    import subprocess
+    import sys
+
+    codigo = (
+        "import importlib.util, sys; "
+        f"s = importlib.util.spec_from_file_location('sembrar', r'{RUTA}'); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+        "from sqlalchemy.orm import configure_mappers; configure_mappers(); "
+        "[fk.column for t in m.Pedido.metadata.sorted_tables for fk in t.foreign_keys]; "
+        "[fk.column for fk in m.Pedido.__table__.foreign_keys]; print('OK')"
+    )
+    r = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True, cwd=RUTA.parents[1] / "backend", timeout=120)
+    assert r.returncode == 0 and "OK" in r.stdout, r.stderr[-600:]
