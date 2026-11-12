@@ -406,6 +406,15 @@ python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.ra
 | 25.8 | Móvil | Todos | Perfil / inicio. | «Última sincronización: hh:mm», refrescar que gira, «Copiar diagnóstico» y aviso si la copia pasa de 24 h. | ☐ |
 | 25.9 | Móvil | Cliente | Catálogo: escribir con una letra mal. | Búsqueda con retraso de 300 ms, últimas 5 búsquedas y «¿Quiso decir…?». | ☐ |
 
+## 26. Historial de ventas de demostración (EMP-B)
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 26.1 | Terminal | — | `python scripts/sembrar_historial_demo.py --dry-run` con `DATABASE_URL` de Railway. | Muestra el plan (60 a 90 ventas, por sucursal, por mes, top 5) y no escribe nada. | ☐ |
+| 26.2 | Terminal | — | Sin `--dry-run`; luego repetirlo. | Siembra una vez; la segunda dice que ya está sembrado. El inventario no cambia. | ☐ |
+| 26.3 | Web | Administrador de EMP-B | Reportes con IA: «top 10 de productos más vendidos de los últimos 3 meses por sucursal» y «… últimos 6 meses». | Ranking por sucursal; los 6 meses incluyen más ventas. El administrador de EMP-A no ve nada de esto. | ☐ |
+| 26.4 | Terminal | — | `--borrar`. | Elimina solo las ventas «DH-…»; las ventas reales y el stock quedan igual. | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.
