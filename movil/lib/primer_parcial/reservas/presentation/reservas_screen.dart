@@ -37,6 +37,25 @@ class _ReservasScreenState extends State<ReservasScreen> {
   }
 
   int? _refrescoVisto;
+  String _filtro = 'Todas';
+  final _buscar = TextEditingController();
+
+  static const filtros = ['Todas', 'Activas', 'Canceladas', 'Con conflicto'];
+
+  /// Filtro rápido y búsqueda por código sobre la lista que se ve.
+  List<Map<String, dynamic>> _visibles() {
+    final q = _buscar.text.trim().toLowerCase();
+    return (_reservas ?? const <Map<String, dynamic>>[]).where((r) {
+      if (q.isNotEmpty && !'${r['codigo']}'.toLowerCase().contains(q)) return false;
+      final estado = '${r['estado']}';
+      return switch (_filtro) {
+        'Activas' => !['CANCELADA', 'COMPLETADA', 'VENCIDA', 'RECHAZADA', 'EN_CONFLICTO'].contains(estado),
+        'Canceladas' => estado == 'CANCELADA',
+        'Con conflicto' => false, // se ven en la tarjeta de arriba
+        _ => true,
+      };
+    }).toList();
+  }
 
   Future<void> _cargar() async {
     try {
@@ -221,14 +240,24 @@ class _ReservasScreenState extends State<ReservasScreen> {
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
             children: [
-              OperacionesConProblema(tipos: const ['RESERVA', 'CANCELAR_RESERVA'], titulo: 'Reservas que no se pudieron realizar', alElegirOtra: (prenda) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogoScreen(consultaInicial: prenda)))),
+              Wrap(spacing: 8, children: [
+                for (final f in filtros) ChoiceChip(label: Text(f), selected: _filtro == f, onSelected: (_) => setState(() => _filtro = f)),
+              ]),
+              TextField(controller: _buscar, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Buscar por código', prefixIcon: Icon(Icons.search))),
+              const SizedBox(height: 8),
+              if (_filtro == 'Todas' || _filtro == 'Con conflicto')
+                OperacionesConProblema(tipos: const ['RESERVA', 'CANCELAR_RESERVA'], titulo: 'Reservas que no se pudieron realizar', alElegirOtra: (prenda) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogoScreen(consultaInicial: prenda)))),
+              if (_filtro == 'Con conflicto' && !context.watch<OfflineController>().operaciones.any((o) => (o.tipo == 'RESERVA' || o.tipo == 'CANCELAR_RESERVA') && (o.estado == 'EN_CONFLICTO' || o.estado == 'RECHAZADA')))
+                const ListaVacia(icono: Icons.check_circle_outline, texto: 'No tiene reservas con conflicto.'),
               if (_error != null)
                 Text(_error!, style: const TextStyle(color: Colors.red)),
               if (_reservas == null && _error == null)
                 const Center(child: CircularProgressIndicator()),
               if (_reservas != null && _reservas!.isEmpty)
                 const ListaVacia(icono: Icons.event_outlined, texto: 'Todavía no tiene reservas. Use «Mi reserva» para apartar prendas.'),
-              for (final r in _reservas ?? const <Map<String, dynamic>>[])
+              if (_reservas != null && _reservas!.isNotEmpty && _visibles().isEmpty && _filtro != 'Con conflicto')
+                const ListaVacia(icono: Icons.search_off, texto: 'Sin resultados con ese filtro.'),
+              for (final r in _visibles())
                 Card(
                   child: ListTile(
                     title: Text('${r['codigo']} · ${r['estado']}'),

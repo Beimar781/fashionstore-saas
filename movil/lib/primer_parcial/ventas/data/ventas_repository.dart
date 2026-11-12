@@ -22,6 +22,10 @@ class VentasRepository {
   Future<Map<String, dynamic>> detalle(int pedidoId) =>
       _api.get('/compras/$pedidoId');
 
+  /// El cliente cancela un pedido que todavía no pagó (necesita conexión).
+  Future<Map<String, dynamic>> cancelarPedido(int pedidoId) =>
+      _api.post('/compras/$pedidoId/cancelar', {});
+
   /// Descarga el comprobante PDF a documentos persistentes y devuelve su ruta.
   Future<String> descargarComprobante(int pedidoId, String numero) async {
     final archivo = await _api.descargar('/compras/$pedidoId/comprobante');

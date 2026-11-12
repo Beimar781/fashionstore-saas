@@ -13,6 +13,7 @@ from app.primer_parcial.ventas.cu12_historial_compras.comprobante import generar
 from app.primer_parcial.ventas.cu12_historial_compras.repository import HistorialRepository
 from app.primer_parcial.ventas.models import Pedido
 
+MSG_SOLO_POR_PAGAR = "Solo se puede cancelar un pedido que está por pagar."
 MSG_SIN_COMPRAS = "Aún no has realizado ninguna compra en nuestras tiendas."  # excepción de la ficha CU-12
 
 
@@ -39,6 +40,14 @@ class HistorialService:
 
     def detalle(self, pedido_id: int) -> schemas.PedidoOut:
         return self.compras.salida([self._propio(pedido_id)])[0]
+
+    def cancelar(self, pedido_id: int) -> schemas.PedidoOut:
+        pedido = self._propio(pedido_id)
+        if pedido.estado != "PENDIENTE_PAGO":
+            raise Conflicto(MSG_SOLO_POR_PAGAR)
+        self.compras.cancelar(pedido, "Cancelado por el cliente.")
+        self.db.commit()
+        return self.compras.salida([pedido])[0]
 
     def comprobante(self, pedido_id: int) -> tuple[bytes, str]:
         pedido = self._propio(pedido_id)

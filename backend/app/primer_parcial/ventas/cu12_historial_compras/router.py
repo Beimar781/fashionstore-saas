@@ -23,6 +23,12 @@ def detalle_de_la_compra(pedido_id: int, ctx: Contexto = Depends(solo_cliente), 
     return HistorialService(db, ctx).detalle(pedido_id)
 
 
+@router.post("/{pedido_id}/cancelar", response_model=schemas.PedidoOut)
+def cancelar_pedido(pedido_id: int, ctx: Contexto = Depends(solo_cliente), db: Session = Depends(get_db)):
+    """El cliente cancela un pedido que todavía no pagó (no tenía stock apartado, así que no hay nada que liberar)."""
+    return HistorialService(db, ctx).cancelar(pedido_id)
+
+
 @router.get("/{pedido_id}/comprobante")
 def descargar_comprobante(pedido_id: int, ctx: Contexto = Depends(solo_cliente), db: Session = Depends(get_db)):
     pdf, nombre = HistorialService(db, ctx).comprobante(pedido_id)

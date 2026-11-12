@@ -25,6 +25,7 @@ export class ComprasApi {
   // CU-12
   compras(estado = '') { return this.http.get<Historial>(`${API_URL}/compras`, { params: estado ? new HttpParams().set('estado', estado) : undefined }); }
   compra(id: number) { return this.http.get<Pedido>(`${API_URL}/compras/${id}`); }
+  cancelarPedido(id: number) { return this.http.post<Pedido>(`${API_URL}/compras/${id}/cancelar`, {}); }
   comprobante(id: number) { return this.http.get(`${API_URL}/compras/${id}/comprobante`, { responseType: 'blob' }); }
 
   // CU-32

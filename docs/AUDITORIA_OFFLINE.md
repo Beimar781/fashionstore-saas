@@ -2,7 +2,7 @@
 
 Generada por `python scripts/auditar_offline.py` (revisión del código; la prueba con el service worker real se hace a mano, ver `PRUEBAS_SISTEMA.md` §17 a §20).
 
-**Resumen:** 46 pantallas web revisadas (46 OK, 0 con aviso, 0 con falla) · 57 puntos del móvil revisados (57 OK, 0 por revisar).
+**Resumen:** 46 pantallas web revisadas (46 OK, 0 con aviso, 0 con falla) · 59 puntos del móvil revisados (59 OK, 0 por revisar).
 
 ## Web: actor × pantalla × resultado
 
@@ -61,5 +61,5 @@ Generada por `python scripts/auditar_offline.py` (revisión del código; la prue
 |---|---|---|
 | (todos con salida sin conexión) | | OK |
 
-Total de puntos del móvil con salida sin conexión: 57 de 57.
+Total de puntos del móvil con salida sin conexión: 59 de 59.
 

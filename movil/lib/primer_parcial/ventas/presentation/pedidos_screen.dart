@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../core/util/mensajes_red.dart';
 import '../../../core/ui/refrescar.dart';
 import '../../../features/offline/presentation/lista_vacia.dart';
 import '../../../features/offline/data/estado_legible.dart';
@@ -212,6 +214,15 @@ class _PedidosScreenState extends State<PedidosScreen> {
               ]),
           actions: [
             if (p['estado'] == 'PENDIENTE_PAGO')
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _cancelarPedido(p);
+                },
+                child: const Text('Cancelar pedido'),
+              ),
+            if (p['estado'] == 'PENDIENTE_PAGO')
               FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
@@ -236,7 +247,29 @@ class _PedidosScreenState extends State<PedidosScreen> {
     }
   }
 
+  Future<void> _cancelarPedido(Map<String, dynamic> pedido) async {
+    final seguir = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text('¿Cancelar el pedido?'),
+              content: Text('${pedido['codigo']} todavía no se cobró. Al cancelarlo ya no podrá pagarlo.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Volver')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, cancelar pedido')),
+              ],
+            ));
+    if (seguir != true || !mounted) return;
+    try {
+      await _repo.cancelarPedido(pedido['id'] as int);
+      HapticFeedback.lightImpact();
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = mensajeAmigable(e));
+    }
+    await _cargar();
+  }
+
   Future<void> _pagar(Map<String, dynamic> pedido) async {
+    HapticFeedback.lightImpact();
     final resultado = await _pago.pagarPedido(
       pedidoId: pedido['id'] as int,
       pedidoCodigo: pedido['codigo'] as String?,

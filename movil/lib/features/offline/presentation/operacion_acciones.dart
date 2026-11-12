@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../data/linea_de_tiempo.dart';
@@ -67,5 +68,6 @@ Future<void> deshacerConConfirmacion(BuildContext context, OperacionLocal operac
               FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, deshacer')),
             ],
           ));
+  if (seguir == true) HapticFeedback.lightImpact();
   if (seguir == true && await c.deshacer(operacion)) alDeshacer?.call();
 }

@@ -122,6 +122,7 @@ ETIQUETAS: list[Etiqueta] = [
     E("PUT", "/carrito/sucursal", "MODIFICAR", "carrito", "Cambió la sucursal del carrito"),
     E("DELETE", "/carrito", "ELIMINAR", "carrito", "Vació el carrito"),
     E("POST", "/compras/checkout", "CREAR", "pedido", "Confirmó el pedido[ {codigo}][ por Bs {total}]"),
+    E("POST", "/compras/{pedido_id}/cancelar", "CANCELAR", "pedido", "Canceló el pedido #{pedido_id} que estaba por pagar"),
     E("POST", "/pagos/pedidos/{pedido_id}/iniciar", "PAGAR", "pago", "Inició el pago con tarjeta del pedido #{pedido_id}"),
     E("POST", "/pagos/{pago_id}/confirmar", "PAGAR", "pago", "Pagó el pedido[ {pedido.codigo}][ por Bs {pedido.total}] con tarjeta"),
     E("POST", "/pagos/{pago_id}/reconciliar", "PAGAR", "pago", "Verificó el estado del pago[ del pedido {pedido.codigo}]"),

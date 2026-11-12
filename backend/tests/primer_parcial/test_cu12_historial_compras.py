@@ -1,6 +1,6 @@
 """CU-12 Consultar historial de compras — pasos de la ficha (5.2.1) y aislamiento."""
 from tests.catalogo_util import cabecera_cliente, entrar
-from tests.compras_util import SIN_FONDOS, TIMEOUT, agregar_ok, checkout_ok, comprar, pagar, stock_listo
+from tests.compras_util import SIN_FONDOS, TIMEOUT, agregar_ok, checkout_ok, comprar, iniciar, pagar, stock_listo
 
 MSG_SIN_COMPRAS = "Aún no has realizado ninguna compra en nuestras tiendas."
 
@@ -110,3 +110,22 @@ def test_11_el_pedido_por_pagar_no_se_ve_a_otro_cliente_ni_a_otra_empresa(inv, m
     for h in (entrar(client, mundo.a, "otro@a.com"), cabecera_cliente(datos, mundo.b)):
         assert client.get("/api/compras", headers=h).json() == {"compras": [], "mensaje": MSG_SIN_COMPRAS}
         assert client.get(f"/api/compras/{p['id']}", headers=h).status_code == 404
+
+
+def test_12_el_cliente_cancela_un_pedido_por_pagar_y_ya_no_se_puede_pagar(inv, mundo, client):
+    stock_listo(inv, mundo)
+    agregar_ok(client, inv.h_cliente, inv.v_sm_rojo, inv.centro)
+    p = checkout_ok(client, inv.h_cliente)
+    r = client.post(f"/api/compras/{p['id']}/cancelar", headers=inv.h_cliente)
+    assert r.status_code == 200 and r.json()["estado"] == "CANCELADO"
+    assert client.get("/api/compras", headers=inv.h_cliente).json()["compras"] == []  # un pedido cancelado no es una compra
+    assert iniciar(client, inv.h_cliente, p["id"]).status_code == 409  # ya no se puede pagar
+    assert client.post(f"/api/compras/{p['id']}/cancelar", headers=inv.h_cliente).status_code == 409
+
+
+def test_13_no_se_cancela_una_compra_pagada_ni_la_de_otro(inv, mundo, tienda_b, datos, client):
+    stock_listo(inv, mundo)
+    pagada = comprar(client, inv.h_cliente, inv, inv.v_sm_rojo, 1)
+    r = client.post(f"/api/compras/{pagada['id']}/cancelar", headers=inv.h_cliente)
+    assert r.status_code == 409 and r.json()["detail"] == "Solo se puede cancelar un pedido que está por pagar."
+    assert client.post(f"/api/compras/{pagada['id']}/cancelar", headers=cabecera_cliente(datos, mundo.b)).status_code == 404

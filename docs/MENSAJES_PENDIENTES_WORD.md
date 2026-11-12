@@ -952,4 +952,4 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - El acceso «Conflictos de sincronización» del Encargado muestra una insignia con los conflictos del servidor (con red) o los locales (sin red).
 - La Caja muestra la venta en curso (líneas, total e IVA incluido) en un panel fijo sobre el botón «Registrar venta».
 - «Mis compras» pone primero y resalta los pedidos «Por pagar»; filtros rápidos (Todas, Por pagar, Pagadas, Con conflicto) y búsqueda por código.
-- **Cancelar pedido por pagar:** no existe el endpoint para el Cliente, así que el botón no se muestra (un pedido por pagar no reserva stock). Queda anotado como mejora.
+- **Cancelar pedido por pagar (CU-12):** `POST /compras/{id}/cancelar` (200). Solo el dueño y solo si está `PENDIENTE_PAGO`; un pedido por pagar no reserva stock, así que no hay nada que liberar. Si ya está pagado o cancelado responde 409 «Solo se puede cancelar un pedido que está por pagar.»; de otro cliente u otra empresa, 404. Queda en la bitácora como CANCELAR. Plazo para pagar: no existe en el modelo, por eso no se muestra.

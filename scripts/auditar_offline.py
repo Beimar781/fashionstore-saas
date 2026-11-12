@@ -34,6 +34,7 @@ ACEPTADOS_MOVIL = {
     ("features/auth/presentation/registro_screen.dart", "CircularProgressIndicator"): "indicador dentro del botón «Crear cuenta»; termina al responder",
     ("primer_parcial/catalogo/presentation/catalogo_screen.dart", "CircularProgressIndicator"): "paginación: `_mas` vuelve a false en `finally`",
     ("primer_parcial/ia/vestidor/presentation/vestidor_screen.dart", "CircularProgressIndicator"): "`cargando` pasa a false también en error (muestra el mensaje)",
+    ("features/offline/presentation/estado_sync_tile.dart", "CircularProgressIndicator"): "solo gira mientras `sincronizando`/`descargando` es true; ambos vuelven a false al terminar o fallar",
     ("primer_parcial/ventas/presentation/boton_comprobante.dart", "CircularProgressIndicator"): "indicador dentro del botón; termina al responder o fallar",
     ("primer_parcial/reservas/data/pago_movil.dart", "catch ApiException"): "devuelve un resultado de pago con el mensaje (nunca queda en espera)",
     ("primer_parcial/reservas/presentation/reservas_screen.dart", "catch ApiException"): "usa la copia guardada y, si no hay, el mensaje «Sin conexión: todavía no se descargaron sus reservas.»",

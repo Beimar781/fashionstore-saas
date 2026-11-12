@@ -23,6 +23,7 @@ const MSG_COMPROBANTE_SIN_CACHE = 'Sin conexión: este comprobante todavía no s
       @if (pedido(); as p) {
         <div class="page-head" style="margin-top:.4rem">
           <div><h1>{{ p.codigo }}</h1><p><span class="badge" [class]="CLASE[p.estado]">{{ TEXTO[p.estado] }}</span> · {{ (p.pagado_en ?? p.creado_en) | date: 'dd/MM/yyyy HH:mm' }} · {{ p.sucursal }}</p></div>
+          @if (p.estado === 'PENDIENTE_PAGO') { <button class="btn danger" (click)="cancelarPedido(p)">Cancelar pedido</button> }
           @if (p.estado === 'PAGADO') { <button class="btn primary" (click)="descargar(p)">⬇ Descargar comprobante</button> }
           @if (p.estado === 'PENDIENTE_CONFIRMACION') { <button class="btn primary" (click)="verificar(p)" [disabled]="verificando()">{{ verificando() ? 'Verificando…' : 'Verificar estado del pago' }}</button> }
         </div>
@@ -108,6 +109,11 @@ export class CompraDetallePage implements OnInit {
   }
 
   private abrirPdf(blob: Blob, p: Pedido) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${p.comprobante_numero}.pdf`; a.click(); URL.revokeObjectURL(a.href); }
+
+  cancelarPedido(p: Pedido) {
+    if (!confirm(`¿Cancelar el pedido ${p.codigo}? Todavía no se cobró nada.`)) return;
+    this.api.cancelarPedido(p.id).subscribe({ next: (r) => { this.pedido.set(r); this.toast.ok(`Pedido ${p.codigo} cancelado.`); }, error: (e) => { this.toast.error(mensajeError(e)); this.cargar(); } });
+  }
 
   verificar(p: Pedido) {
     const pago = [...p.pagos].reverse().find((g) => g.estado === 'PENDIENTE_CONFIRMACION');
