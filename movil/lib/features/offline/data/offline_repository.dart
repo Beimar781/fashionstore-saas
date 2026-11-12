@@ -149,6 +149,9 @@ class OfflineRepository {
     });
   }
 
+  /// Cuántos conflictos pendientes tiene el servidor (los de toda la sucursal/empresa que ve el Encargado).
+  Future<int> contarConflictos() async => (await _api.getLista('/offline/conflictos')).length;
+
   Future<String?> catalogoGeneradoEn() => _meta('catalogo_generado_en');
 
   /// Tasa de IVA del servidor guardada con el catálogo (13 % si todavía no se descargó).

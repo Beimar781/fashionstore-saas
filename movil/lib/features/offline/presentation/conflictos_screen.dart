@@ -30,6 +30,7 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
   bool _desdeCopia = false; // sin conexión: se ve la última lista guardada, pero resolver necesita Internet
   String? _fechaCopia;
   int? _refrescoVisto;
+  final Map<String, int> _stockHoy = {}; // «producto|talla|color» → unidades que hay hoy según la copia local del Encargado
 
   ApiClient get _api => widget.api ?? context.read<AuthRepository>().api;
 
@@ -43,11 +44,37 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
     try {
       ApiClient.lecturaLocalDesde = null;
       final lista = (await _api.getLista('/offline/conflictos')).cast<Map<String, dynamic>>();
+      await _leerStockHoy(lista);
       if (mounted) setState(() { _conflictos = lista; _error = null; _fechaCopia = ApiClient.lecturaLocalDesde; _desdeCopia = _fechaCopia != null; });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.sinConexion ? 'Sin conexión: los conflictos se resuelven cuando hay Internet. Todavía no se guardó ninguna lista.' : e.mensaje);
     }
   }
+
+  /// Busca en la copia local cuánto hay hoy de cada prenda en falta; si la prenda no está en la copia, se usa lo que informó el servidor.
+  Future<void> _leerStockHoy(List<Map<String, dynamic>> lista) async {
+    if (!mounted) return;
+    OfflineController? c;
+    try {
+      c = context.read<OfflineController>();
+    } catch (_) {
+      return; // en las pruebas puede no haber controlador
+    }
+    final sucursal = c.sesion?.sucursalId;
+    for (final conflicto in lista) {
+      for (final f in ((conflicto['detalle'] as Map?)?['faltantes'] as List? ?? const []).cast<Map<String, dynamic>>()) {
+        final prendas = await c.repo.buscar('${f['producto']}', limite: 50);
+        final p = prendas.where((x) => x.variante.talla == f['talla'] && x.variante.color == f['color']).firstOrNull;
+        if (p != null) _stockHoy['${f['producto']}|${f['talla']}|${f['color']}'] = p.variante.stockEn(sucursal);
+      }
+    }
+  }
+
+  int _hoyHay(Map<String, dynamic> f) => _stockHoy['${f['producto']}|${f['talla']}|${f['color']}'] ?? (f['disponibles'] as int);
+
+  /// «Reintentar» solo tiene sentido si ahora alcanza para todo lo que se pidió.
+  bool _sinStock(Map<String, dynamic> c) =>
+      ((c['detalle'] as Map?)?['faltantes'] as List? ?? const []).cast<Map<String, dynamic>>().any((f) => _hoyHay(f) < (f['solicitadas'] as int));
 
   Future<void> _resolver(Map<String, dynamic> c, Map<String, dynamic> cuerpo) async {
     final mensajes = ScaffoldMessenger.of(context);
@@ -60,6 +87,11 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
     }
     if (mounted) setState(() => _trabajando = false);
     await _cargar();
+    if (mounted) {
+      try {
+        await context.read<OfflineController>().refrescarConflictos();
+      } catch (_) {}
+    }
   }
 
   Future<void> _descartar(Map<String, dynamic> c) async {
@@ -143,7 +175,7 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
                 const SizedBox(height: 4),
                 const Text('Qué pidió ese dispositivo:', style: TextStyle(fontWeight: FontWeight.w600)),
                 for (final f in ((c['detalle'] as Map?)?['faltantes'] as List? ?? const []).cast<Map<String, dynamic>>())
-                  Text('• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hay hoy ${f['disponibles']}, faltan ${(f['solicitadas'] as int) - (f['disponibles'] as int)}'),
+                  Text('• ${f['producto']} (${f['talla']}, ${f['color']}): pidió ${f['solicitadas']}, hoy hay ${_hoyHay(f)}${_hoyHay(f) < (f['solicitadas'] as int) ? ', faltan ${(f['solicitadas'] as int) - _hoyHay(f)}' : ''}'),
                 if (c['tipo'] == 'VENTA_CONTADO' && c['monto_a_devolver'] != null)
                   Container(
                     margin: const EdgeInsets.only(top: 8),
@@ -153,7 +185,8 @@ class _ConflictosScreenState extends State<ConflictosScreen> {
                   ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, children: [
-                  FilledButton(onPressed: _trabajando || _desdeCopia ? null : () => _resolver(c, {'accion': 'REINTENTAR'}), child: const Text('Reintentar')),
+                  FilledButton(onPressed: _trabajando || _desdeCopia || _sinStock(c) ? null : () => _resolver(c, {'accion': 'REINTENTAR'}), child: const Text('Reintentar')),
+                  if (_sinStock(c)) const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('Sin stock todavía', style: TextStyle(color: Color(0xFF9A5B00), fontWeight: FontWeight.w600))),
                   OutlinedButton(onPressed: _trabajando || _desdeCopia ? null : () => _descartar(c), child: const Text('Descartar…')),
                 ]),
               ]),

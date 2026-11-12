@@ -76,6 +76,22 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
       operaciones.where((o) => o.pendiente).toList();
   List<OperacionLocal> get enConflicto =>
       operaciones.where((o) => o.estado == Estado.enConflicto).toList();
+  /// Conflictos pendientes que informó el servidor (solo el Encargado los consulta); null si todavía no se sabe.
+  int? conflictosServidor;
+
+  /// Lo que muestra la insignia del acceso «Conflictos»: con red, los del servidor (ya incluyen los propios); sin red, los locales EN_CONFLICTO.
+  int get conflictosPendientes => esEncargado && enLinea && conflictosServidor != null ? conflictosServidor! : enConflicto.length;
+
+  Future<void> refrescarConflictos() async {
+    if (!esEncargado || !enLinea || simulado) return;
+    try {
+      conflictosServidor = await _repo.contarConflictos();
+      notifyListeners();
+    } catch (_) {
+      // sin respuesta: se queda el último número conocido
+    }
+  }
+
   bool get esCliente => _sesion?.rol == 'Cliente';
   bool get esEncargado => _sesion?.rol == 'Encargado';
   bool get habilitado =>
@@ -113,6 +129,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
         await recargar();
         await sincronizar();
         await _renovarTarjetas();
+        await refrescarConflictos();
         if (descargaAutomatica && enLinea && !descargando) {
           await descargarCatalogo(); // RN21: en cada inicio de sesión la copia se renueva, sin esperar los 15 minutos (puede venir de otro usuario o rol)
         }
@@ -209,6 +226,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     if (hayRed && pendientes.isNotEmpty) sincronizar();
     if (hayRed) actualizarTrasReconectar();
     if (hayRed) _renovarTarjetas();
+    if (hayRed) refrescarConflictos();
   }
 
   Future<void> recargar() async {
@@ -409,6 +427,7 @@ class OfflineController extends ChangeNotifier with WidgetsBindingObserver {
     _contarEstadosFinales(resumen);
     refresco++;
     notifyListeners();
+    refrescarConflictos();
     for (final aviso in resumen.avisos) {
       _avisar(aviso);
     }

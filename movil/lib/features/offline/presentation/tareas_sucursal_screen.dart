@@ -342,6 +342,21 @@ class _ReservasTabState extends State<ReservasTab> {
     await _cargar();
   }
 
+  Future<void> _marcarNoEncontrada(Map<String, dynamic> r, Map<String, dynamic> item) async {
+    final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Marcar como no encontrada?'),
+        content: Text('${item['producto']} (${item['talla']}, ${item['color']}) se marcará como no encontrada en la reserva ${r['codigo']}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Volver')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí, no está')),
+        ],
+      ),
+    );
+    if (seguir == true) await _tarea(r, 'PRENDA_NO_ENCONTRADA', 'Prenda no encontrada de la reserva', {'item_id': item['id']}, itemNoEncontrado: item['id'] as int);
+  }
+
   Future<void> _atender(Map<String, dynamic> r) async {
     final lleva = await showDialog<bool>(
       context: context,
@@ -384,9 +399,15 @@ class _ReservasTabState extends State<ReservasTab> {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   title: Text('${i['cantidad']}× ${i['producto']} (${i['talla']}, ${i['color']})'),
-                  subtitle: Text('${i['estado']}'),
+                  subtitle: i['estado'] == 'NO_ENCONTRADO'
+                      ? const Row(children: [Icon(Icons.report_problem_outlined, size: 16, color: Color(0xFF9A5B00)), SizedBox(width: 4), Text('No encontrada', style: TextStyle(color: Color(0xFF9A5B00), fontWeight: FontWeight.w600))])
+                      : Text('${i['estado']}'),
                   trailing: i['estado'] == 'RESERVADO' && r['estado'] != 'EN_PROBADOR'
-                      ? TextButton(onPressed: () => _tarea(r, 'PRENDA_NO_ENCONTRADA', 'Prenda no encontrada de la reserva', {'item_id': i['id']}, itemNoEncontrado: i['id'] as int), child: const Text('No encontrada'))
+                      ? OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF9A5B00), side: const BorderSide(color: Color(0xFF9A5B00)), minimumSize: const Size(48, 44)),
+                          onPressed: () => _marcarNoEncontrada(r, i),
+                          icon: const Icon(Icons.search_off, size: 18),
+                          label: const Text('Marcar no encontrada'))
                       : null,
                 ),
               Wrap(spacing: 12, runSpacing: 8, children: [

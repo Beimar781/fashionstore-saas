@@ -5,9 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Servidor falso: un conflicto de venta de contado y registro de cómo se resuelve.
 class ApiFalsa extends ApiClient {
-  ApiFalsa({this.sinRed = false}) : super(obtenerToken: () async => null, renovarToken: () async => false);
+  ApiFalsa({this.sinRed = false, this.disponibles = 1}) : super(obtenerToken: () async => null, renovarToken: () async => false);
 
   final bool sinRed;
+  final int disponibles;
   final resoluciones = <Map<String, dynamic>>[];
 
   @override
@@ -19,7 +20,7 @@ class ApiFalsa extends ApiClient {
         'mensaje': 'No hay existencias suficientes para esta operación. No se descontó nada.',
         'detalle': {
           'faltantes': [
-            {'variante_id': 100, 'producto': 'Camisa Oxford', 'talla': 'S', 'color': 'Rojo', 'solicitadas': 3, 'disponibles': 1}
+            {'variante_id': 100, 'producto': 'Camisa Oxford', 'talla': 'S', 'color': 'Rojo', 'solicitadas': 3, 'disponibles': disponibles}
           ]
         },
         'monto_a_devolver': '300.00',
@@ -41,7 +42,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: ConflictosScreen(api: api)));
     await tester.pumpAndSettle();
     expect(find.textContaining('Qué pasó: No hay existencias suficientes'), findsOneWidget);
-    expect(find.textContaining('pidió 3, hay hoy 1, faltan 2'), findsOneWidget);
+    expect(find.textContaining('pidió 3, hoy hay 1, faltan 2'), findsOneWidget);
     expect(find.textContaining('El cliente entregó Bs 350.00 en caja'), findsOneWidget);
     expect(find.textContaining('debe devolverle Bs 300.00'), findsOneWidget);
 
@@ -68,8 +69,18 @@ void main() {
     expect(find.textContaining('Se devolvieron Bs 300.00'), findsOneWidget);
   });
 
-  testWidgets('Reintentar manda la acción al servidor', (tester) async {
+  testWidgets('Con 0 o pocas unidades hoy, «Reintentar» queda deshabilitado y dice «Sin stock todavía»', (tester) async {
     final api = ApiFalsa();
+    await tester.pumpWidget(MaterialApp(home: ConflictosScreen(api: api)));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin stock todavía'), findsOneWidget);
+    await tester.tap(find.text('Reintentar'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(api.resoluciones, isEmpty);
+  });
+
+  testWidgets('Reintentar manda la acción al servidor', (tester) async {
+    final api = ApiFalsa(disponibles: 3);
     await tester.pumpWidget(MaterialApp(home: ConflictosScreen(api: api)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Reintentar'));

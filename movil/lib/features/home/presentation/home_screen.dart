@@ -19,6 +19,7 @@ import '../../offline/presentation/caja_en_linea_screen.dart';
 import '../../offline/presentation/caja_screen.dart';
 import '../../offline/presentation/conflictos_screen.dart';
 import '../../offline/presentation/estado_conexion_chip.dart';
+import '../../offline/presentation/estado_sync_tile.dart';
 import '../../offline/presentation/modo_offline_screen.dart';
 import '../../offline/presentation/tareas_sucursal_screen.dart';
 import '../../offline/presentation/offline_controller.dart';
@@ -179,7 +180,7 @@ class HomeScreen extends StatelessWidget {
           ],
           if ((s.rol == 'Cajero' || s.rol == 'Encargado') && offline.habilitado && !s.restringido) ...[
             if (s.rol == 'Encargado') _acceso(context, Icons.assignment_outlined, 'Tareas de la sucursal', 'Recepción, ajuste de inventario y reservas, con o sin conexión', const TareasSucursalScreen()),
-            if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, offline.enConflicto.isEmpty ? 'Conflictos de sincronización' : 'Conflictos de sincronización (${offline.enConflicto.length})', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen()),
+            if (s.rol == 'Encargado') _acceso(context, Icons.warning_amber_outlined, 'Conflictos de sincronización', 'Reintente o descarte lo que no alcanzó en el inventario (con conexión)', const ConflictosScreen(), contador: offline.conflictosPendientes, alVolver: offline.refrescarConflictos),
           ],
           if (!const ['Cliente', 'Cajero', 'Encargado'].contains(s.rol))
             // Proveedor, Administrador y SuperAdministrador trabajan en la web; en la app solo ven su contexto guardado (nunca un spinner infinito)
@@ -201,6 +202,8 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           if (s.rol == 'Cajero' || s.rol == 'Encargado') const OperacionesConProblema(tipos: ['VENTA_CONTADO'], titulo: 'Ventas con problema'),
+          const EstadoSyncTile(),
+          const CopiarDiagnosticoTile(),
           const InterruptorSimulacion(),
           if (offline.habilitado && !s.restringido)
             _acceso(
@@ -216,19 +219,12 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _abrir(BuildContext context, Widget pantalla) => Navigator.of(context)
+  Future<void> _abrir(BuildContext context, Widget pantalla) => Navigator.of(context)
       .push(MaterialPageRoute<void>(builder: (_) => pantalla));
 
   Widget _acceso(BuildContext context, IconData icono, String titulo,
-          String detalle, Widget pantalla) =>
-      Card(
-        child: ListTile(
-            leading: Icon(icono),
-            title: Text(titulo),
-            subtitle: Text(detalle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _abrir(context, pantalla)),
-      );
+          String detalle, Widget pantalla, {int contador = 0, Future<void> Function()? alVolver}) =>
+      AccesoHome(icono: icono, titulo: titulo, detalle: detalle, pantalla: pantalla, contador: contador, alVolver: alVolver);
 
   Widget _fila(String etiqueta, String valor) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -424,6 +420,8 @@ class _PerfilCliente extends StatelessWidget {
           if (!sesion.restringido)
             _acceso(context, Icons.credit_card, 'Tarjetas guardadas',
                 const TarjetasScreen()),
+          const EstadoSyncTile(),
+          const CopiarDiagnosticoTile(),
           const InterruptorSimulacion(),
           Card(
               child: ListTile(
@@ -463,6 +461,33 @@ class _AvisosOffline extends StatelessWidget {
                   offline.enConflicto.isNotEmpty
               ? 'Consulte las operaciones en Perfil → Modo sin conexión.'
               : 'Datos al ${fechaCorta(offline.catalogoGeneradoEn)}; pueden estar desactualizados. Se muestra el catálogo guardado hasta recuperar la red.')));
+}
+
+/// Acceso del inicio a una pantalla; con `contador` mayor que 0 muestra una insignia roja con la cantidad (p. ej. conflictos pendientes).
+class AccesoHome extends StatelessWidget {
+  const AccesoHome({super.key, required this.icono, required this.titulo, required this.detalle, required this.pantalla, this.contador = 0, this.alVolver});
+
+  final IconData icono;
+  final String titulo;
+  final String detalle;
+  final Widget pantalla;
+  final int contador;
+  final Future<void> Function()? alVolver;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: ListTile(
+            leading: Icon(icono),
+            title: Text(titulo),
+            subtitle: Text(detalle),
+            trailing: contador > 0
+                ? Row(mainAxisSize: MainAxisSize.min, children: [Badge(label: Text('$contador'), backgroundColor: Colors.red), const SizedBox(width: 8), const Icon(Icons.chevron_right)])
+                : const Icon(Icons.chevron_right),
+            onTap: () async {
+              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => pantalla));
+              await alVolver?.call();
+            }),
+      );
 }
 
 /// Campana de la barra superior con el contador de avisos sin leer; abre «Avisos». Funciona sin conexión con los avisos guardados.
@@ -520,9 +545,37 @@ class _AvisosScreenState extends State<AvisosScreen> {
     }
   }
 
+  Future<void> _marcarTodos() async {
+    final push = context.read<PushController>();
+    for (final a in [...push.avisos]) {
+      await push.leer(a);
+    }
+    if (mounted) setState(() => _vistos = []);
+  }
+
+  bool _esDeHoy(AvisoPush a) {
+    final f = a.creada?.toLocal();
+    final ahora = DateTime.now();
+    return f == null || (f.year == ahora.year && f.month == ahora.month && f.day == ahora.day);
+  }
+
+  Widget _tarjeta(BuildContext context, AvisoPush a) {
+    final abreCompra = a.referenciaTipo == 'PEDIDO' && a.referenciaId != null && context.read<AuthController>().sesion?.rol == 'Cliente';
+    return Card(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        child: ListTile(
+            leading: const Icon(Icons.notifications_active),
+            title: Text(a.titulo),
+            subtitle: Text(a.mensaje),
+            trailing: abreCompra ? const Icon(Icons.chevron_right) : null,
+            onTap: abreCompra ? () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PedidosScreen(abrirPedidoId: a.referenciaId))) : null));
+  }
+
   @override
   Widget build(BuildContext context) {
     final vistos = _vistos ?? const <AvisoPush>[];
+    final hoy = vistos.where(_esDeHoy).toList();
+    final anteriores = vistos.where((a) => !_esDeHoy(a)).toList();
     return Scaffold(
         appBar: AppBar(title: const Text('Avisos')),
         body: RefreshIndicator(
@@ -540,10 +593,16 @@ class _AvisosScreenState extends State<AvisosScreen> {
                           Text('No hay avisos nuevos.', style: TextStyle(fontWeight: FontWeight.w600)),
                           Text('Aquí verá las respuestas a sus compras, reservas y devoluciones.', textAlign: TextAlign.center),
                         ])),
-                  for (final a in vistos)
-                    Card(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        child: ListTile(leading: const Icon(Icons.notifications_active), title: Text(a.titulo), subtitle: Text(a.mensaje))),
+                  if (vistos.isNotEmpty)
+                    Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: _marcarTodos, icon: const Icon(Icons.done_all), label: const Text('Marcar todos como leídos'))),
+                  if (hoy.isNotEmpty) ...[
+                    Padding(padding: const EdgeInsets.fromLTRB(4, 4, 4, 6), child: Text('Hoy', style: Theme.of(context).textTheme.titleSmall)),
+                    for (final a in hoy) _tarjeta(context, a),
+                  ],
+                  if (anteriores.isNotEmpty) ...[
+                    Padding(padding: const EdgeInsets.fromLTRB(4, 12, 4, 6), child: Text('Anteriores', style: Theme.of(context).textTheme.titleSmall)),
+                    for (final a in anteriores) _tarjeta(context, a),
+                  ],
                 ])));
   }
 }
