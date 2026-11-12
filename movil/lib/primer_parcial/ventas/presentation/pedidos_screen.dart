@@ -23,8 +23,11 @@ String _estadoCompra(Object? e) => const {'PENDIENTE_PAGO': 'Por pagar', 'PENDIE
 
 /// Historial de compras del cliente (CU-12): compras digitales y de mostrador, con su estado y comprobante.
 class PedidosScreen extends StatefulWidget {
-  const PedidosScreen({super.key, this.integrado = false});
+  const PedidosScreen({super.key, this.integrado = false, this.abrirPedidoId});
   final bool integrado;
+
+  /// Si llega desde un aviso, se abre directamente el detalle de ese pedido.
+  final int? abrirPedidoId;
 
   @override
   State<PedidosScreen> createState() => _PedidosScreenState();
@@ -47,6 +50,27 @@ class _PedidosScreenState extends State<PedidosScreen> {
   }
 
   int? _refrescoVisto;
+  bool _yaAbierto = false;
+  String _filtro = 'Todas';
+  final _buscar = TextEditingController();
+
+  static const filtros = ['Todas', 'Por pagar', 'Pagadas', 'Con conflicto'];
+
+  /// Lista que se ve: primero las que están por pagar, luego filtro rápido y búsqueda por código.
+  List<Map<String, dynamic>> _visibles() {
+    final q = _buscar.text.trim().toLowerCase();
+    final todas = [...(_compras ?? const <Map<String, dynamic>>[])]
+      ..sort((a, b) => (b['estado'] == 'PENDIENTE_PAGO' ? 1 : 0).compareTo(a['estado'] == 'PENDIENTE_PAGO' ? 1 : 0));
+    return todas.where((c) {
+      if (q.isNotEmpty && !'${c['codigo']}'.toLowerCase().contains(q)) return false;
+      return switch (_filtro) {
+        'Por pagar' => c['estado'] == 'PENDIENTE_PAGO',
+        'Pagadas' => c['estado'] == 'PAGADO',
+        'Con conflicto' => false, // los conflictos se ven en su tarjeta de arriba
+        _ => true,
+      };
+    }).toList();
+  }
 
   Future<void> _cargar() async {
     try {
@@ -65,6 +89,12 @@ class _PedidosScreenState extends State<PedidosScreen> {
           _compras = c;
           _error = null;
         });
+        final abrir = widget.abrirPedidoId;
+        if (abrir != null && !_yaAbierto) {
+          _yaAbierto = true;
+          final pedido = c.where((x) => x['id'] == abrir).firstOrNull;
+          if (pedido != null) WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _ver(pedido); });
+        }
       }
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -280,18 +310,32 @@ class _PedidosScreenState extends State<PedidosScreen> {
             padding: EdgeInsets.fromLTRB(
                 16, 16, 16, MediaQuery.viewPaddingOf(context).bottom + 16),
             children: [
-              OperacionesConProblema(tipos: const ['COMPRA'], titulo: 'Compras que no se pudieron realizar', alElegirOtra: (prenda) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogoScreen(consultaInicial: prenda)))),
+              Wrap(spacing: 8, children: [
+                for (final f in filtros) ChoiceChip(label: Text(f), selected: _filtro == f, onSelected: (_) => setState(() => _filtro = f)),
+              ]),
+              TextField(controller: _buscar, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Buscar por código', prefixIcon: Icon(Icons.search))),
+              const SizedBox(height: 8),
+              if (_filtro == 'Todas' || _filtro == 'Con conflicto')
+                OperacionesConProblema(tipos: const ['COMPRA'], titulo: 'Compras que no se pudieron realizar', alElegirOtra: (prenda) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CatalogoScreen(consultaInicial: prenda)))),
+              if (_filtro == 'Con conflicto' && !context.watch<OfflineController>().operaciones.any((o) => o.tipo == 'COMPRA' && (o.estado == 'EN_CONFLICTO' || o.estado == 'RECHAZADA')))
+                const ListaVacia(icono: Icons.check_circle_outline, texto: 'No tiene compras con conflicto.'),
               if (_error != null)
                 Text(_error!, style: const TextStyle(color: Colors.red)),
               if (_compras == null && _error == null)
                 const Center(child: CircularProgressIndicator()),
               if (_compras != null && _compras!.isEmpty)
                 const ListaVacia(icono: Icons.receipt_long_outlined, texto: 'Todavía no tiene compras. Cuando compre, las verá aquí.'),
-              for (final c in _compras ?? const <Map<String, dynamic>>[])
+              if (_compras != null && _compras!.isNotEmpty && _visibles().isEmpty && _filtro != 'Con conflicto')
+                const ListaVacia(icono: Icons.search_off, texto: 'Sin resultados con ese filtro.'),
+              for (final c in _visibles())
                 Card(
+                  color: c['estado'] == 'PENDIENTE_PAGO' ? const Color(0xFFFBEFD9) : null,
                   child: ListTile(
                     onTap: () => _ver(c),
-                    title: Text('${c['codigo']} · Bs ${c['total']}'),
+                    title: Row(children: [
+                      Expanded(child: Text('${c['codigo']} · Bs ${c['total']}')),
+                      if (c['estado'] == 'PENDIENTE_PAGO') const Chip(label: Text('Por pagar', style: TextStyle(fontSize: 11)), backgroundColor: Color(0xFFFFD98A), visualDensity: VisualDensity.compact),
+                    ]),
                     trailing: c['pendiente_local'] == true
                         ? _botonDeshacer(c)
                         : c['comprobante_numero'] == null

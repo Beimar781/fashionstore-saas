@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../../core/db/local_database.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/imagen_prenda.dart';
+import '../../../core/util/sugerencia.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/auth/presentation/auth_controller.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart'
@@ -52,6 +54,9 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   final _lista = ScrollController();
   PageController? _carrusel;
   Timer? _temporizador;
+  Timer? _espera; // retraso de 300 ms al escribir
+  List<String> _recientes = [];
+  String? _sugerencia;
   bool _mas = false;
   bool _cargando = true;
   bool _local = false;
@@ -61,6 +66,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   void initState() {
     super.initState();
     _iniciar();
+    _cargarRecientes();
     _lista.addListener(_alFinal);
     _carrusel = PageController(viewportFraction: .9);
     _temporizador = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -109,8 +115,40 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     }
   }
 
+  /// Las 5 últimas búsquedas, la más reciente primero (se guardan en el teléfono).
+  Future<void> _cargarRecientes() async {
+    final texto = await context.read<OfflineController>().repo.leerMeta('busquedas_recientes');
+    if (texto != null && mounted) setState(() => _recientes = (jsonDecode(texto) as List).cast<String>());
+  }
+
+  Future<void> _recordar(String q) async {
+    final t = q.trim();
+    if (t.isEmpty) return;
+    _recientes = [t, ..._recientes.where((x) => x.toLowerCase() != t.toLowerCase())].take(5).toList();
+    await context.read<OfflineController>().repo.ponerMeta('busquedas_recientes', jsonEncode(_recientes));
+  }
+
+  /// Con el texto escrito y sin resultados, busca en el catálogo guardado una palabra parecida.
+  Future<void> _buscarSugerencia() async {
+    final q = _texto.text.trim();
+    if (q.isEmpty) return;
+    final prendas = await context.read<OfflineController>().repo.buscar('', limite: 1000);
+    final palabras = {for (final p in prendas) ...[p.producto.nombre, p.producto.categoria].expand((t) => t.split(RegExp(r'\s+'))).where((w) => w.length >= 3)};
+    final sugerida = sugerirPalabra(q, palabras);
+    if (mounted) setState(() => _sugerencia = sugerida);
+  }
+
+  void _alEscribir(String _) {
+    _espera?.cancel();
+    _espera = Timer(const Duration(milliseconds: 300), () { if (mounted) _buscar(); });
+    setState(() {});
+  }
+
   Future<void> _buscar() async {
+    _espera?.cancel();
+    _recordar(_texto.text);
     setState(() {
+      _sugerencia = null;
       _cargando = true;
       _error = null;
       _pagina = 1;
@@ -128,6 +166,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
           _local = false;
           _categoria = null;
         });
+        if (items.isEmpty) _buscarSugerencia();
       }
     } on ApiException catch (e) {
       if (!e.sinConexion) {
@@ -235,6 +274,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     _texto.dispose();
     _lista.dispose();
     _temporizador?.cancel();
+    _espera?.cancel();
     _carrusel?.dispose();
     super.dispose();
   }
@@ -278,6 +318,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                           'Elegir sucursal'))),
               TextField(
                   controller: _texto,
+                  onChanged: _alEscribir,
                   onSubmitted: (_) => _buscar(),
                   decoration: InputDecoration(
                       hintText: 'Buscar prendas',
@@ -291,6 +332,13 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none))),
+              if (_texto.text.isEmpty && _recientes.isNotEmpty)
+                Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Wrap(spacing: 6, children: [
+                      for (final r in _recientes)
+                        ActionChip(avatar: const Icon(Icons.history, size: 16), label: Text(r), onPressed: () { _texto.text = r; _buscar(); }),
+                    ])),
             ])),
         if (_local)
           Container(
@@ -313,7 +361,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               : _error != null
                   ? const SizedBox.shrink()
                   : _items.isEmpty
-                      ? const Center(child: Text('No se encontraron prendas.'))
+                      ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('No se encontraron prendas.'),
+                          if (_sugerencia != null)
+                            TextButton(onPressed: () { _texto.text = _sugerencia!; _buscar(); }, child: Text('¿Quiso decir «$_sugerencia»?')),
+                        ]))
                       : RefreshIndicator(
                           onRefresh: _buscar,
                           child: CustomScrollView(

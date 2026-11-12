@@ -935,3 +935,21 @@ Requisitos: RF23 (exportación), RNF03, RNF05, RNF06, RNF09 y RNF10 con lo de ar
 - **Avisos del inicio:** en Cajero, Encargado y Cliente van en la campana de la barra superior con el contador de no leídos; al abrirla se marcan como leídos. Los avisos de la app duran 5 s y flotan sobre los botones fijos.
 - **Aviso de sincronización:** cuenta el estado final de las operaciones de esa sincronización; si hay conflicto lo dice y «Ver detalle» abre Conflictos (Encargado). No aparece tras cerrar la sesión.
 - **Diagnóstico:** incluye usuario, rol, empresa, hora de la copia, versión de la app y cuántas operaciones están pendientes o en conflicto.
+
+## Prompt M (pulido del móvil)
+
+| Situación | Mensaje | Código HTTP | Estado |
+|---|---|---|---|
+| Conflicto sin existencias hoy | «Sin stock todavía» (el botón «Reintentar» queda deshabilitado) | — (solo en la app) | Pendiente |
+| Marcar una prenda de la reserva como no encontrada | «¿Marcar como no encontrada?» … «Sí, no está» | — (solo en la app) | Pendiente |
+| Salir de la Caja con una venta en curso | «¿Descartar la venta en curso?» / «Seguir vendiendo» / «Descartar» | — (solo en la app) | Pendiente |
+| Búsqueda sin coincidencias en el catálogo | «¿Quiso decir «X»?» | — (solo en la app) | Pendiente |
+| Copia local de más de 24 horas | «Actualice el catálogo» | — (solo en la app) | Pendiente |
+| Errores de red | «No hay conexión, se guardó en este teléfono.» / «El servidor no respondió, reintentamos solos.» | — (solo en la app) | Pendiente |
+
+**Reglas nuevas**
+- Los avisos con botón («Ver detalle») se cierran solos a los 5 s (`persist: false`); uno nuevo reemplaza al anterior, también en la web.
+- El acceso «Conflictos de sincronización» del Encargado muestra una insignia con los conflictos del servidor (con red) o los locales (sin red).
+- La Caja muestra la venta en curso (líneas, total e IVA incluido) en un panel fijo sobre el botón «Registrar venta».
+- «Mis compras» pone primero y resalta los pedidos «Por pagar»; filtros rápidos (Todas, Por pagar, Pagadas, Con conflicto) y búsqueda por código.
+- **Cancelar pedido por pagar:** no existe el endpoint para el Cliente, así que el botón no se muestra (un pedido por pagar no reserva stock). Queda anotado como mejora.

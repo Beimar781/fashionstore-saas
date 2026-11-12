@@ -13,18 +13,27 @@ class AvisoPush {
       {required this.id,
       required this.titulo,
       required this.mensaje,
-      required this.leido});
+      required this.leido,
+      this.creada,
+      this.referenciaTipo,
+      this.referenciaId});
 
   factory AvisoPush.desdeJson(Map<String, dynamic> j) => AvisoPush(
       id: j['id'] as int,
       titulo: j['titulo'] as String,
       mensaje: j['mensaje'] as String,
-      leido: j['leida'] as bool);
+      leido: j['leida'] as bool,
+      creada: DateTime.tryParse('${j['creada_en'] ?? j['creada'] ?? ''}'),
+      referenciaTipo: j['referencia_tipo'] as String?,
+      referenciaId: j['referencia_id'] as int?);
 
   final int id;
   final String titulo;
   final String mensaje;
   final bool leido;
+  final DateTime? creada;
+  final String? referenciaTipo;
+  final int? referenciaId;
 }
 
 /// RF11 · Avisos push en el móvil (regla 17). Con Firebase, el dispositivo se registra con su token de FCM y los avisos llegan como notificación nativa.
@@ -112,7 +121,10 @@ class PushRepository {
                 'id': a.id,
                 'titulo': a.titulo,
                 'mensaje': a.mensaje,
-                'leida': a.leido
+                'leida': a.leido,
+                'creada': a.creada?.toIso8601String(),
+                'referencia_tipo': a.referenciaTipo,
+                'referencia_id': a.referenciaId
               }
           ])
         },

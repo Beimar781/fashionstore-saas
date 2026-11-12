@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/util/mensajes_red.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../features/offline/presentation/modo_offline_screen.dart' show fechaCorta;
 import '../../../features/offline/presentation/offline_controller.dart';
@@ -69,7 +70,7 @@ class _TarjetasScreenState extends State<TarjetasScreen> {
   }
 
   /// Guardar, ver y quitar tarjetas depende de Internet (CU-32): sin red se explica con un mensaje claro.
-  String _mensaje(Object e) => e is ApiException && e.sinConexion ? 'Sin conexión: las tarjetas guardadas necesitan Internet.' : '$e';
+  String _mensaje(Object e) => e is ApiException && e.sinConexion ? 'Sin conexión: las tarjetas guardadas necesitan Internet.' : mensajeAmigable(e);
 
   @override
   Widget build(BuildContext context) => Scaffold(

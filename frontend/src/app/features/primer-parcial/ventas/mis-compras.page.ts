@@ -33,7 +33,7 @@ interface CompraEnLista { id: string | number; codigo: string; fecha: string; su
             <thead><tr><th>Fecha</th><th>Pedido</th><th>Sucursal</th><th class="right">Prendas</th><th class="right">Monto</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
             <tbody>
               @for (c of compras(); track c.id) {
-                <tr>
+                <tr [style.background]="c.estado === 'PENDIENTE_PAGO' ? '#fbefd9' : null">
                   <td class="nowrap">{{ c.fecha | date: 'dd/MM/yyyy HH:mm' }}</td><td><strong>{{ c.codigo }}</strong></td><td>{{ c.sucursal }}</td>
                   <td class="right">{{ c.total_unidades }}</td><td class="right nowrap">{{ c.total | bs }}</td>
                   <td>@if (c.pendiente) { <span class="badge warn">{{ c.leyenda }}</span> } @else { <span class="badge" [class]="clase(c.estado)">{{ texto(c.estado) }}</span> }</td><td>{{ c.comprobante_numero ?? '—' }}</td>
@@ -56,7 +56,7 @@ export class MisComprasPage implements OnInit {
   private catalogoLocal = inject(CatalogoLocalService);
 
   private servidor = signal<CompraResumen[]>([]);
-  readonly compras = computed<CompraEnLista[]>(() => [
+  readonly compras = computed<CompraEnLista[]>(() => this.conPorPagarArriba([
     ...this.servidor().map((c) => ({ ...c, estado: c.estado, pendiente: false })),
     ...this.cola.operaciones().filter((o) => o.tipo === 'COMPRA' && ['REGISTRADA_LOCAL', 'ENVIADA'].includes(o.estado)).map((o) => {
       const items = (o.payload['items'] as { variante_id: number; cantidad: number }[] | undefined) ?? [];
@@ -64,7 +64,9 @@ export class MisComprasPage implements OnInit {
       const sucursal = this.catalogoLocal.meta()?.sucursales.find((s) => s.id === o.sucursal_id)?.nombre ?? 'Sucursal';
       return { id: o.id, codigo: o.referencia ?? 'En este dispositivo', leyenda: estadoLegible(o), fecha: o.creada_en, sucursal, total: total.toFixed(2), total_unidades: items.reduce((s, i) => s + i.cantidad, 0), comprobante_numero: null, estado: o.estado, pendiente: true };
     }),
-  ]);
+  ]));
+  /** Los pedidos «Por pagar» van primero y se resaltan, igual que en el móvil. */
+  private conPorPagarArriba(lista: CompraEnLista[]) { return [...lista].sort((a, b) => Number(b.estado === 'PENDIENTE_PAGO') - Number(a.estado === 'PENDIENTE_PAGO')); }
   readonly mensaje = signal<string | null>(null);
   puedeDeshacer(id: string | number) { const o = this.cola.operaciones().find((x) => x.id === id); return !!o && this.cola.puedeDeshacer(o); }
   async deshacer(id: string | number) { const o = this.cola.operaciones().find((x) => x.id === id); if (o) await this.cola.deshacer(o); }

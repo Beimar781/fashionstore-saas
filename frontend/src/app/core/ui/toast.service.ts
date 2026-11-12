@@ -16,12 +16,13 @@ export class ToastService {
   aviso(texto: string) { this.mostrar('warn', texto, 7000); }
 
   /** Aviso con un botón que lleva a otra pantalla (por ejemplo «Ver detalle» de la sincronización). */
-  mostrarAviso(tipo: Toast['tipo'], texto: string, accion?: AccionToast) { this.mostrar(tipo, texto, accion ? 12000 : 6000, accion); }
+  mostrarAviso(tipo: Toast['tipo'], texto: string, accion?: AccionToast) { this.mostrar(tipo, texto, 5000, accion); }
   cerrar(id: number) { this.toasts.update((t) => t.filter((x) => x.id !== id)); }
 
   private mostrar(tipo: Toast['tipo'], texto: string, ms = 3500, accion?: AccionToast) {
     const id = ++this.n;
-    this.toasts.update((t) => [...t, { id, tipo, texto, accion }]);
+    // el aviso con botón (resumen de la sincronización) es único: uno nuevo reemplaza al anterior
+    this.toasts.update((t) => [...(accion ? t.filter((x) => !x.accion) : t), { id, tipo, texto, accion }]);
     setTimeout(() => this.toasts.update((t) => t.filter((x) => x.id !== id)), ms);
   }
 }

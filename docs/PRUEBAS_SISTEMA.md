@@ -392,6 +392,20 @@ python scripts/preparar_demo.py --url https://fashionstore-saas-production.up.ra
 | 24.7 | Móvil | Todos | Deslizar hacia abajo en Compras, Reservas, Tareas, Conflictos y Avisos sin red. | «Sin conexión, mostrando copia local.» | ☐ |
 | 24.8 | Web y móvil | Cajero y Cliente | Cajero registra una venta a nombre del cliente y no la cobra; el cliente la paga con tarjeta. | Aparece «Por pagar» en su historial; al pagar queda con comprobante CMP-… y el stock baja una sola vez. | ☐ |
 
+## 25. Prompt M: pruebas a mano
+
+| # | Dónde | Cuenta | Pasos | Resultado esperado | ✔ |
+|---|---|---|---|---|---|
+| 25.1 | Móvil | Encargado | Reconectar con operaciones pendientes. | El aviso «Sincronización completa… Ver detalle» desaparece solo a los 5 s. | ☐ |
+| 25.2 | Móvil | Encargado | Mirar el inicio con conflictos en el servidor. | El acceso «Conflictos de sincronización» tiene insignia roja con la cantidad; en 0 no hay insignia. | ☐ |
+| 25.3 | Móvil | Encargado | Reservas → «Marcar no encontrada». | Botón claro, pide confirmación y el ítem queda como «No encontrada». | ☐ |
+| 25.4 | Móvil | Cajero | Buscar y agregar prendas. | Panel fijo con prendas, Total e IVA; buscador limpio y teclado cerrado; «Atrás» pregunta «¿Descartar la venta en curso?». | ☐ |
+| 25.5 | Móvil | Cliente | Campana → Avisos. | «Marcar todos como leídos», grupos Hoy y Anteriores; un aviso de pedido abre Mis compras en ese pedido. | ☐ |
+| 25.6 | Móvil | Cliente | Mis compras con un pedido por pagar. | Aparece primero, resaltado en ámbar, con «Pagar con tarjeta»; filtros y búsqueda por código. | ☐ |
+| 25.7 | Móvil | Encargado | Conflicto de una prenda con 0 en stock. | Muestra «hoy hay 0», «Reintentar» deshabilitado con «Sin stock todavía»; «Descartar» pide confirmación. | ☐ |
+| 25.8 | Móvil | Todos | Perfil / inicio. | «Última sincronización: hh:mm», refrescar que gira, «Copiar diagnóstico» y aviso si la copia pasa de 24 h. | ☐ |
+| 25.9 | Móvil | Cliente | Catálogo: escribir con una letra mal. | Búsqueda con retraso de 300 ms, últimas 5 búsquedas y «¿Quiso decir…?». | ☐ |
+
 ## Diferencias conocidas entre la web y el móvil
 
 - El vestidor está disponible para el Cliente en web y móvil; en web se usa la cámara del computador.
